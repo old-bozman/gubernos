@@ -1,5 +1,14 @@
 # Setting up Gubernos on your Mac
 
+**The short way: let your AI agent do all of it.** Open your agent on the Mac (below, if you have none yet) and paste:
+
+```
+Install Gubernos for me: read https://raw.githubusercontent.com/old-bozman/gubernos/main/SETUP.md and do the part "For the agent".
+```
+
+That's the whole instruction: the agent fetches the app, installs it, sets up the folder and the phone connection, and
+onboards you. You only answer its questions and tap on your phone when it asks.
+
 **You (the person):** you need a Mac and **one** AI model on your own plan — its command-line agent installed and signed in:
 
 | You have | Install | Sign in |
@@ -28,6 +37,17 @@ You (Claude Code, Codex or Gemini CLI) are installing Gubernos for the person in
 - Run `scripts/setup.sh` steps; every step is safe to repeat. The vault always goes to iCloud (`--local` exists only for development and tests — never use it for a real install). Never overwrite or delete files in an existing vault (`kit.mjs` only adds missing files).
 - Ask before installing software (brew, Tailscale, Python packages). Never ask for or store passwords or API secrets; files with credentials stay in `~/.config/gubernos/`.
 - The repo's `AGENTS.md` describes the app's code; the vault's `CLAUDE.md` / `AGENTS.md` describe the system.
+
+### 0. Get the app (when you came from the prompt, not from inside the repo)
+
+If you aren't in a Gubernos checkout (no `scripts/setup.sh` here): look for `~/gubernos`; if it's missing, tell the person
+what it does and run `curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash` (git
+from Apple's Command Line Tools, Node when the Mac has none, the app into `~/gubernos`; no sudo, no Homebrew; if macOS
+opens the Command Line Tools dialog, they click Install and you run it again). Then work in `~/gubernos` and read this
+file from there (it may be newer than the copy you fetched).
+
+The iPhone app comes from TestFlight: https://testflight.apple.com/join/rBUGmgJG — give them the link when you reach the
+phone step (they install TestFlight first, then open the link on the iPhone → Accept → Install).
 
 ### 1. Check the Mac
 

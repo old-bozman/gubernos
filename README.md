@@ -12,13 +12,23 @@ Gubernos is not affiliated with any of them.
 
 ### Install the beta
 
+**You don't have to do the setup yourself: your AI agent does it.** On your Mac, open Claude Code, Codex or Gemini CLI
+(whichever your plan covers; the table in [SETUP.md](SETUP.md) shows how to get one) and paste:
+
+```
+Install Gubernos for me: read https://raw.githubusercontent.com/old-bozman/gubernos/main/SETUP.md and do the part "For the agent".
+```
+
+It checks the Mac, installs what's missing (asking first), creates your folder in iCloud, starts the app, sets up the
+phone connection and then interviews you to fill the system. The only things it can't do for you are taps on your phone:
+
 1. On your iPhone, install **TestFlight** from the App Store.
 2. On the iPhone, open **[testflight.apple.com/join/rBUGmgJG](https://testflight.apple.com/join/rBUGmgJG)** → **Accept** →
-   **Install**. (Until Apple has reviewed the first beta build, the link may say the beta isn't accepting testers yet.)
+   **Install**.
 3. Open Gubernos → **Start a new system** → in the file picker choose or create a folder in iCloud Drive (inside
    Obsidian's folder works too). The app works on its own from here: tasks, habits, reminders, widgets, the watch.
-4. Optional, for AI agents, the chat, voice and planning with your calendar: Gubernos for Mac,
-   `curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash` (details:
+4. For AI agents, the chat, voice and planning with your calendar: Gubernos for Mac — the agent prompt above, or by
+   hand `curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash` (details:
    [docs/install.md](docs/install.md)).
 
 Feedback: in TestFlight take a screenshot → **Share Beta Feedback**, or open an issue here.

@@ -4,6 +4,9 @@
 
 Two steps. First the iPhone alone, 5 minutes. Then the Mac, when you want agents.
 
+**Or skip the reading:** on the Mac, open your AI agent (Claude Code, Codex or Gemini CLI) and paste
+`Install Gubernos for me: read https://raw.githubusercontent.com/old-bozman/gubernos/main/SETUP.md and do the part "For the agent".` — it does the Mac part for you and tells you when to tap on the phone.
+
 ## 1. iPhone (5 minutes)
 
 1. Install **TestFlight** from the App Store, open [testflight.apple.com/join/rBUGmgJG](https://testflight.apple.com/join/rBUGmgJG) on the iPhone and tap **Accept** → **Install**.

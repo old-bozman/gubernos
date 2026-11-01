@@ -1,5 +1,7 @@
 # Working on Gubernos (for any coding agent)
 
+> **Here to install Gubernos for someone, not to change its code?** Follow [SETUP.md](SETUP.md) → "For the agent".
+
 Single developer + agents; other people install it from `SETUP.md`, so keep personal values in config / `profile.md`. Keep it simple: vanilla JS, no build step, no framework, one runtime dependency
 (`yaml`). Don't add dependencies, abstractions or test frameworks without a concrete need.
 
