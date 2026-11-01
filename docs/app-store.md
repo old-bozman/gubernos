@@ -107,7 +107,8 @@ Not yet verified on devices (only the simulator or not at all). Tick them on the
 ## The site
 
 The site is its own public repository, `old-bozman/gubernos-site` (checked out at `~/dev/gubernos-site`): `index.html`,
-`privacy.html`, `support.html` (plain HTML, no scripts) and `concept.css`. Cloudflare Pages builds its `main` branch, so a
+`privacy.html`, `support.html`, `concept.css` and `copy.js` (the Copy buttons; the only script, it sends nothing:
+no tracking, no data collected). Cloudflare Pages builds its `main` branch, so a
 push publishes, and serves it at gubernos.app (Cloudflare Pages → the project → Custom domains; the DNS records it asks for
 go to the registrar, Namecheap, or the domain's DNS moves to Cloudflare). Its "What is a personal OS" section comes from
 this repository's `public/concept.js`: `node scripts/build-concept.mjs` rewrites it there, then commit and push in the site
