@@ -1,5 +1,5 @@
 // What Gubernos is, drawn: the model as a wheel, the life loops and where the data lives. One source for the app
-// (More → How it works, the first-launch tour), the site (scripts/build-concept.mjs writes it into site/index.html) and the
+// (More → How it works, the first-launch tour), the site (scripts/build-concept.mjs writes it into gubernos-site) and the
 // README's pictures (the same script writes docs/img/*.svg). Colours come from the page's tokens (--ink, --accent, …).
 
 export const CONCEPT_CSS = `
@@ -175,9 +175,9 @@ export const archHtml = () => `<div class="cpt-arch">
       <div><b>Your AI provider</b><span>Anthropic, OpenAI or Google get the text an agent needs for the task it is doing, under your account.</span></div>
       <div><b>Your calendar</b><span>Google or Apple Calendar, read for free time; blocks are written only when you apply a plan.</span></div>
       <div><b>Apple iCloud</b><span>Syncs the folder between your devices, like any other file.</span></div>
-      <div><b>Apple Health</b><span>Ticks off habits like steps or sleep. Read on your phone and never sent anywhere.</span></div>
+      <div><b>Apple Health</b><span>Ticks off habits like steps or sleep: read on your phone, written only into your own files.</span></div>
     </div></div>
-  <div class="cpt-zone cpt-none"><span class="x">Gubernos servers</span><p>There are none. No account to create, nothing uploaded to us, no tracking. The Mac app is open source, so anyone can check.</p></div>
+  <div class="cpt-zone cpt-none"><span class="x">Gubernos servers</span><p>There are none. No account to create, nothing uploaded to us, no tracking. The Mac app will be open source at launch, so anyone can check.</p></div>
 </div>`;
 // The app next to the user's own agent.
 export const roleHtml = () => `<div class="cpt-duo">

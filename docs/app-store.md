@@ -5,7 +5,7 @@ and `~/.appstoreconnect/private_keys/`, outside the repos; `gubernos-ios/scripts
 `build.sh testflight` uploads with it.
 
 Everything App Store Connect asks for the Gubernos app (bundle `app.gubernos`), ready to paste. The pages it links to live in
-`site/` (published at https://gubernos.app, see "The site" at the end).
+the site repository `old-bozman/gubernos-site` (published at https://gubernos.app, see "The site" at the end).
 
 ## App information
 
@@ -67,7 +67,7 @@ Gubernos is a personal operating system: one working model of your life, steered
 
 Everything is plain Markdown files in your own iCloud: there is no account and no server of ours. The iPhone app works on its own; with Gubernos for Mac (free, open source: github.com/old-bozman/gubernos) you also get AI agents on your own Claude, ChatGPT or Gemini plan, an inbox agent, a chat and calendar planning. More → How it works in the app shows the whole idea.
 
-**Feedback email:** hello@gubernos.app
+**Feedback email:** me@alexandersafonov.com (hello@gubernos.app once its forwarding exists)
 
 **What to Test** (per build)
 Start a new system (or pick your existing folder), add a few tasks by typing and by voice, set a reminder, check off a habit, try the widgets and the watch. If you have a Mac with Gubernos: pair the phone (Settings → Connections → Pair a device) and hand a task to an agent.
@@ -86,7 +86,7 @@ Sign-in: **not required** (no account exists).
 >
 > HealthKit: read steps, active energy, water, daylight, mindful minutes, workouts, sleep (to tick off the user's habits); write mindful minutes from the app's meditation timer. Nothing leaves the user's devices and iCloud folder.
 
-Contact for review: Alexander Safonov, hello@gubernos.app (and a phone number in App Store Connect).
+Contact for review: Alexander Safonov, me@alexandersafonov.com for now (hello@gubernos.app later; and a phone number in App Store Connect).
 
 ## Before Beta App Review: check on a real iPhone and the watch
 
@@ -106,10 +106,11 @@ Not yet verified on devices (only the simulator or not at all). Tick them on the
 
 ## The site
 
-`site/` holds `index.html`, `privacy.html`, `support.html` (plain HTML, no scripts) and `CNAME` = gubernos.app. `scripts/publish-site.sh` pushes it
-to the `gh-pages` branch. GitHub Pages serves it once the repository is public (a free plan needs a public repo): Settings →
-Pages → Deploy from a branch → `gh-pages`, `/ (root)`. DNS at the registrar (Namecheap → Domain →
-Advanced DNS), replacing the parking records:
+The site is its own public repository, `old-bozman/gubernos-site` (checked out at `~/dev/gubernos-site`): `index.html`,
+`privacy.html`, `support.html` (plain HTML, no scripts), `concept.css` and `CNAME` = gubernos.app. GitHub Pages serves its
+`main` branch root, so a push publishes. Its "What is a personal OS" section comes from this repository's
+`public/concept.js`: `node scripts/build-concept.mjs` rewrites it there, then commit and push in the site repo. DNS at the
+registrar (Namecheap → Domain → Advanced DNS), replacing the parking records:
 
 | Type | Host | Value |
 |---|---|---|

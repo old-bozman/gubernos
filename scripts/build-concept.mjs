@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// The explainer (public/concept.js) for the places outside the app: the site's "What is a personal OS" section
-// (site/index.html between the concept markers, its styles in site/concept.css) and the README's pictures
+// The explainer (public/concept.js) for the places outside the app: the site's "What is a personal OS" section (the
+// gubernos.app repository, old-bozman/gubernos-site, checked out next to this one or at GUBERNOS_SITE: index.html between
+// the concept markers, its styles in concept.css — commit and push there, a push publishes) and the README's pictures
 // (docs/img/concept-wheel-*.svg, docs/img/concept-loops-*.svg). Run after changing concept.js, then commit.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -11,10 +12,11 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const write = (rel, text) => { fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true }); fs.writeFileSync(path.join(root, rel), text); console.log('✓', rel); };
 
 // site
-const index = path.join(root, 'site/index.html');
+const site = process.env.GUBERNOS_SITE || path.join(root, '..', 'gubernos-site');
+const index = path.join(site, 'index.html');
 const html = fs.readFileSync(index, 'utf8');
 const START = '<!-- concept:start (scripts/build-concept.mjs) -->', END = '<!-- concept:end -->';
-if (!html.includes(START) || !html.includes(END)) throw new Error('site/index.html: concept markers missing');
+if (!html.includes(START) || !html.includes(END)) throw new Error(`${index}: concept markers missing`);
 const section = `${START}
 <section class="concept wide">
 <h2>What is a personal OS</h2>
@@ -22,8 +24,9 @@ const section = `${START}
 ${conceptHtml({ h: 'h3' })}
 </section>
 ${END}`;
-write('site/index.html', html.slice(0, html.indexOf(START)) + section + html.slice(html.indexOf(END) + END.length));
-write('site/concept.css', `/* written by scripts/build-concept.mjs from public/concept.js — edit there */\n${CONCEPT_CSS}\n`);
+const put = (file, text) => { fs.writeFileSync(path.join(site, file), text); console.log('✓', path.join(site, file)); };
+put('index.html', html.slice(0, html.indexOf(START)) + section + html.slice(html.indexOf(END) + END.length));
+put('concept.css', `/* written by scripts/build-concept.mjs from public/concept.js — edit there */\n${CONCEPT_CSS}\n`);
 
 // README pictures: standalone SVGs with the Oxblood palette, a light and a dark file (the README's <picture> picks by
 // GitHub's theme)
