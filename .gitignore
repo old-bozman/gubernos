@@ -2,6 +2,6 @@ node_modules/
 .venv/
 .runs/
 server.log
-# personal one-off data (Todoist review answers)
+# this Mac's own data (caches, feedback snapshots, settings)
 data/
 .DS_Store
