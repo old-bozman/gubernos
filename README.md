@@ -20,7 +20,8 @@ Install Gubernos for me: read https://raw.githubusercontent.com/old-bozman/guber
 ```
 
 It checks the Mac, installs what's missing (asking first), creates your folder in iCloud, starts the app, sets up the
-phone connection and then interviews you to fill the system. The only things it can't do for you are taps on your phone:
+phone connection and then interviews you to fill the system. It asks you for what only you can do: signing in (Tailscale,
+for the phone), a few Allow dialogs, and these taps on your iPhone:
 
 1. On your iPhone, install **TestFlight** from the App Store.
 2. On the iPhone, open **[testflight.apple.com/join/rBUGmgJG](https://testflight.apple.com/join/rBUGmgJG)** → **Accept** →

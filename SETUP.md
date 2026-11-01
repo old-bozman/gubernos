@@ -7,7 +7,8 @@ Install Gubernos for me: read https://raw.githubusercontent.com/old-bozman/guber
 ```
 
 That's the whole instruction: the agent fetches the app, installs it, sets up the folder and the phone connection, and
-onboards you. You only answer its questions and tap on your phone when it asks.
+onboards you. You answer its questions and do what only you can: sign in to Tailscale (for the phone), click Allow in a
+few macOS dialogs, scan the pairing code and tap on your phone when it asks.
 
 **You (the person):** you need a Mac and **one** AI model on your own plan — its command-line agent installed and signed in:
 
