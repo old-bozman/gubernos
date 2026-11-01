@@ -1649,3 +1649,9 @@ button.dc-ev:hover, .dc-ev.cal-hl { box-shadow: 0 0 0 2px var(--accent); z-index
 .win-auto.ok { color: var(--ink); border-color: var(--ink-2); }
 .win-row.done .win-auto { text-decoration: none; }
 .win-row .check[disabled] { cursor: default; opacity: 1; }
+/* Focus: the sprint's length, before it starts (Settings → Focus sprint is the default) */
+.pomo-len { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; margin-top: 10px; }
+.pomo-len .chip { min-width: 40px; justify-content: center; font-variant-numeric: tabular-nums; }
+.pomo-len .chip.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.pomo-len-u { font-size: 13px; color: var(--muted); }
+.pomo-len input, #set-sprint-in { width: 72px; font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); text-align: center; }

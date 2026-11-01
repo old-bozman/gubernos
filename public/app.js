@@ -3499,6 +3499,8 @@ document.addEventListener('click', async (e) => {
     case 'focus-skip': return focusSkip();
     case 'focus-exit': return exitFocus();
     case 'pomo-toggle': return pomo.running ? pomoPause() : pomoStart();
+    case 'pomo-len': return pomoSetLen(+a.dataset.min);
+    case 'pomo-len-other': { const el = a.closest('.pomo-len'); el.innerHTML = `<input type="number" id="pomo-len-in" min="1" max="180" value="${pomo.len || sprintDefault()}" aria-label="Sprint length, minutes"><span class="pomo-len-u">min</span>`; const i = $('#pomo-len-in'); i.focus(); i.select(); i.onchange = () => pomoSetLen(+i.value); i.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); i.blur(); } }; return; }
     case 'pomo-reset': return pomoReset();
     case 'lunch-edit': S.plan.lunchEdit = !S.plan.lunchEdit; renderMain(); if (S.plan.lunchEdit) $('.pt-lunch-at')?.focus(); return;
     case 'lunch-skip': return setLunchToday('');
@@ -3990,6 +3992,7 @@ function settingsHtml() {
     <div class="set-row"><div class="set-l">Colours<small>all your devices</small></div><span class="pal-pick">${PALETTES.map(([name, bg, hub], i) => `<button data-act="set-palette" data-val="${i}" class="pal-sw ${(st.palette || 0) === i ? 'on' : ''}" style="--tile-bg:${bg};--tile-fg:#fff;--tile-hub:${hub}" title="${name}" aria-label="Colours: ${name}">${LOGO}<span>${name}</span></button>`).join('')}</span></div>
     <div class="set-row"><div class="set-l">Time format<small>how times show everywhere in the app</small></div><span data-noclock>${seg('set-clock', st.clock === '12h' ? '12h' : '24h', [['24h', '24h · 16:30'], ['12h', 'am / pm · 4:30pm']])}</span></div>
     <div class="set-row"><div class="set-l">Week starts on<small>this week’s wins, the weekly review, habits this week, sprints this week</small></div>${seg('set-week-start', st.weekStart === 'sunday' ? 'sunday' : 'monday', [['sunday', 'Sunday'], ['monday', 'Monday']])}</div>
+    <div class="set-row"><div class="set-l">Focus sprint<small>its length by default; the Focus screen changes it for one sprint · break: a fifth, at least 5 min</small></div><span class="set-btns">${seg('set-sprint', [15, 25, 30, 50, 60].includes(st.sprintMinutes || 25) ? st.sprintMinutes || 25 : 'x', [...[15, 25, 30, 50, 60].map((m) => [m, `${m}`]), ['x', [15, 25, 30, 50, 60].includes(st.sprintMinutes || 25) ? 'Other' : `${st.sprintMinutes} min`]])}</span></div>
     <div class="set-row"><div class="set-l">Undo window<small>complete, drop, reschedule</small></div>${seg('set-undo', st.undoSeconds, [[3, '3 s'], [5, '5 s'], [10, '10 s']])}</div>
     ${g('Today')}
     <div class="set-row"><div class="set-l">Focus view<small>Today shows only the #1 and your tasks for today, each a tap from Focus · also the toggle at the top of Today</small></div>${seg('set-simple', st.simple ? 'on' : 'off', [['off', 'Off'], ['on', 'On']])}</div>
@@ -4179,6 +4182,14 @@ document.addEventListener('click', (e) => {
   if (b.dataset.act === 'set-notif') { if ((v === 'on') !== !!S.push.on) toggleNotifications(); return; }
   if (b.dataset.act === 'set-digest-off') return saveSetting({ digestAt: v === 'on' ? '08:30' : '' });
   if (b.dataset.act === 'set-undo') return saveSetting({ undoSeconds: +v });
+  if (b.dataset.act === 'set-sprint') {
+    if (v !== 'x') return saveSetting({ sprintMinutes: +v }).then(() => { if (!pomoActive()) { pomoFresh(); savePomo(); } });
+    const row = b.closest('.set-row').querySelector('.set-btns');
+    row.innerHTML = `<input type="number" id="set-sprint-in" min="1" max="180" value="${S.settings?.sprintMinutes || 25}" aria-label="Sprint length, minutes"> min`;
+    const i = $('#set-sprint-in'); i.focus(); i.select();
+    i.onchange = () => saveSetting({ sprintMinutes: +i.value }).then(() => { if (!pomoActive()) { pomoFresh(); savePomo(); } });
+    return;
+  }
   if (b.dataset.act === 'set-lunch-min') return saveSetting({ lunchMinutes: +v }).then(() => { S.planInfoAt = 0; });
   if (b.dataset.act === 'set-reminder-push') return saveSetting({ reminderPush: v === 'on' });
   if (b.dataset.act === 'set-checkin-push') return saveSetting({ checkinPush: v === 'on' });
@@ -4768,31 +4779,48 @@ function renderFocus() {
   pomoTick();
 }
 
-// ---------- pomodoro 25/5 ----------
+// ---------- focus sprints (pomodoro) ----------
 // State lives in localStorage with an absolute end time, so reloads and a locked phone don't lose it.
-const POMO = { work: 25 * 60, break: 5 * 60 };
-let pomo = (() => {
+// A sprint's length: Settings → Focus sprint by default; the Focus screen changes it for one sprint (pomo.len, minutes).
+// The break is a fifth of it, at least 5 minutes (25 → 5, 50 → 10).
+// (declarations, not consts: Settings and the header render before this part of the file has run)
+var SPRINTS = [15, 25, 30, 50, 60];
+function sprintDefault() { return S.settings?.sprintMinutes || 25; }
+const POMO = { get work() { return (pomo?.len || sprintDefault()) * 60; }, get break() { return Math.max(5, Math.round((pomo?.len || sprintDefault()) / 5)) * 60; } };
+var pomo = (() => {
   try { const p = JSON.parse(localStorage.getItem('pomo')); if (p) return p; } catch { /* ignore */ }
-  return { phase: 'work', running: false, endsAt: null, left: POMO.work, count: 0, day: iso(new Date()) };
+  return { phase: 'work', running: false, endsAt: null, left: 25 * 60, count: 0, day: iso(new Date()) };
 })();
+// a new sprint takes the default length (not one changed for the last sprint)
+function pomoFresh() { pomo.len = sprintDefault(); pomo.left = POMO.work; pomo.fresh = true; }
+// the Focus screen's length chips: before the sprint, or paused (the time already spent stays spent)
+function pomoSetLen(min) {
+  if (pomo.running || pomo.phase !== 'work') return;
+  const spent = pomoFreshNow() ? 0 : POMO.work - pomo.left;
+  pomo.len = Math.min(180, Math.max(1, Math.round(min)));
+  pomo.left = Math.max(60, POMO.work - spent); savePomo(); pomoTick(); renderFocus();
+}
 let audioCtx = null;
 function savePomo() { try { localStorage.setItem('pomo', JSON.stringify(pomo)); } catch { /* private mode */ } }
-function pomoLeft() { return pomo.running ? Math.max(0, Math.round((pomo.endsAt - Date.now()) / 1000)) : pomo.left; }
+// not started yet (fresh): the whole length, whatever the length is by now (Settings may arrive after this state)
+function pomoFreshNow() { return !!pomo && !pomo.running && pomo.phase === 'work' && (pomo.fresh ?? pomo.left === 25 * 60); }
+function pomoLeft() { return pomo.running ? Math.max(0, Math.round((pomo.endsAt - Date.now()) / 1000)) : pomoFreshNow() ? POMO.work : pomo.left; }
 // AICODE-NOTE: a sprint belongs to the task it was started on (Weekly review while you walk through other tasks):
 // it is logged to that task even after Focus moved on, the task was closed or Focus was left; Resume keeps it.
 function pomoStart() {
   if (pomo.running) return;
-  if (pomo.phase === 'work' && pomo.left === POMO.work) {
+  if (pomoFreshNow()) {
+    pomo.left = POMO.work; pomo.fresh = false;
     const t = S.focus?.mode === 'focus' && S.focus.id ? taskById(S.focus.id) : null;
     pomo.taskId = t?.id || null; pomo.title = t?.title || null;
   }
   pomo.running = true; pomo.endsAt = Date.now() + pomo.left * 1000; savePomo(); pomoTick();
 }
 function pomoPause() { if (!pomo.running) return; pomo.left = pomoLeft(); pomo.running = false; pomo.endsAt = null; savePomo(); pomoTick(); }
-function pomoReset() { pomo = { ...pomo, phase: 'work', running: false, endsAt: null, left: POMO.work, taskId: null, title: null }; savePomo(); pomoTick(); if (!S.focus) renderMain(); }
+function pomoReset() { pomo = { ...pomo, phase: 'work', running: false, endsAt: null, taskId: null, title: null }; pomoFresh(); savePomo(); pomoTick(); if (!S.focus) renderMain(); }
 // a sprint under way (running, or paused mid-way): shown in every screen's header
 let pomoShown = null;
-function pomoActive() { return pomo.running || (pomo.phase === 'work' && pomo.left < POMO.work); }
+function pomoActive() { return pomo.running || (pomo.phase === 'work' && !pomoFreshNow() && pomo.left < POMO.work); }
 // compact = the Focus icon itself turns into the ring (Today's header, where the Focus button sits): nothing moves
 function pomoLiveHtml(compact = false) {
   try { if (!pomoActive()) return ''; } catch { return ''; } // the first render runs before the timer's state is read
@@ -4832,9 +4860,9 @@ function pomoTick() {
       const end = pomo.endsAt, start = end - POMO.work * 1000;
       recordPomodoro({ start, end, minutes: POMO.work / 60, taskId: pomo.taskId !== undefined ? pomo.taskId : S.focus?.mode === 'focus' ? S.focus.id : null });
       pomo.count += 1; pomo.phase = 'break'; pomo.left = POMO.break; pomo.endsAt = Date.now() + POMO.break * 1000; // break starts by itself
-      toast('Sprint done — take 5');
+      toast(`Sprint done — take ${POMO.break / 60}`);
     } else {
-      pomo.phase = 'work'; pomo.left = POMO.work; pomo.running = false; pomo.endsAt = null; // next one starts when you're ready
+      pomo.phase = 'work'; pomo.running = false; pomo.endsAt = null; pomoFresh(); // next one starts when you're ready
       toast('Break over — ready for the next one');
     }
     savePomo();
@@ -4849,6 +4877,7 @@ function pomoTick() {
     $('#pomo-phase').textContent = pomo.phase === 'work' ? 'Focus' : 'Break';
     $('#pomo-ring').style.strokeDashoffset = String(339.3 * (1 - left / total));
     $('#pomo-btn').textContent = pomo.running ? '❚❚ Pause' : left === total ? '▶ Start' : '▶ Resume';
+    const len = $('#pomo-len'); if (len) len.hidden = pomo.running || pomo.phase !== 'work';
     const n = S.pomoStats?.today || 0;
     $('#pomo-count').textContent = n ? `⚡ ${n} today` : '';
   }
@@ -4870,6 +4899,7 @@ function pomoHtml() {
     <svg viewBox="0 0 120 120" class="pomo-svg"><circle cx="60" cy="60" r="54" class="pomo-track"/><circle cx="60" cy="60" r="54" class="pomo-ring" id="pomo-ring"/></svg>
     <div class="pomo-mid"><div class="pomo-time" id="pomo-time">25:00</div><div class="pomo-phase" id="pomo-phase">Focus</div></div>
     <div class="pomo-ctl"><button class="btn" id="pomo-btn" data-act="pomo-toggle" title="p">▶ Start</button><button class="btn ghost" data-act="pomo-reset">Reset</button><span id="pomo-count" class="pomo-count"></span></div>
+    <div class="pomo-len" id="pomo-len" ${pomo.running || pomo.phase !== 'work' ? 'hidden' : ''}>${[...new Set([...SPRINTS, pomo.len || sprintDefault()])].sort((a, b) => a - b).map((m) => `<button class="chip ${(pomo.len || sprintDefault()) === m ? 'on' : ''}" data-act="pomo-len" data-min="${m}">${m}</button>`).join('')}<button class="chip" data-act="pomo-len-other" title="Another length">…</button><span class="pomo-len-u">min</span></div>
     <div class="pomo-for" id="pomo-for"></div>
   </div>`;
 }
