@@ -1490,6 +1490,7 @@ function winSuggestions() {
 }
 async function saveWins(items, next = false, commit = false, past = null) {
   S.data.focus = await api('PUT', '/api/focus/week', { items, next, commit, past });
+  if (S.weekly) loadWeekly(); // the weekly review shows the wins too
   S.winEdit = null;
   render();
 }
@@ -1521,7 +1522,8 @@ function weeklyHtml() {
     ${step(7, `Decisions waiting · ${r.decisions.length || 'none'}`, !r.decisions.length, r.decisions.length ? `${list(r.decisions, (d) => `${esc(d.question)}${d.decide_by ? ` <span class="muted">· by ${day(d.decide_by)}</span>` : ''}`, 4)}<a class="btn" href="#/decisions">Open Decisions</a>` : '')}
     ${step(8, `Next two weeks · ${r.deadlines.length + r.comingUp.length || 'nothing due'}`, false, list([...r.deadlines.map((t) => `${tl(t)} <span class="muted">· deadline ${day(t.deadline)}</span>`), ...r.comingUp.map((x) => `${esc(x.title)} <span class="muted">· ${x.type} · ${day(x.date)}</span>`)], (h) => h, 10))}
     ${step(9, `Someday · ${r.someday}`, false, r.someday ? '<p class="muted">Skim it: anything to start now, or to drop?</p><a class="btn" href="#/someday">Open Someday</a>' : '')}
-    ${step(10, 'Next week’s wins', false, `<a class="btn" href="${r.week.iso === S.data.focus?.current?.iso ? '#/week/next' : '#/week'}">Set next week’s wins</a>`)}
+    ${(() => { const cur = r.week.iso === S.data.focus?.current?.iso, set = cur ? nextWeek() : thisWeek(); // the week after the reviewed one: next week, or this one when the review looks back
+      return step(10, `Next week’s wins${set ? ` · ${set.length} set` : ''}`, !!set, set ? `<ul class="wr-wins">${set.map((x) => `<li>${winText(x.text, x.auto)}</li>`).join('')}</ul><a class="linkbtn" href="${cur ? '#/week/next' : '#/week'}">Change</a>` : `<a class="btn" href="${cur ? '#/week/next' : '#/week'}">Set next week’s wins</a>`); })()}
     <section class="wr-step notes"><div class="wr-h"><span class="wr-n">✎</span>Notes</div><div class="wr-b">
       ${ta('well', 'What went well', 'Small things count')}${ta('didnt', 'What didn’t go well', 'And why')}${ta('change', 'What to change next week', 'One or two things')}
       <div class="win-acts"><span class="muted wr-file">${r.exists ? 'Saved in' : 'Saves to'} ${esc(r.file)}</span><button class="btn primary" data-act="wr-save">Save review</button></div></div></section></div>`;
