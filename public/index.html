@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Gubernos</title>
+  <meta name="application-name" content="Gubernos"><!-- the product name: change it here, in <title>, apple-mobile-web-app-title and manifest.webmanifest -->
+  <link rel="icon" type="image/svg+xml" href="/icons/icon.svg?v=4">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="apple-touch-icon" href="/icons/icon-180.png?v=4">
+  <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials"><!-- credentials: another device is let in by its pairing cookie -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Gubernos">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <script>try { const t = localStorage.getItem('theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; const c = localStorage.getItem('palette'); if (/^[1-4]$/.test(c || '')) document.documentElement.dataset.palette = c; } catch {}</script>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="side" id="side"></aside>
+    <div class="col"><header class="topbar" id="topbar"></header><main class="main" id="main"></main></div>
+  </div>
+  <nav class="tabs" id="tabs"></nav>
+  <section id="chat" class="chat" hidden></section>
+  <!-- one floating control: Ask (small, left) + mic (big, right — under the thumb) -->
+  <div id="dock" class="dock">
+    <button id="ask" class="dock-ask" data-act="chat-open" aria-label="Ask the agent" title="Ask the agent (c)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l1.8 4.9 4.9 1.8-4.9 1.8L12 16.9l-1.8-4.9-4.9-1.8 4.9-1.8z"/><path d="M18.5 15.5l.8 2.1 2.1.8-2.1.8-.8 2.1-.8-2.1-2.1-.8 2.1-.8z"/></svg></button>
+    <button id="mic" class="dock-mic" data-voice aria-label="Hold to talk, or tap and speak" title="Hold to talk, or tap and speak (v)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4"/></svg></button>
+  </div>
+  <div class="backdrop" data-act="side-close"></div>
+  <section class="drawer" id="drawer"></section>
+  <div id="modal"></div>
+  <div id="toast"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

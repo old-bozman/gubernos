@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Embedded into gubernos-calendar at build time (-sectcreate __TEXT __info_plist): the name and the reason macOS shows
+     in the calendar access dialog. -->
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key><string>app.gubernos.calendar</string>
+	<key>CFBundleName</key><string>Gubernos Calendar</string>
+	<key>CFBundleDisplayName</key><string>Gubernos Calendar</string>
+	<key>CFBundleVersion</key><string>1</string>
+	<key>NSCalendarsFullAccessUsageDescription</key><string>Gubernos plans your day around your calendar and puts the time blocks you approve into it.</string>
+	<key>NSCalendarsUsageDescription</key><string>Gubernos plans your day around your calendar and puts the time blocks you approve into it.</string>
+</dict>
+</plist>
