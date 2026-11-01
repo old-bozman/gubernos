@@ -177,7 +177,7 @@ export const archHtml = () => `<div class="cpt-arch">
       <div><b>Apple iCloud</b><span>Syncs the folder between your devices, like any other file.</span></div>
       <div><b>Apple Health</b><span>Ticks off habits like steps or sleep: read on your phone, written only into your own files.</span></div>
     </div></div>
-  <div class="cpt-zone cpt-none"><span class="x">Gubernos servers</span><p>There are none. No account to create, nothing uploaded to us, no tracking. The Mac app will be open source at launch, so anyone can check.</p></div>
+  <div class="cpt-zone cpt-none"><span class="x">Gubernos servers</span><p>There are none. No account to create, nothing uploaded to us, no tracking. The Mac app is open source, so anyone can check.</p></div>
 </div>`;
 // The app next to the user's own agent.
 export const roleHtml = () => `<div class="cpt-duo">
