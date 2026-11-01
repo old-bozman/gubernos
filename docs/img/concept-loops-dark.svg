@@ -68,7 +68,7 @@
 .cpt-duo > div { border: 1px solid var(--c-line); border-radius: 14px; padding: 16px; background: var(--c-surface); display: grid; gap: 10px; align-content: start; }
 .cpt-duo h3 { margin: 0; font-size: 16px; font-weight: 600; }
 .cpt-duo ul { margin: 0; padding-left: 18px; display: grid; gap: 5px; font-size: 14.5px; color: var(--c-ink2); }
-.cpt-term { font: 13px/1.5 ui-monospace, "SF Mono", Menlo, monospace; background: var(--c-bg); border: 1px solid var(--c-line); border-radius: 8px; padding: 10px 12px; color: var(--c-ink2); overflow-x: auto; white-space: pre; }
+.cpt-term { font: 13px/1.5 ui-monospace, "SF Mono", Menlo, monospace; background: var(--c-bg); border: 1px solid var(--c-line); border-radius: 8px; padding: 10px 12px; color: var(--c-ink2); overflow-x: auto; white-space: pre-wrap; }
 .cpt-same { text-align: center; font-size: 14.5px; color: var(--c-ink2); margin: 0; }
 @media (max-width: 820px) {
   .cpt-wheel, .cpt-loops, .cpt-duo { grid-template-columns: 1fr; }
@@ -87,7 +87,7 @@
     <text class="cl-t" x="150" y="24" text-anchor="middle">Plan the day <tspan class="cl-ag">✦</tspan></text><text class="cl-s" x="150" y="38" text-anchor="middle">#1, calendar, free time</text>
     <text class="cl-t" x="240" y="122">Protocol</text><text class="cl-s" x="240" y="136">morning habits</text>
     <text class="cl-t" x="150" y="226" text-anchor="middle">Do the #1</text><text class="cl-s" x="150" y="240" text-anchor="middle">focus blocks, tasks</text>
-    <text class="cl-t" x="60" y="122" text-anchor="end">Reflect</text><text class="cl-s" x="60" y="136" text-anchor="end">evening, tomorrow’s #1</text>
+    <text class="cl-t" x="60" y="122" text-anchor="end">Reflect</text><text class="cl-s" x="60" y="136" text-anchor="end">tomorrow’s #1</text>
     <text class="cl-mt" x="150" y="124" text-anchor="middle">a day won</text><text class="cl-s" x="150" y="139" text-anchor="middle">when the #1 is done</text></g><text x="150" y="-22" text-anchor="middle" style="font-size:16px;font-weight:600;fill:var(--c-ink)">Day <tspan style="font-size:12px;font-weight:400;fill:var(--c-muted)">· morning to evening</tspan></text><g transform="translate(410 0)"><g fill="none" style="stroke:var(--c-muted)" stroke-width="1.6" marker-end="url(#cl-ar)">
       <path d="M168 49A75 75 0 0 1 222 105"/><path d="M222 147A75 75 0 0 1 168 201"/><path d="M132 201A75 75 0 0 1 78 147"/><path d="M78 105A75 75 0 0 1 132 49"/></g>
     <circle cx="150" cy="51" r="7" style="fill:var(--c-acc)" stroke-width="2"/><circle cx="225" cy="126" r="7" style="fill:var(--c-surface);stroke:var(--c-ink)" stroke-width="2"/><circle cx="150" cy="201" r="7" style="fill:var(--c-surface);stroke:var(--c-ink)" stroke-width="2"/><circle cx="75" cy="126" r="7" style="fill:var(--c-surface);stroke:var(--c-ink)" stroke-width="2"/>

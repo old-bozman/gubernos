@@ -70,7 +70,7 @@ export const CONCEPT_CSS = `
 .cpt-duo > div { border: 1px solid var(--c-line); border-radius: 14px; padding: 16px; background: var(--c-surface); display: grid; gap: 10px; align-content: start; }
 .cpt-duo h3 { margin: 0; font-size: 16px; font-weight: 600; }
 .cpt-duo ul { margin: 0; padding-left: 18px; display: grid; gap: 5px; font-size: 14.5px; color: var(--c-ink2); }
-.cpt-term { font: 13px/1.5 ui-monospace, "SF Mono", Menlo, monospace; background: var(--c-bg); border: 1px solid var(--c-line); border-radius: 8px; padding: 10px 12px; color: var(--c-ink2); overflow-x: auto; white-space: pre; }
+.cpt-term { font: 13px/1.5 ui-monospace, "SF Mono", Menlo, monospace; background: var(--c-bg); border: 1px solid var(--c-line); border-radius: 8px; padding: 10px 12px; color: var(--c-ink2); overflow-x: auto; white-space: pre-wrap; }
 .cpt-same { text-align: center; font-size: 14.5px; color: var(--c-ink2); margin: 0; }
 @media (max-width: 820px) {
   .cpt-wheel, .cpt-loops, .cpt-duo { grid-template-columns: 1fr; }
@@ -122,7 +122,7 @@ export const wheelHtml = () => `<div class="cpt-wheel">${wheelSvg()}${chainHtml(
 
 // Life loops: [cadence, when, [top, right, bottom, left] steps as [title, sub, agent helps], centre, sub, text]
 export const LOOPS = [
-  ['Day', 'morning to evening', [['Plan the day', '#1, calendar, free time', 1], ['Protocol', 'morning habits'], ['Do the #1', 'focus blocks, tasks'], ['Reflect', 'evening, tomorrow’s #1']],
+  ['Day', 'morning to evening', [['Plan the day', '#1, calendar, free time', 1], ['Protocol', 'morning habits'], ['Do the #1', 'focus blocks, tasks'], ['Reflect', 'tomorrow’s #1']],
     'a day won', 'when the #1 is done', 'A morning plan that fits your real calendar, the habits that frame the day, one result that matters, and a short look back.'],
   ['Week', 'Sunday to Saturday', [['Three wins', 'results by Saturday'], ['Run the days', 'seven day loops'], ['Weekly review', 'habits, done, missed', 1], ['Next wins', 'from the review']],
     'a week won', 'when the wins land', 'Three results, not a to-do list. The review shows habits, finished work and what slipped, and suggests next week’s wins.'],

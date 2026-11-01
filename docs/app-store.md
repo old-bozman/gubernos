@@ -14,8 +14,8 @@ the site repository `old-bozman/gubernos-site` (published at https://gubernos.ap
 | Name | Gubernos |
 | Subtitle (30) | Your personal OS, with agents |
 | Category | Productivity (secondary: Health & Fitness) |
-| Privacy Policy URL | https://gubernos.app/privacy.html |
-| Support URL | https://gubernos.app/support.html |
+| Privacy Policy URL | https://gubernos.app/privacy |
+| Support URL | https://gubernos.app/support |
 | Marketing URL | https://gubernos.app |
 | Copyright | 2026 Alexander Safonov |
 | Age rating | 4+ (no objectionable content; answer "None" everywhere; no unrestricted web access: links open in Safari) |
