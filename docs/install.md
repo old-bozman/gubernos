@@ -6,7 +6,7 @@ Two steps. First the iPhone alone, 5 minutes. Then the Mac, when you want agents
 
 ## 1. iPhone (5 minutes)
 
-1. Install **TestFlight** from the App Store, open the Gubernos beta link and tap **Install**.
+1. Install **TestFlight** from the App Store, open the Gubernos beta link on the iPhone (on [gubernos.app](https://gubernos.app) and in the [README](../README.md#install-the-beta); until it is public, ask me@alexandersafonov.com for an invite) and tap **Accept** → **Install**.
 2. Open Gubernos → **Start a new system** → in the file picker: iCloud Drive → New Folder, e.g. `Gubernos` → choose it. If you use Obsidian, you can create the folder inside Obsidian's iCloud folder, and the files show up in Obsidian too.
 3. Allow notifications (reminders and the morning plan come from the phone itself) and, if you want habits from Apple Health, Health access.
 

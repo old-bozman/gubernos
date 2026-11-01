@@ -7,6 +7,22 @@ Codex, Gemini CLI), one place to steer it. The name is Latin *gubernare*, to ste
 Allen's Getting Things Done®, Gabriele Oettingen's WOOP and Brian Johnson's Heroic (Masterpiece Days, protocols);
 Gubernos is not affiliated with any of them.
 
+> **Beta.** Gubernos is in beta: the iPhone and Apple Watch app is on TestFlight, the Mac app installs from this
+> repository. Things change quickly, and your files stay yours whatever happens (plain Markdown in your own iCloud).
+
+### Install the beta
+
+1. On your iPhone, install **TestFlight** from the App Store.
+2. Open the Gubernos beta link on the iPhone → **Accept** → **Install**. The public link appears here once Apple has
+   reviewed the beta; until then, write to me@alexandersafonov.com for an invite.
+3. Open Gubernos → **Start a new system** → in the file picker choose or create a folder in iCloud Drive (inside
+   Obsidian's folder works too). The app works on its own from here: tasks, habits, reminders, widgets, the watch.
+4. Optional, for AI agents, the chat, voice and planning with your calendar: Gubernos for Mac,
+   `curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash` (details:
+   [docs/install.md](docs/install.md)).
+
+Feedback: in TestFlight take a screenshot → **Share Beta Feedback**, or open an issue here.
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/concept-wheel-dark.svg">
   <img alt="The model as a wheel: today at the hub, then projects and tasks, then goals, commitments, wants and decisions, then the areas of your life." src="docs/img/concept-wheel-light.svg" width="460">
