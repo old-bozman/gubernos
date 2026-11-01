@@ -1507,7 +1507,7 @@ function weeklyHtml() {
   const step = (n, title, ok, inner) => `<section class="wr-step ${ok ? 'ok' : ''}"><div class="wr-h"><span class="wr-n">${ok ? '✓' : n}</span>${title}</div>${inner ? `<div class="wr-b">${inner}</div>` : ''}</section>`;
   const list = (xs, f, more = 6) => xs.length ? `<ul>${xs.slice(0, more).map((x) => `<li>${f(x)}</li>`).join('')}${xs.length > more ? `<li class="muted">+${xs.length - more} more</li>` : ''}</ul>` : '';
   const done = r.done.filter((t) => !t.dropped), dropped = r.done.length - done.length, byAgents = r.done.filter((t) => t.agent).length;
-  const wins = r.wins ? `<ul class="wr-wins">${r.wins.map((x) => `<li class="${x.done ? 'done' : ''}">${x.done ? '✓' : '✗'} ${winText(x.text)}</li>`).join('')}</ul>` : '<p class="muted">No wins were set for this week.</p>';
+  const wins = r.wins ? `<ul class="wr-wins">${r.wins.map((x) => `<li class="${x.done ? 'done' : ''}">${x.done ? '✓' : '✗'} ${winText(x.text, x.auto)}${winAutoHtml(x.auto)}</li>`).join('')}</ul>` : '<p class="muted">No wins were set for this week.</p>';
   const looked = `${done.length} done${dropped ? ` · ${dropped} dropped` : ''}${byAgents ? ` · ${byAgents} by agents` : ''}`;
   const n = r.notes || {};
   const ta = (k, label, ph) => `<label class="wr-note"><span>${label}</span><textarea data-wr="${k}" rows="2" placeholder="${ph}">${esc(S.wrDraft?.[k] ?? n[k] ?? '')}</textarea></label>`;
