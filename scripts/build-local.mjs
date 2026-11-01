@@ -10,7 +10,7 @@ const ROOT = path.join(path.dirname(new URL(import.meta.url).pathname), '..');
 const [out, ...rest] = process.argv.slice(2);
 if (!out) { console.error('usage: build-local.mjs OUT_DIR [--mock VAULT_DIR]'); process.exit(2); }
 const mock = rest[0] === '--mock' ? rest[1] : null;
-const CORE = ['core-routes.js', 'vault.js', 'model.js', 'review.js', 'config.js', 'settings.js', 'pomodoros.js', 'cron.js', 'dates.js', 'commitments.js', 'reflection.js', 'daily.js', 'habits.js', 'clock.js', 'macfocus.js'];
+const CORE = ['core-routes.js', 'vault.js', 'model.js', 'review.js', 'config.js', 'settings.js', 'pomodoros.js', 'cron.js', 'dates.js', 'commitments.js', 'reflection.js', 'daily.js', 'habits.js', 'clock.js', 'macfocus.js', 'wins.js'];
 
 // every lib/ file a CORE file imports must be in CORE, or the offline app hangs on "Reading your system folder"
 for (const f of CORE) for (const [, dep] of fs.readFileSync(path.join(ROOT, 'lib', f), 'utf8').matchAll(/from '\.\/([\w-]+\.js)'/g)) {
