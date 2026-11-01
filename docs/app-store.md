@@ -1,5 +1,9 @@
 # App Store Connect: what to fill in
 
+The Mac can fill most of it through the App Store Connect API: the team key (App Manager) is in `~/.config/gubernos/asc.json`
+and `~/.appstoreconnect/private_keys/`, outside the repos; `gubernos-ios/scripts/asc.mjs` reads and writes with it, and
+`build.sh testflight` uploads with it.
+
 Everything App Store Connect asks for the Gubernos app (bundle `app.gubernos`), ready to paste. The pages it links to live in
 `site/` (published at https://gubernos.app, see "The site" at the end).
 
@@ -58,8 +62,10 @@ from the Mac app, not the iOS app). TestFlight crash logs are Apple's and don't 
 
 ## TestFlight
 
-**Beta App Description**
-Gubernos is a personal operating system over plain Markdown files in your own iCloud: tasks, projects, habits and your day. The iPhone app works on its own; with Gubernos for Mac you also get AI agents, an inbox agent, a chat and calendar planning.
+**Beta App Description** (set through the API on 2026-11-01)
+Gubernos is a personal operating system: one working model of your life, steered day by day. The areas you are responsible for, your goals, promises and open decisions, the projects that move them, and today at the centre, run in daily, weekly and quarterly loops.
+
+Everything is plain Markdown files in your own iCloud: there is no account and no server of ours. The iPhone app works on its own; with Gubernos for Mac (free, open source: github.com/old-bozman/gubernos) you also get AI agents on your own Claude, ChatGPT or Gemini plan, an inbox agent, a chat and calendar planning. More → How it works in the app shows the whole idea.
 
 **Feedback email:** hello@gubernos.app
 
