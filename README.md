@@ -13,8 +13,8 @@ Gubernos is not affiliated with any of them.
 ### Install the beta
 
 1. On your iPhone, install **TestFlight** from the App Store.
-2. Open the Gubernos beta link on the iPhone → **Accept** → **Install**. The public link appears here once Apple has
-   reviewed the beta; until then, write to me@alexandersafonov.com for an invite.
+2. On the iPhone, open **[testflight.apple.com/join/rBUGmgJG](https://testflight.apple.com/join/rBUGmgJG)** → **Accept** →
+   **Install**. (Until Apple has reviewed the first beta build, the link may say the beta isn't accepting testers yet.)
 3. Open Gubernos → **Start a new system** → in the file picker choose or create a folder in iCloud Drive (inside
    Obsidian's folder works too). The app works on its own from here: tasks, habits, reminders, widgets, the watch.
 4. Optional, for AI agents, the chat, voice and planning with your calendar: Gubernos for Mac,
