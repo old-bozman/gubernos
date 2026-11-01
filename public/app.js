@@ -2122,7 +2122,7 @@ async function dayAct(a) {
 // Edit a habit: its name (the file name stays, so links keep working), what it leads to (goals, projects, wants), its
 // area, block, target, minimum, if-then cue, why, keystone, status. Changes are logged in the habit's ## Log.
 // filled in automatically (lib/habits.js applyAuto): Apple Health on the iPhone; Oura on the Mac (once it has a token)
-const AUTO_OPTS = [['', 'By hand'], ['health:steps', 'Apple Health · steps'], ['health:energy', 'Apple Health · active energy (Cal)'], ['health:water', 'Apple Health · water (ml)'],
+const AUTO_OPTS = [['', 'By hand'], ['app:focus', 'Gubernos · focus sprints (min)'], ['health:steps', 'Apple Health · steps'], ['health:energy', 'Apple Health · active energy (Cal)'], ['health:water', 'Apple Health · water (ml)'],
   ['health:daylight', 'Apple Health · time in daylight (min)'], ['health:mindful', 'Apple Health · mindful minutes'], ['health:workout', 'Apple Health · workout minutes'],
   ['health:wake', 'Apple Health · woke up by…'], ['health:bedtime', 'Apple Health · asleep by…'],
   ['oura:steps', 'Oura · steps'], ['oura:energy', 'Oura · active calories'], ['oura:mindful', 'Oura · meditation minutes'], ['oura:workout', 'Oura · workout minutes'],
