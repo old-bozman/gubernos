@@ -48,7 +48,7 @@ With Gubernos for Mac (free, open source) you also get:
 • Plan the day around your calendar, with the one thing that matters most first
 • A chat about your tasks, and a weekly review
 
-Gubernos is inspired by David Allen's Getting Things Done® and Gabriele Oettingen's WOOP. It is not affiliated with the David Allen Company.
+Gubernos is inspired by David Allen's Getting Things Done®, Gabriele Oettingen's WOOP and Brian Johnson's Heroic. It is not affiliated with any of them.
 
 **Keywords (100)**
 tasks,to-do,habits,planner,productivity,agents,AI,markdown,obsidian,icloud,weekly review,focus,inbox

@@ -4,7 +4,8 @@
 responsible for, what you have promised, what you want and what you still have to decide, wired to your projects, your
 tasks and today. It keeps that model in plain Markdown files you own and gives you, and your AI agents (Claude Code,
 Codex, Gemini CLI), one place to steer it. The name is Latin *gubernare*, to steer. The method is inspired by David
-Allen's Getting Things Done® and Gabriele Oettingen's WOOP; Gubernos is not affiliated with either.
+Allen's Getting Things Done®, Gabriele Oettingen's WOOP and Brian Johnson's Heroic (Masterpiece Days, protocols);
+Gubernos is not affiliated with any of them.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/concept-wheel-dark.svg">

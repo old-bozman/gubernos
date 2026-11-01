@@ -178,4 +178,5 @@ Trademarks
 ==========
 
 Getting Things Done® and GTD® are registered trademarks of the David Allen Company. Gubernos is not affiliated with
-or endorsed by the David Allen Company. WOOP is Gabriele Oettingen's method (https://woopmylife.org).
+or endorsed by the David Allen Company. WOOP is Gabriele Oettingen's method (https://woopmylife.org). Masterpiece Days
+and protocols come from Brian Johnson's Heroic (https://www.heroic.us); Gubernos is not affiliated with Heroic either.
