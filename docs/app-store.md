@@ -107,18 +107,8 @@ Not yet verified on devices (only the simulator or not at all). Tick them on the
 ## The site
 
 The site is its own public repository, `old-bozman/gubernos-site` (checked out at `~/dev/gubernos-site`): `index.html`,
-`privacy.html`, `support.html` (plain HTML, no scripts), `concept.css` and `CNAME` = gubernos.app. GitHub Pages serves its
-`main` branch root, so a push publishes. Its "What is a personal OS" section comes from this repository's
-`public/concept.js`: `node scripts/build-concept.mjs` rewrites it there, then commit and push in the site repo. DNS at the
-registrar (Namecheap → Domain → Advanced DNS), replacing the parking records:
-
-| Type | Host | Value |
-|---|---|---|
-| A | @ | 185.199.108.153 |
-| A | @ | 185.199.109.153 |
-| A | @ | 185.199.110.153 |
-| A | @ | 185.199.111.153 |
-| CNAME | www | old-bozman.github.io. |
-
-Then Settings → Pages → Custom domain `gubernos.app` → Enforce HTTPS. Email `hello@gubernos.app`: Namecheap → Domain → Redirect
-Email → forward to your own address.
+`privacy.html`, `support.html` (plain HTML, no scripts) and `concept.css`. Cloudflare Pages builds its `main` branch, so a
+push publishes, and serves it at gubernos.app (Cloudflare Pages → the project → Custom domains; the DNS records it asks for
+go to the registrar, Namecheap, or the domain's DNS moves to Cloudflare). Its "What is a personal OS" section comes from
+this repository's `public/concept.js`: `node scripts/build-concept.mjs` rewrites it there, then commit and push in the site
+repo. Email `hello@gubernos.app` (later): Namecheap → Domain → Redirect Email → forward to your own address.
