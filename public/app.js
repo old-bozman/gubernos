@@ -1328,17 +1328,20 @@ S.winEdit = null; // [{text, link, done}] while editing
 // this week's wins: the Week section, or a "Next week" planned last week whose week has come (the server rolls it on the next save)
 const thisWeek = () => { const f = S.data.focus; const w = f && [f.week, f.next].find((x) => x?.iso === f.current?.iso); return w?.items.length ? w.items : null; };
 const nextWeek = () => { const f = S.data.focus; return f?.next && f.next.iso === f.nextWeek?.iso && f.next.items.length ? f.next.items : null; };
-S.winTab = 'this'; // this | next
+S.winTab = 'this'; // last | this | next
+// last week's wins: the Week section not rolled yet (its week is over), else Previous week
+const lastWeek = () => { const f = S.data.focus; const s = f?.week && f.week.iso !== f.current?.iso && f.week.iso < f.current.iso ? f.week : f?.previous; return s?.items?.length ? s : null; };
 function winsLink() {
   const w = thisWeek();
   return hdLink('#/week', 'wins', w ? "This week's wins" : "Set this week's 3 wins", w ? `${w.filter((x) => x.done).length}/${w.length}` : '!', w ? '' : 'accent');
 }
 // "[[slug]]" → its title, linking inside the app where it can (project, decision, goal).
-function winText(t) {
+function winText(t, auto = null) {
   return esc(t).replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, slug, alias) => {
     const s = slug.trim(), p = S.data.projects.find((x) => x.slug === s), d = (S.data.decisions || []).find((x) => x.slug === s), g = (S.data.goalDetails || []).find((x) => x.slug === s);
-    const label = esc(alias || p?.title || d?.question || g?.title || proj(s)?.title || S.data.areas?.find((a) => a.slug === s)?.title || s);
-    const href = p ? `#/project/${s}` : d ? '#/decisions' : g ? '#/goals' : (obsidianUrl(s) || '#');
+    const t = taskById(s) || (S.logbook || []).find((x) => x.id === s), h = (S.data.focus?.targets || []).find((x) => x.slug === s);
+    const label = esc(alias || p?.title || d?.question || g?.title || t?.title || h?.title || auto?.title || proj(s)?.title || S.data.areas?.find((a) => a.slug === s)?.title || s);
+    const href = p ? `#/project/${s}` : d ? '#/decisions' : g ? '#/goals' : t || auto?.kind === 'task' ? `#/task/${encodeURIComponent(s)}` : h ? '#/day' : (obsidianUrl(s) || '#');
     return `<a class="wl" href="${href}">${label}</a>`;
   });
 }
@@ -1348,19 +1351,31 @@ function linkOptions(cur) {
   const ps = S.data.projects.filter((p) => p.status === 'active'), ds = (S.data.decisions || []).filter((d) => d.status === 'open'), gs = S.data.goalDetails || [];
   return `<option value="">No link</option>${ps.length ? `<optgroup label="Projects">${ps.map((p) => o(p.slug, p.title)).join('')}</optgroup>` : ''}
     ${ds.length ? `<optgroup label="Decisions">${ds.map((d) => o(d.slug, d.question.slice(0, 60))).join('')}</optgroup>` : ''}
-    ${gs.length ? `<optgroup label="Goals">${gs.map((g) => o(g.slug, g.title)).join('')}</optgroup>` : ''}`;
+    ${gs.length ? `<optgroup label="Goals">${gs.map((g) => o(g.slug, g.title)).join('')}</optgroup>` : ''}
+    ${winTargetsOptions(cur, o)}`;
 }
+// a win can also be counted by itself: a task (won when it's done), a protocol or a habit (won when closed / done on N
+// days of the week, N from the text: "× 3", "3 days"; lib/wins.js)
+function winTargetsOptions(cur, o) {
+  const T = S.data.focus?.targets || [];
+  const seen = new Set(), tasks = [...S.data.tasks.filter((t) => t.status !== 'done' || t.id === cur), ...(S.logbook || []).slice(0, 40)].filter((t) => !seen.has(t.id) && seen.add(t.id));
+  if (cur && !tasks.some((t) => t.id === cur) && !T.some((x) => x.slug === cur) && /^\d{8}-/.test(cur)) tasks.unshift({ id: cur, title: cur });
+  return `${T.length ? `<optgroup label="Protocols and habits (counted)">${T.map((x) => o(x.slug, x.title)).join('')}</optgroup>` : ''}
+    ${tasks.length ? `<optgroup label="Tasks (won when done)">${tasks.map((t) => o(t.id, `${t.status === 'done' ? '✓ ' : ''}${t.title.slice(0, 60)}`)).join('')}</optgroup>` : ''}`;
+}
+// what counted a win by itself: its task, or how many days its protocol / habit made it
+const winAutoHtml = (a) => (!a ? '' : `<span class="win-auto ${a.done ? 'ok' : ''}" title="Counted from the ${a.kind}${a.title ? `: ${esc(a.title)}` : ''}">${a.kind === 'task' ? (a.done ? '✓ task done' : 'task open') : `${a.have}/${a.need} days`}</span>`);
 function weekHtml() {
   const f = S.data.focus;
   if (!f) return '<div class="empty">No 05_model/focus.md yet.</div>'; // also the first paint before /api/state
-  const isNext = S.winTab === 'next', w = isNext ? nextWeek() : thisWeek();
-  const stale = f.week && f.week.iso !== f.current.iso ? f.week : null; // last week's section, not rolled yet
-  const last = stale || f.previous;
+  const last = lastWeek();
+  if (S.winTab === 'last' && !last) S.winTab = 'this';
+  const isNext = S.winTab === 'next', isLast = S.winTab === 'last', w = isNext ? nextWeek() : isLast ? last.items : thisWeek();
   if (!w && !S.winEdit) S.winEdit = [0, 1, 2].map(() => ({ text: '', link: '', done: false })); // empty week: ask for the wins
   const edit = S.winEdit;
   const wk = (x) => x.iso.replace(/^\d{4}-/, ''), range = (x) => x.label.replace(/^\d{4}-W\d+,\s*/, '');
-  const tabs = `<span class="seg win-tabs"><button class="${isNext ? '' : 'on'}" data-act="win-tab" data-tab="this">This week · ${esc(wk(f.current))}</button><button class="${isNext ? 'on' : ''}" data-act="win-tab" data-tab="next">Next week · ${esc(wk(f.nextWeek))}</button></span>
-    <div class="week-h">${esc(range(isNext ? f.nextWeek : f.current))}</div>`;
+  const tabs = `<span class="seg win-tabs">${last ? `<button class="${isLast ? 'on' : ''}" data-act="win-tab" data-tab="last">Last · ${esc(last.iso ? last.iso.replace(/^\d{4}-/, '') : '')}</button>` : ''}<button class="${isNext || isLast ? '' : 'on'}" data-act="win-tab" data-tab="this">${last ? 'This' : 'This week'} · ${esc(wk(f.current))}</button><button class="${isNext ? 'on' : ''}" data-act="win-tab" data-tab="next">${last ? 'Next' : 'Next week'} · ${esc(wk(f.nextWeek))}</button></span>
+    <div class="week-h">${esc(isLast ? (last.label || '').replace(/^\d{4}-W\d+,\s*/, '') : range(isNext ? f.nextWeek : f.current))}</div>`;
   // Fri–Sun: nudge to plan the next week once this one is set
   const nudge = !isNext && !edit && !nextWeek() && (new Date().getDay() - (S.settings?.weekStart === 'sunday' ? 0 : 1) + 7) % 7 >= 4 ? '<button class="linkbtn win-next" data-act="win-tab" data-tab="next">Plan next week’s wins →</button>' : '';
   let main;
@@ -1374,16 +1389,14 @@ function weekHtml() {
       <div class="win-acts">${w ? '<button class="btn" data-act="win-cancel">Cancel</button>' : ''}<button class="btn primary" data-act="win-save">Commit to these wins</button></div></div>`;
   } else {
     main = `<div class="wins">${w.map((x, i) => `<div class="win-row ${x.done ? 'done' : ''}"><span class="win-n">${i + 1}</span>
-        ${isNext ? '' : `<button class="check ${x.done ? 'done' : ''}" data-act="win-check" data-i="${i}" aria-label="${x.done ? 'Not done' : 'Done'}"></button>`}
-        <div class="win-t">${winText(x.text)}</div></div>`).join('')}
-      ${(isNext ? f.next : [f.week, f.next].find((x) => x?.iso === f.current.iso))?.committed ? `<div class="win-committed">✓ Committed · ${esc(new Date(`${(isNext ? f.next : [f.week, f.next].find((x) => x?.iso === f.current.iso)).committed}:00Z`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }))}</div>` : ''}
+        ${isNext ? '' : `<button class="check ${x.done ? 'done' : ''}" data-act="win-check" data-i="${i}" aria-label="${x.done ? 'Not done' : 'Done'}"${x.auto?.done ? ' disabled title="Counted as won"' : ''}></button>`}
+        <div class="win-t">${winText(x.text, x.auto)}${winAutoHtml(x.auto)}</div></div>`).join('')}
+      ${isLast ? '' : ''}${(isLast ? null : isNext ? f.next : [f.week, f.next].find((x) => x?.iso === f.current.iso))?.committed ? `<div class="win-committed">✓ Committed · ${esc(new Date(`${(isNext ? f.next : [f.week, f.next].find((x) => x?.iso === f.current.iso)).committed}:00Z`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }))}</div>` : ''}
       <button class="linkbtn" data-act="win-edit">Edit wins</button>${nudge}</div>`;
   }
   const q = f.quarter?.items?.length ? `<div class="week-q"><div class="lbl">This quarter${f.quarter.label ? ` · ${esc(f.quarter.label)}` : ''}</div>
     <ul>${f.quarter.items.map((x) => `<li>${winText(x.text)}</li>`).join('')}</ul></div>` : '';
-  const prev = last?.items?.length ? `<details class="week-prev"><summary>Last week · ${esc(last.label || '')} · ${last.items.filter((x) => x.done).length}/${last.items.length}</summary>
-    <ul>${last.items.map((x) => `<li class="${x.done ? 'done' : ''}">${x.legacy ? '·' : x.done ? '✓' : '✗'} ${winText(x.text)}</li>`).join('')}</ul></details>` : '';
-  return `<div class="week">${tabs}${main}${q}${isNext ? '' : prev}</div>`;
+  return `<div class="week">${tabs}${main}${isLast ? '' : q}</div>`;
 }
 // "Commit to these wins" (after Heroic's daily commit): a full-screen oath with the wins and a ring to HOLD for 1.2 s;
 // then the screen floods red → COMMITTED, the streak (weeks committed in a row) and wins achieved count up → Let's go.
@@ -1475,8 +1488,8 @@ function winSuggestions() {
   return `<div class="win-sugg"><div class="lbl">From your weekly review · ${esc(r.file.replace(/^50_reviews\//, '').replace(/\.md$/, ''))}</div>
     ${items.map((x) => `<button class="chip" data-act="win-sugg" data-text="${esc(x.text)}">${x.area ? `<span class="muted">${esc(x.area)} ·</span> ` : ''}${winPlain(x.text)}</button>`).join('')}</div>`;
 }
-async function saveWins(items, next = false, commit = false) {
-  S.data.focus = await api('PUT', '/api/focus/week', { items, next, commit });
+async function saveWins(items, next = false, commit = false, past = null) {
+  S.data.focus = await api('PUT', '/api/focus/week', { items, next, commit, past });
   S.winEdit = null;
   render();
 }
@@ -3609,9 +3622,10 @@ document.addEventListener('click', async (e) => {
     case 'goal-new': return goalModal();
     case 'goal-edit': return goalModal((S.data.goalDetails || []).find((g) => g.slug === a.dataset.slug));
     case 'win-check': {
-      const items = thisWeek().map((x) => ({ text: x.text, done: x.done }));
+      const last = S.winTab === 'last' ? lastWeek() : null;
+      const items = (last ? last.items : thisWeek()).map((x) => ({ text: x.text, done: x.manual ?? x.done }));
       items[+a.dataset.i].done = !items[+a.dataset.i].done;
-      return saveWins(items);
+      return saveWins(items, false, false, last?.iso);
     }
     case 'win-sugg': {
       syncWinEdit();
@@ -3620,8 +3634,9 @@ document.addEventListener('click', async (e) => {
       S.winEdit[i] = { ...suggSplit(a.dataset.text), done: false }; // "… [[slug]]" → text + link
       return renderMain();
     }
-    case 'win-tab': S.winTab = a.dataset.tab === 'next' ? 'next' : 'this'; S.winEdit = null; return renderMain();
-    case 'win-edit': S.winEdit = (S.winTab === 'next' ? nextWeek() : thisWeek()).map((x) => ({ ...splitLink(x.text), done: x.done })); while (S.winEdit.length < 3) S.winEdit.push({ text: '', link: '', done: false }); return renderMain();
+    case 'win-tab': S.winTab = ['next', 'last'].includes(a.dataset.tab) ? a.dataset.tab : 'this'; S.winEdit = null; return renderMain();
+    case 'win-edit': if (!S.logbook) api('GET', '/api/logbook').then((l) => { S.logbook = l; if (S.view === 'week') renderMain(); }).catch(() => {}); // done tasks to link
+      S.winEdit = (S.winTab === 'next' ? nextWeek() : S.winTab === 'last' ? lastWeek().items : thisWeek()).map((x) => ({ ...splitLink(x.text), done: x.manual ?? x.done })); while (S.winEdit.length < 3) S.winEdit.push({ text: '', link: '', done: false }); return renderMain();
     case 'win-cancel': S.winEdit = null; return renderMain();
     case 'wr-save': return saveWeeklyNotes();
     case 'rf-save': return saveReflection();
@@ -3644,6 +3659,7 @@ document.addEventListener('click', async (e) => {
       const rows = S.winEdit.map((r) => ({ ...r, text: r.text.trim() }));
       const items = rows.filter((r) => r.text).map((r) => ({ text: r.link ? `${r.text} · [[${r.link}]]` : r.text, done: r.done }));
       if (!items.length) return toast('Write at least one win');
+      if (S.winTab === 'last') return saveWins(items, false, false, lastWeek().iso); // a week that is over: no ritual
       return commitScreen(items, S.winTab === 'next'); // the ritual saves them (hold to commit)
     }
     case 'dec-toggle': { const k = a.dataset.slug; S.decOpen.has(k) ? S.decOpen.delete(k) : S.decOpen.add(k); return renderMain(); }
@@ -3897,7 +3913,7 @@ function route() {
   if (S.view === 'weekly') loadWeekly();
   if (S.view === 'reflect') { loadReflection(S.arg || S.data.today); loadDay(S.arg || S.data.today); }
   if (S.view === 'day') { S.oneEdit = false; loadDay(S.arg || S.data.today); }
-  if (S.view === 'week') { S.winTab = S.arg === 'next' ? 'next' : 'this'; S.winEdit = null; }
+  if (S.view === 'week') { S.winTab = ['next', 'last'].includes(S.arg) ? S.arg : 'this'; S.winEdit = null; }
   render();
 }
 window.addEventListener('hashchange', () => { document.body.classList.remove('side-open', 'tabs-dim'); lastMainY = 0; S.winEdit = null; S.goalScrolled = null; S.topMenu = null; route(); });

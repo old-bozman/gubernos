@@ -808,7 +808,11 @@ body.chat-on .dock { display: none; }                                    /* the 
 .composer .pill { display: flex; align-items: flex-end; gap: 4px; padding: 6px; border-radius: 28px; border: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg) 84%, transparent); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
   box-shadow: 0 6px 24px rgba(0,0,0,.12), 0 1px 3px rgba(0,0,0,.06); }
-.composer textarea { flex: 1; min-width: 0; resize: none; max-height: 140px; border: 0; outline: none; background: transparent; font: inherit; padding: 10px 6px; line-height: 1.35; }
+.composer textarea { flex: 1; min-width: 0; resize: none; max-height: 140px; border: 0; outline: none; background: transparent; font: inherit; font-size: 15px; padding: 10px 6px; line-height: 1.35; }
+@media (max-width: 800px) { .composer textarea { font-size: 16px; } } /* 16px: iOS doesn't zoom into the field */
+/* the agent's replies: headings and code at the reply's size, not the task notes' small ones */
+.msg .md h1, .msg .md h2, .msg .md h3, .msg .md h4 { font-size: 1em; }
+.msg .md code { font-size: .9em; }
 .cp-plus, .cp-mic { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; flex: none; color: var(--ink-2); }
 .cp-plus:hover, .cp-mic:hover { background: var(--hover); }
 .cp-plus svg, .cp-mic svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
@@ -1640,3 +1644,8 @@ button.dc-ev:hover, .dc-ev.cal-hl { box-shadow: 0 0 0 2px var(--accent); z-index
 .tour-dots { margin-right: auto; display: flex; gap: 6px; }
 .tour-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
 .tour-dots i.on { background: var(--ink); }
+/* a win counted by itself (lib/wins.js): its task's state, or the days its protocol / habit made it */
+.win-auto { display: inline-block; margin-left: 8px; font-size: 12px; padding: 1px 7px; border-radius: 999px; color: var(--muted); border: 1px solid var(--line); vertical-align: 1px; text-decoration: none; }
+.win-auto.ok { color: var(--ink); border-color: var(--ink-2); }
+.win-row.done .win-auto { text-decoration: none; }
+.win-row .check[disabled] { cursor: default; opacity: 1; }
