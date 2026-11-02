@@ -32,8 +32,9 @@ Before the first question, read: `profile.md`, `CLAUDE.md` (schemas), `AGENTS.md
 - [ ] 4. Commitments
 - [ ] 5. Wants and goals
 - [ ] 6. Decisions
-- [ ] 7. Focus: the quarter and this week's 3 wins
-- [ ] 8. Tour of the loop
+- [ ] 7. One habit to start
+- [ ] 8. Focus: the quarter and this week's 3 wins
+- [ ] 9. Tour of the loop
 ```
 
 ## 1. About you
@@ -88,12 +89,21 @@ For each: `deadline` (or the next occurrence), `recurrence` in plain text, and `
 
 "Any choices hanging over you?" — and the "decide / choose / should I…" items found in step 3. Each becomes `05_model/decisions/<slug>.md` (template `decision.md`): the question as the title, `about` links, `decide_by` if there is a real date. Fill Options / Criteria / Missing info / Recommendation now if the owner wants (AGENTS.md → "Decision queue" → Prepare), or leave them for the assistant. They appear in the app's Decisions screen.
 
-## 7. Focus
+## 7. One habit to start
+
+One habit, not a routine. Ask: **"What's one thing you could start doing today that would improve your life the most?"** If they hesitate, offer two or three ideas from what they said earlier (sleep, movement, a phone-free morning, time with someone), and let them pick.
+- Make it small enough for a bad day: the habit (`# Title`, e.g. "Walk 20 minutes") and its **minimum** (`minimum: "5 minutes around the block"`).
+- A **cue**: when or after what ("after lunch → walk"). A **why** in one or two lines (`## Why`). Link the area (`serves`) and, if it moves one, the goal or want (`supports`).
+- Write `05_model/habits/<slug>.md` from `91_templates/habit.md`: `protocol: null` (it shows in the Day block), `keystone: true`, `provenance: stated`. A habit to stop (sugar, late screens) is `kind: quit`: kept or slipped each day.
+- Don't create protocols. Say in one line that once they have two or three habits for the morning or the evening, they can group them into a **protocol**: a routine done in order (the app's Protocol screen).
+- Point them to the Protocol screen: they tick it there each day; on a bad day the minimum counts as done.
+
+## 8. Focus
 
 - **Quarter**: 1–3 lines "what deserves more attention this quarter", linked to an area, goal, project or decision. Write under `## Quarter (YYYY-Qn)` in `05_model/focus.md` as `- [[link]] · why now`.
 - **This week's wins**: up to 3 results by Sunday, #1 matters most. Write them in `focus.md` as `## Week (YYYY-Www, D Mon – D Mon)` with `- [ ] result · [[link]]` (format in `CLAUDE.md`), or let the owner type them on the app's Wins screen.
 
-## 8. Tour of the loop
+## 9. Tour of the loop
 
 Explain in a few lines, pointing at the app:
 - **Capture**: the + button or the mic; quick add understands dates ("tomorrow", "every monday"), `#project`, `p1`, `@agent`.

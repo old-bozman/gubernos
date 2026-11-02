@@ -1841,7 +1841,11 @@ function dayHtml() {
   if (S.dayTab === 'week' && D.habits.length) return `<div class="day">${nav}${dayWeekHtml(D)}</div>`;
   // the protocols and habits only: the day's plan is on Today (its tasks) and Plan the day
   const parts = (D.summary || []).map((g) => protocolHtml(g, D));
-  const none = !D.enabled ? '' : !D.habits.length ? '<div class="empty">No habits yet — they live in 05_model/habits/ (one file each), the AM / PM protocols in 05_model/protocols/. <button class="linkbtn" data-act="hb-new" data-proto="">+ New habit</button></div>' : '';
+  // no habits yet: start with one (onboarding step 7 asks the same); protocols come once there are a few
+  const none = !D.enabled ? '' : !D.habits.length ? `<div class="empty hb-first"><b>Start with one habit</b>
+    <p>What’s one thing you could start doing today that would improve your life the most? Keep it small enough for a bad day: a 20-minute walk, water before coffee, the phone away after 22:00.</p>
+    <button class="btn primary" data-act="hb-new" data-proto="">+ My first habit</button>
+    <p class="muted">Once you have a few for the morning or the evening, group them into a protocol: a routine you do in order.</p></div>` : '';
   const paused = (D.paused || []).length ? `<div class="day-sub">Paused · ${D.paused.map((h) => `${esc(h.title)} <button class="linkbtn" data-act="hb-resume" data-slug="${esc(h.slug)}">resume</button>`).join(' · ')}</div>` : '';
   // off work (a vacation, Settings → Off work): the work habits are off these days
   const ow = D.offWork ? (() => { const n = D.habits.filter((h) => h.offWork).length; return `<div class="day-sub">🏖 Off work ${D.offWork.to === '9999-12-31' ? 'until further notice' : `through ${esc(fromIso(D.offWork.to).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }))}`}${D.offWork.why ? ` · ${esc(D.offWork.why)}` : ''}${n ? ` · ${n} work habit${n === 1 ? '' : 's'} paused` : ''} · <a class="linkbtn" href="#/settings">change</a></div>`; })() : '';
