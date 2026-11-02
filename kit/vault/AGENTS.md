@@ -1,6 +1,8 @@
 # Agent Behaviors
 
-Rules and automations for agents working with this system. Schemas and structure: `CLAUDE.md`. The owner: `profile.md`.
+Rules and automations for agents working with this system. The owner: `profile.md`.
+
+**Read `CLAUDE.md` before you create or change any file here**: it holds the structure and the schemas (frontmatter of tasks, items, projects, model files). Codex loads only this file on its own, so open `CLAUDE.md` yourself; Claude Code loads `CLAUDE.md` and Gemini CLI loads both (`.gemini/settings.json`).
 
 Agents here:
 - **the assistant** — the owner's Chief of Staff: an agent session opened in this vault (Claude Code, Codex or Gemini CLI), the chat in Gubernos, or a chat bot named in `profile.md` → `assistant` that reads and writes these files. It captures, processes, prepares decisions, watches dates and reports.

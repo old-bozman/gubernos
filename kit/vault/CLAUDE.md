@@ -4,7 +4,7 @@ This is a personal system (tasks, projects, goals, habits and the model of a lif
 The vault lives in iCloud (iCloud Drive or Obsidian's iCloud folder): files written on another device may arrive a little later, and a file can be offloaded until it is read.
 Who it belongs to, their language, life categories and working hours: `profile.md` (read it first).
 The owner works in Gubernos (a web app over these files, installed from the gubernos repo); agents work the files directly.
-Agent behaviours (capture, processing, running tasks, decisions): `AGENTS.md`.
+Agent behaviours (capture, processing the inbox, running tasks, decisions, the personal model): `AGENTS.md`. Before doing any of these, read its section there; Claude Code doesn't load `AGENTS.md` on its own.
 
 ## Structure
 
