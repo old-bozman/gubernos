@@ -162,16 +162,21 @@ phone() {
 
 voice() {
   # Whisper without Homebrew or Apple's Command Line Tools: uv (one program) fetches its own Python; the app sends WAV, so
-  # no ffmpeg. The models (~1.6 GB) download on first use.
+  # no ffmpeg. Its models (~1.6 GB) download here too.
+  # AICODE-NOTE: only-managed — looking for a Python on the Mac runs /usr/bin/python3, a stub that opens Apple's dialog.
   [[ "$(uname -m)" == arm64 ]] || die "Whisper needs Apple Silicon (this Mac's own speech models work without it: Settings → Voice)"
   local uv; uv="$(command -v uv || echo "$HOME/.local/bin/uv")"
   if [[ ! -x "$uv" ]]; then
     curl -LsSf https://astral.sh/uv/install.sh | env UV_NO_MODIFY_PATH=1 sh >/dev/null 2>&1 || die "couldn't install uv (https://docs.astral.sh/uv)"
     uv="$HOME/.local/bin/uv"
   fi
-  (cd "$APP" && "$uv" venv --quiet --allow-existing --python 3.12 .venv && "$uv" pip install --quiet --python .venv/bin/python mlx-whisper) \
+  (cd "$APP" && "$uv" venv --quiet --allow-existing --python 3.12 --python-preference only-managed .venv && "$uv" pip install --quiet --python .venv/bin/python mlx-whisper) \
     || die "couldn't install Whisper"
-  ok "Whisper ready: voice uses it from now on (models download on first use, ~1.6 GB)"
+  # the models now, not on the first voice command (which would time out while ~1.6 GB downloads); names: lib/stt.py
+  echo "  downloading Whisper's models (~1.6 GB, a few minutes)…"
+  (cd "$APP" && .venv/bin/python -c 'import re, huggingface_hub as h; [h.snapshot_download(m) for m in re.findall(r"\"(mlx-community/[^\"]+)\"", open("lib/stt.py").read())]' >/dev/null 2>&1) \
+    || no "couldn't download the models now; they download on first use"
+  ok "Whisper ready: voice uses it from now on"
   restart >/dev/null 2>&1 || true
 }
 
