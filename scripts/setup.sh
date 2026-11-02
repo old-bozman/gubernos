@@ -5,10 +5,12 @@
 #   scripts/setup.sh check                       what's installed, what's missing
 #   scripts/setup.sh install --vault PATH --name NAME [--language LANG]     (PATH in iCloud; --local only for tests)
 #                            [--obsidian-vault NAME --obsidian-path SUB] [--port 4747] [--no-launchd] [--awake]
-#                            [--model claude|codex|gemini]
+#                            [--model claude|codex|gemini] [--voice-language en-US|ru-RU|…|mixed]
 #   scripts/setup.sh model claude|codex|gemini   the model behind the app (lib/llm.js; Settings → Agents → Model)
+#   scripts/setup.sh voice-language LOCALE|mixed the language spoken to the app (Settings → Voice; lib/voice.js)
 #   scripts/setup.sh phone                       HTTPS for the phone via Tailscale (tailscale serve)
-#   scripts/setup.sh voice                       local speech-to-text (MLX Whisper, Apple Silicon)
+#   scripts/setup.sh voice                       Whisper (MLX, Apple Silicon): Russian, mixed languages, accents. Without it the
+#                                                Mac's own speech models hear one language each (macOS 26+, nothing to install)
 #   scripts/setup.sh obsidian                    Dataview + Templater plugins in a vault that is its own Obsidian vault
 #   scripts/setup.sh calendar                    Plan the day reads this Mac's calendars (asks macOS for access: a dialog)
 #   scripts/setup.sh awake on|off|status         keep the Mac awake on power (caffeinate -s as a login item) so the phone app works
@@ -43,8 +45,8 @@ check() {
   [[ -d /Applications/Obsidian.app ]] && ok "Obsidian app" || no "Obsidian (optional, to read the files: https://obsidian.md)"
   [[ -d "$HOME/Library/Mobile Documents/iCloud~md~obsidian/Documents" ]] && ok "Obsidian iCloud folder" || no "Obsidian iCloud folder (appears once Obsidian on iPhone/Mac stores a vault in iCloud)"
   (command -v tailscale >/dev/null || [[ -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ]]) && ok "Tailscale" || no "Tailscale (optional, for the phone: https://tailscale.com/download)"
-  [[ "$(uname -m)" == arm64 ]] && ok "Apple Silicon (voice works)" || no "Apple Silicon (voice capture needs it)"
-  command -v ffmpeg >/dev/null && ok "ffmpeg (voice)" || no "ffmpeg — voice transcription needs it: brew install ffmpeg"
+  [[ "$(uname -m)" == arm64 ]] && ok "Apple Silicon (Whisper can run here)" || no "Apple Silicon (only for Whisper; this Mac's own speech models work without it)"
+  [[ -x "$APP/.venv/bin/python" ]] && ok "Whisper (voice: any language, mixed, accents)" || no "Whisper (optional: Russian, mixed languages, accents — scripts/setup.sh voice; one language works without it on macOS 26)"
   if [[ -f "$HOME/.config/gubernos/config.json" ]]; then ok "configured: $(tr -d '\n' < "$HOME/.config/gubernos/config.json" | cut -c1-160)"; fi
 }
 
@@ -63,6 +65,23 @@ models() {
   local cur; cur=$(cd "$APP" && node -e "import('./lib/llm.js').then((m) => console.log(m.providers().chosen || ''))" 2>/dev/null || true)
   [[ -n "$cur" ]] && ok "the app uses: $cur" || true
 }
+voice-language() {
+  [[ "${1:-}" =~ ^([a-z]{2,3}([-_][A-Za-z]{2,4})?|mixed)$ ]] || die "voice-language en-US|ru-RU|…|mixed"
+  (cd "$APP" && node -e "import('./lib/settings.js').then((m) => m.update({ voiceLanguage: process.argv[1] }))" "$1") || die "couldn't save the voice language"
+  local how
+  how=$("$APP/tools/voice/gubernos-voice" locales 2>/dev/null | node -e '
+    let s = ""; process.stdin.on("data", (d) => (s += d)).on("end", () => {
+      const lang = process.argv[1], l = lang.replace("-", "_"), b = l.split("_")[0];
+      let r = {}; try { r = JSON.parse(s.trim().split("\n").pop()); } catch {}
+      const has = (k) => (r[k] || []).some((x) => x === l || x.split("_")[0] === b);
+      console.log(lang === "mixed" ? "whisper" : r.error ? "none" : has("speech") ? "speech" : has("dictation") ? "dictation" : "none");
+    });' "$1")
+  if [[ -x "$APP/.venv/bin/python" ]]; then ok "voice: $1, heard by Whisper"
+  elif [[ "$how" == speech ]]; then ok "voice: $1, heard by this Mac's own speech model (nothing to install)"
+  elif [[ "$how" == dictation ]]; then ok "voice: $1, heard by this Mac's dictation model; Whisper hears it better: scripts/setup.sh voice"
+  else no "voice: $1 needs Whisper on this Mac: scripts/setup.sh voice"; fi
+}
+
 model() {
   [[ "${1:-}" =~ ^(claude|codex|gemini)$ ]] || die "model claude|codex|gemini"
   (cd "$APP" && node -e "import('./lib/settings.js').then((m) => m.update({ provider: process.argv[1] }))" "$1") && ok "the app's model: $1 (Settings → Agents → Model)"
@@ -86,11 +105,11 @@ wait_up() {
 }
 
 install() {
-  local vault="" name="" language="" ovault="" opath="" p="" launchd=1 awake=0 local=0 llm=""
+  local vault="" name="" language="" ovault="" opath="" p="" launchd=1 awake=0 local=0 llm="" vlang=""
   while [[ $# -gt 0 ]]; do case "$1" in
     --vault) vault="$2"; shift 2;; --name) name="$2"; shift 2;; --language) language="$2"; shift 2;;
     --obsidian-vault) ovault="$2"; shift 2;; --obsidian-path) opath="$2"; shift 2;; --port) p="$2"; shift 2;;
-    --no-launchd) launchd=0; shift;; --awake) awake=1; shift;; --local) local=1; shift;; --model) llm="$2"; shift 2;; *) die "unknown option $1";; esac; done
+    --no-launchd) launchd=0; shift;; --awake) awake=1; shift;; --local) local=1; shift;; --model) llm="$2"; shift 2;; --voice-language) vlang="$2"; shift 2;; *) die "unknown option $1";; esac; done
   [[ -n "$vault" ]] || die "--vault PATH is required"
   # The vault lives in iCloud (backup, the phone, agents on other Macs): iCloud Drive or Obsidian's iCloud folder.
   # --local only for development and tests.
@@ -104,6 +123,7 @@ install() {
   echo "2/4 vault"; $KIT vault --vault "$vault" ${name:+--name "$name"} ${language:+--language "$language"} ${opath:+--obsidian-path "$opath"}
   echo "3/4 config"; $KIT config --vault "$vault" ${p:+--port "$p"} ${ovault:+--obsidian-vault "$ovault"} ${opath:+--obsidian-path "$opath"} >/dev/null && ok "$HOME/.config/gubernos/config.json"
   [[ -n "$llm" ]] && model "$llm" # after the config: the model is saved next to it
+  [[ -n "$vlang" ]] && voice-language "$vlang"
   # Bug reports also go to the app's GitHub repo as issues, unless this is the repo owner's own install.
   local repo me
   if [[ -d "$APP/.git" ]]; then repo=$(git -C "$APP" remote get-url origin 2>/dev/null | sed -E 's#^(https://github.com/|git@github.com:)##; s#\.git$##' || true)
@@ -141,11 +161,18 @@ phone() {
 }
 
 voice() {
-  [[ "$(uname -m)" == arm64 ]] || die "voice needs Apple Silicon"
-  command -v python3 >/dev/null || die "python3 is missing (xcode-select --install)"
-  command -v ffmpeg >/dev/null || die "ffmpeg is missing — Whisper decodes audio with it: brew install ffmpeg (then run this again)"
-  (cd "$APP" && python3 -m venv .venv && .venv/bin/pip install -q --upgrade pip && .venv/bin/pip install -q mlx-whisper)
-  ok "voice ready (models download on first use, ~1.6 GB)"
+  # Whisper without Homebrew or Apple's Command Line Tools: uv (one program) fetches its own Python; the app sends WAV, so
+  # no ffmpeg. The models (~1.6 GB) download on first use.
+  [[ "$(uname -m)" == arm64 ]] || die "Whisper needs Apple Silicon (this Mac's own speech models work without it: Settings → Voice)"
+  local uv; uv="$(command -v uv || echo "$HOME/.local/bin/uv")"
+  if [[ ! -x "$uv" ]]; then
+    curl -LsSf https://astral.sh/uv/install.sh | env UV_NO_MODIFY_PATH=1 sh >/dev/null 2>&1 || die "couldn't install uv (https://docs.astral.sh/uv)"
+    uv="$HOME/.local/bin/uv"
+  fi
+  (cd "$APP" && "$uv" venv --quiet --allow-existing --python 3.12 .venv && "$uv" pip install --quiet --python .venv/bin/python mlx-whisper) \
+    || die "couldn't install Whisper"
+  ok "Whisper ready: voice uses it from now on (models download on first use, ~1.6 GB)"
+  restart >/dev/null 2>&1 || true
 }
 
 obsidian() {
@@ -189,4 +216,4 @@ restart() { launchctl kickstart -k "gui/$(id -u)/$LABEL" && wait_up && ok "resta
 status() { launchctl print "gui/$(id -u)/$LABEL" 2>/dev/null | grep -E "state|pid" | head -2; curl -sf "http://127.0.0.1:$(port)/api/state" >/dev/null && ok "answering on $(port)" || no "not answering on $(port)"; }
 
 cmd="${1:-check}"; shift || true
-case "$cmd" in check|install|model|phone|voice|obsidian|awake|calendar|restart|status) "$cmd" "$@";; *) die "unknown command $cmd";; esac
+case "$cmd" in check|install|model|voice-language|phone|voice|obsidian|awake|calendar|restart|status) "$cmd" "$@";; *) die "unknown command $cmd";; esac

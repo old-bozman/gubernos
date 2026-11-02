@@ -59,7 +59,7 @@ Run `scripts/setup.sh check`. Every "Required" line must be ✓:
 - node missing or older than 20 → run `install.sh` again (step 0): it puts Node in `~/.gubernos/node`. No Homebrew needed.
 The "Model" lines show which AI CLIs are here and signed in: at least one must be ✓ (if none is, help them install and sign in to the one their plan covers — the table above). Note the optional lines; they decide which later steps to offer.
 
-### 2. Ask the person (all four are required; ask them together)
+### 2. Ask the person (all five are required; ask them together)
 
 1. **Name** to use, and the **language** for task titles and documents (default: the language they write to you in).
 2. **Where the files live.** Always in iCloud — it is the backup, it brings the files to the iPhone (Obsidian) and to other Macs (an assistant running there). `setup.sh` refuses other places. Check that iCloud Drive is on (`check` shows it). The choices:
@@ -69,11 +69,12 @@ The "Model" lines show which AI CLIs are here and signed in: at least one must b
    - **D. An existing vault** made from this kit, in iCloud: its path (nothing is overwritten).
 3. **Which model** the app should use, when more than one is ✓ (default: the one running this setup). It reads their inbox and voice notes, answers in the app's chat and runs agents on tasks — on their own plan. They can switch later in Settings → Agents → Model.
 4. Is this Mac **always on** (a desktop, or a laptop that stays plugged in)? Then `--awake` keeps it from sleeping on power, so the phone app and notifications work all day. A laptop they carry around works too; the app is simply unavailable while it sleeps.
+5. **Voice**: which language will they speak to the app (the mic button)? Default: the language from question 1. One language that this Mac's own speech model knows (English, German, French, Spanish, Italian, Japanese, Korean, Chinese and more; `tools/voice/gubernos-voice locales` lists them; macOS 26+) works right away, nothing to install. **Russian**, **several languages mixed**, or a **strong accent** they want heard well: recommend Whisper (`scripts/setup.sh voice` in step 4, a ~1.6 GB download on first use, Apple Silicon); it is much better there. Pass `--voice-language <locale>` (`en-US`, `ru-RU`, …) or `mixed`.
 
 ### 3. Install
 
 ```
-scripts/setup.sh install --vault "<path>" --name "<Name>" --language "<Language>" --model <claude|codex|gemini> [--obsidian-vault … --obsidian-path …] [--awake]
+scripts/setup.sh install --vault "<path>" --name "<Name>" --language "<Language>" --model <claude|codex|gemini> --voice-language <en-US|ru-RU|…|mixed> [--obsidian-vault … --obsidian-path …] [--awake]
 ```
 
 It installs dependencies, creates the vault from `kit/vault` (folders, `CLAUDE.md`, `AGENTS.md`, `profile.md`, templates, views, `40_reference/system/`), writes `~/.config/gubernos/config.json`, and starts the app in the background (launchd, restarts on crash and at login). Port 4747 is the default; `--port` if it's taken.
@@ -87,7 +88,7 @@ Then tell them:
 - **Bug reports to the developer**: `install` sets this up when the repo isn't theirs (it says so) — reports from the app's Report button also open a GitHub issue in the repo, and answers come back to their task. It needs `gh` logged in (`gh auth login`); if `check` shows it missing, install with `brew install gh`.
 - **Phone** (the Gubernos iPhone app, from TestFlight / the App Store; needs Tailscale on the Mac and the iPhone, logged in with the same account: https://tailscale.com/download — on the iPhone turn on VPN On Demand): `scripts/setup.sh phone` sets up HTTPS for the phone and requires pairing. The first time Tailscale may show a link to enable HTTPS for their tailnet: they open it and approve. Then pairing: on the Mac, the app → Settings → Connections → **Pair a device** → Show code; they scan it with the iPhone camera → Open in Gubernos. If they made their system on the iPhone first (Start a new system), the vault in step 2 is that folder (choice D). The Mac must be awake for agents, chat and calendar on the phone.
 - **Keep the Mac awake**: if this Mac should serve the phone all day, `scripts/setup.sh awake on` — a login item running `caffeinate -s`: no sleep while on power (on battery it sleeps as usual; a laptop with its lid closed still sleeps). `awake off` undoes it, `awake status` checks. Same as `--awake` at install.
-- **Voice** (Apple Silicon): `scripts/setup.sh voice` — the mic button in the app, transcribed locally.
+- **Voice**: with one language the Mac's own model knows, the mic already works (install said so). Whisper (`scripts/setup.sh voice`, Apple Silicon): needed for Russian or mixed languages, better with accents; no Homebrew or Command Line Tools (it gets its own Python via `uv`), models ~1.6 GB on first use. Language later: the app → Settings → Voice.
 - **Obsidian** (option A or C with Obsidian installed): `scripts/setup.sh obsidian` installs the Dataview and Templater plugins into the vault; then in Obsidian: **Open folder as vault** → the system folder → trust the plugins when asked. (For option B their vault already has its own plugin setup — leave it.)
 - **Calendar** (Plan the day sees their meetings and puts time blocks in): `scripts/setup.sh calendar` — macOS shows a dialog "Gubernos Calendar would like full access to your calendars": they click **Allow**. It reads every account added in the Calendar app (iCloud, Google, Exchange…); if their work or Google calendar isn't there yet: Calendar → Settings → Accounts → add it. Which calendars count and where blocks go: the app → Settings → Calendar / Calendars. No Google Cloud setup needed.
 - **Google for agents** (Gmail, Contacts, Drive; or Google Calendar directly instead of the Mac's): walk them through `docs/google.md` (~15–20 minutes in Google Cloud). Only if they want agents to read their mail or documents. Ask first whether they have Google Workspace — then the Internal route (A) is the one: it never expires. Otherwise Testing (B) with a reconnect every 7 days. They can do it later.

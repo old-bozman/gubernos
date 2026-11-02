@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as V from './lib/vault.js';
 import { runs, startRun, agentsAvailable, stopRun, publicRun } from './lib/runner.js';
-import { transcribe, interpret, warm, vlog, voiceAvailable } from './lib/voice.js';
+import { transcribe, interpret, warm, vlog, voiceAvailable, voiceStatus } from './lib/voice.js';
 import { breakdown, why, semanticSearch } from './lib/assist.js';
 import * as G from './lib/gcal.js'; // Google sign-in (connect / callback); calendar work goes through lib/calendar.js
 import * as Cal from './lib/calendar.js';
@@ -112,6 +112,7 @@ route('POST', '/api/habits/:slug/timer', ({ slug }, _, b) => Timers.start(slug, 
 route('POST', '/api/timers/:id/stop', ({ id }, _, b) => Timers.stop(id, b));
 route('POST', '/api/timers/:id/cancel', ({ id }) => Timers.cancel(id));
 route('POST', '/api/voice/warm', () => warm());
+route('GET', '/api/voice/status', () => voiceStatus()); // Settings → Voice: which engine, which language, what the Mac's models hear
 // Client-side voice events and errors land in server.log, so phone issues can be diagnosed later.
 route('POST', '/api/log', (_, __, b) => { vlog('client', String(b.ua || '').slice(0, 40), '|', String(b.msg || '').slice(0, 300)); return { ok: true }; });
 route('POST', '/api/voice/parse', (_, __, b) => interpret(String(b.text || ''), b.context || {}));

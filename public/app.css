@@ -1661,3 +1661,4 @@ button.dc-ev:hover, .dc-ev.cal-hl { box-shadow: 0 0 0 2px var(--accent); z-index
 .pomo-len .chip.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .pomo-len-u { font-size: 13px; color: var(--muted); }
 .pomo-len input, #set-sprint-in { width: 72px; font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); text-align: center; }
+.set-select { width: auto; max-width: 260px; }

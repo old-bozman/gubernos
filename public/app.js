@@ -3337,6 +3337,7 @@ function voiceCapture({ ctx, input, notes, onReset }) {
   function stop() { if (rec?.state === 'recording') rec.stop(); $('#mic')?.classList.remove('recording'); }
 
   async function upload(blob) {
+    blob = await toWav(blob); // the Mac reads WAV with no ffmpeg (lib/voice.js)
     if (blob.size < 2000) {
       clog(`tiny blob ${blob.size} after ${Date.now() - started}ms`);
       show(''); closeModal();
@@ -3361,10 +3362,12 @@ function voiceCapture({ ctx, input, notes, onReset }) {
         if (target === 'tchat') { const box = $('#tc-in'); if (box) { box.value = j.text; return taskChatSend(); } }
         return chatSend(j.text);
       }
+      let whole = null; // the Mac's own models have no quick / full pair: their one answer is final
       const stt = async (quick) => {
         const r = await fetch(`/api/voice${quick ? '?quick=1' : ''}`, { method: 'POST', headers: { 'Content-Type': blob.type || 'audio/webm' }, body: blob });
         const j = await r.json();
         if (!r.ok) throw new Error(j.error);
+        if (j.engine && j.engine !== 'whisper') whole = j.text;
         return j.text;
       };
       // Short utterance → probably a command: try the small model first; fall back to the big one for dictation.
@@ -3376,7 +3379,7 @@ function voiceCapture({ ctx, input, notes, onReset }) {
         clog(`quick "${quickText}" → ${fast ? fast.name : 'no command'} (rec ${recMs}ms)`);
         if (fast) { transcript = quickText; closeModal(); return runCommand(fast, quickText); }
       }
-      transcript = await stt(false);
+      transcript = whole ?? await stt(false);
       if (!transcript || isHallucination(transcript)) { show(''); closeModal(); return toast('Could not hear any speech'); }
       const fb = transcript.match(FEEDBACK_RE); // "баг: …" / "идея для приложения: …" → a report about the app, no model call
       if (fb) { closeModal(); return reportByVoice(/иде|idea/i.test(fb[1]) ? 'idea' : 'bug', transcript.slice(fb[0].length)); }
@@ -3976,6 +3979,23 @@ function mirrorSettings(s) {
   if (!h || document.documentElement.classList.contains('local-mode') || !s) return;
   h.postMessage({ op: 'write', path: '/data/settings.json', text: JSON.stringify(s, null, 1) }).catch(() => {});
 }
+// Settings → Voice: the language spoken to the app, and which engine hears it (lib/voice.js voiceStatus)
+const VOICE_LANGS = [['en-US', 'English'], ['ru-RU', 'Russian'], ['uk-UA', 'Ukrainian'], ['nl-NL', 'Dutch'], ['de-DE', 'German'], ['fr-FR', 'French'], ['es-ES', 'Spanish'], ['it-IT', 'Italian'], ['pt-BR', 'Portuguese'], ['ja-JP', 'Japanese'], ['ko-KR', 'Korean'], ['zh-CN', 'Chinese'], ['hi-IN', 'Hindi']];
+function refreshVoiceStatus() { return fetch('/api/voice/status').then((r) => (r.ok ? r.json() : null)).then((v) => { S.voiceStatus = v; if (S.view === 'settings') renderMain(); }).catch(() => {}); }
+function voiceSettingsHtml() {
+  const v = S.voiceStatus;
+  if (v === undefined) { S.voiceStatus = null; refreshVoiceStatus(); }
+  const cur = S.settings?.voiceLanguage || '';
+  const known = VOICE_LANGS.some(([id]) => id === cur) || !cur || cur === 'mixed';
+  const opts = [['', `From your profile${v && !cur ? ` (${VOICE_LANGS.find(([id]) => id === v.language)?.[1] || v.language})` : ''}`], ...VOICE_LANGS, ...(known ? [] : [[cur, cur]]), ['mixed', 'Several languages (needs Whisper)']];
+  const how = !v ? '' : v.engine === 'whisper' ? 'Whisper on this Mac: any language, mixed, accents'
+    : v.engine === 'speech' ? 'this Mac’s own speech model · for Russian, mixed speech or a strong accent: Whisper (scripts/setup.sh voice)'
+    : v.engine === 'dictation' ? 'this Mac’s dictation model · Whisper hears it better (scripts/setup.sh voice)'
+    : (S.settings?.voiceLanguage === 'mixed' ? 'off: several languages need Whisper (scripts/setup.sh voice)' : 'off: no speech model for this language on this Mac (macOS 26 has them); Whisper: scripts/setup.sh voice');
+  return `<div class="set-row"><div class="set-l">Voice<small>the language you speak to the app${how ? ` · ${esc(how)}` : ''}</small></div>
+    <select id="set-voice-lang" class="pm-select set-select">${opts.map(([id, l]) => `<option value="${esc(id)}" ${id === cur ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>`;
+}
+document.addEventListener('change', (e) => { if (e.target.id === 'set-voice-lang') saveSetting({ voiceLanguage: e.target.value }).then(refreshVoiceStatus).then(load); });
 function refreshCalStatus() { S.gcals = null; S.planInfoAt = 0; S.planFree = null; return fetch('/api/gcal/status').then((r) => r.json()).then((g) => { S.gstatus = g; if (S.view === 'settings') renderMain(); }).catch(() => {}); }
 refreshCalStatus();
 async function saveSetting(patch) {
@@ -4029,6 +4049,7 @@ function settingsHtml() {
     <div class="set-row"><div class="set-l">Morning &amp; evening pushes from the Mac<small>off if the iPhone app sends them (no doubles)</small></div>${seg('set-checkin-push', st.checkinPush === false ? 'off' : 'on', [['off', 'Off'], ['on', 'On']])}</div>
     ${g('Agents')}
     ${local ? '' : modelSettingsHtml()}
+    ${local ? '' : voiceSettingsHtml()}
     ${agentsSettingsHtml()}
     ${g('Connections')}
     <div class="set-row"><div class="set-l">Google<small>calendar for Plan the day; mail, contacts, docs for agents</small></div><div class="set-note">${googleNote()}</div></div>
@@ -4998,6 +5019,27 @@ function micGesture() {
 function micContext() {
   try { mic.ctx = mic.ctx || new (window.AudioContext || window.webkitAudioContext)(); mic.ctx.resume(); } catch { /* no audio */ }
   return mic.ctx;
+}
+// A recording (mp4 / webm from MediaRecorder) → 16 kHz mono 16-bit WAV, which both of the Mac's speech engines read
+// without ffmpeg. On any failure the original goes up (the Mac then needs ffmpeg for it).
+async function toWav(blob) {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new Ctx();
+    const audio = await ctx.decodeAudioData(await blob.arrayBuffer());
+    ctx.close?.();
+    const rate = 16000, n = Math.ceil(audio.duration * rate);
+    const off = new OfflineAudioContext(1, n, rate);
+    const src = off.createBufferSource(); src.buffer = audio; src.connect(off.destination); src.start();
+    const pcm = (await off.startRendering()).getChannelData(0);
+    const out = new DataView(new ArrayBuffer(44 + pcm.length * 2));
+    const str = (o, t) => [...t].forEach((c, i) => out.setUint8(o + i, c.charCodeAt(0)));
+    str(0, 'RIFF'); out.setUint32(4, 36 + pcm.length * 2, true); str(8, 'WAVEfmt '); out.setUint32(16, 16, true); out.setUint16(20, 1, true);
+    out.setUint16(22, 1, true); out.setUint32(24, rate, true); out.setUint32(28, rate * 2, true); out.setUint16(32, 2, true); out.setUint16(34, 16, true);
+    str(36, 'data'); out.setUint32(40, pcm.length * 2, true);
+    for (let i = 0; i < pcm.length; i++) out.setInt16(44 + i * 2, Math.max(-1, Math.min(1, pcm[i])) * 0x7fff, true);
+    return new Blob([out], { type: 'audio/wav' });
+  } catch (e) { clog(`wav conversion failed: ${e.message}`); return blob; }
 }
 async function micStream() {
   clearTimeout(mic.idle);
