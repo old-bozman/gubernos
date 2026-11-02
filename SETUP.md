@@ -24,8 +24,9 @@ cd ~/gubernos
 claude        # or: codex · gemini
 ```
 
-The first line gets git (Apple's Command Line Tools), Node (when the Mac has none) and the app into `~/gubernos`, without sudo
-or Homebrew. A clone works too: `git clone https://github.com/old-bozman/gubernos.git ~/gubernos`.
+The first line gets Node (when the Mac has none) and the app into `~/gubernos`, without sudo, Homebrew or Apple's Command
+Line Tools (the app comes as a download; `scripts/update.sh` updates it). A clone works too, for developers: `git clone
+https://github.com/old-bozman/gubernos.git ~/gubernos`.
 
 Then say: **"run SETUP.md"**. The agent walks you through the rest (about 20 minutes, plus onboarding).
 
@@ -42,9 +43,10 @@ You (Claude Code, Codex or Gemini CLI) are installing Gubernos for the person in
 ### 0. Get the app (when you came from the prompt, not from inside the repo)
 
 If you aren't in a Gubernos checkout (no `scripts/setup.sh` here): look for `~/gubernos`; if it's missing, tell the person
-what it does and run `curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash` (git
-from Apple's Command Line Tools, Node when the Mac has none, the app into `~/gubernos`; no sudo, no Homebrew; if macOS
-opens the Command Line Tools dialog, they click Install and you run it again). Then work in `~/gubernos` and read this
+what it does and run `curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash` (Node
+when the Mac has none, the app into `~/gubernos`; no sudo, no Homebrew, no Command Line Tools). Run it right away: don't
+probe with `git`, `python3` or `make` first — on a clean Mac each is a stub that opens Apple's Command Line Tools dialog
+(which asks for ~19 GB free), and Gubernos doesn't need them. Then work in `~/gubernos` and read this
 file from there (it may be newer than the copy you fetched).
 
 The iPhone app comes from TestFlight: https://testflight.apple.com/join/rBUGmgJG — give them the link when you reach the
@@ -53,8 +55,7 @@ phone step (they install TestFlight first, then open the link on the iPhone → 
 ### 1. Check the Mac
 
 Run `scripts/setup.sh check`. Every "Required" line must be ✓:
-- node missing or older than 20 → offer `brew install node` (no Homebrew → https://brew.sh first).
-- git missing → `xcode-select --install`.
+- node missing or older than 20 → run `install.sh` again (step 0): it puts Node in `~/.gubernos/node`. No Homebrew needed.
 The "Model" lines show which AI CLIs are here and signed in: at least one must be ✓ (if none is, help them install and sign in to the one their plan covers — the table above). Note the optional lines; they decide which later steps to offer.
 
 ### 2. Ask the person (one message)
@@ -106,7 +107,7 @@ For daily work in the files they can run their agent (`claude`, `codex` or `gemi
 ## Updating
 
 `scripts/update.sh` pulls the latest version, reinstalls dependencies and restarts the app. If it reports that the **vault kit changed**, bring the vault up to date with the agent ("update my vault from the kit"):
-- for each changed file under `kit/vault/`: if the vault's copy is unchanged from the old kit version (`git show <old>:kit/vault/<file>`), replace it with the new one (replace `VAULT_ROOT/` with the vault's Obsidian sub-path, or nothing);
+- for each changed file under `kit/vault/`: if the vault's copy is unchanged from the old kit version (`git show <old>:kit/vault/<file>` in a git checkout; `.kit-previous/<file>` in an install without git), replace it with the new one (replace `VAULT_ROOT/` with the vault's Obsidian sub-path, or nothing);
 - if the person changed it, merge: keep their changes, add the kit's, and show the diff before writing;
 - set `kit_version` in `profile.md` to the version in `kit/vault/profile.md`.
 

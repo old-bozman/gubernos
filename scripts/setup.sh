@@ -16,6 +16,8 @@
 set -euo pipefail
 
 APP="$(cd "$(dirname "$0")/.." && pwd)"
+# Node from install.sh (~/.gubernos/node), also when this shell started before it was put on PATH (an agent session)
+[[ -x "$HOME/.gubernos/node/bin/node" ]] && export PATH="$HOME/.gubernos/node/bin:$PATH"
 LABEL="com.${USER}.gubernos"
 AWAKE_LABEL="com.${USER}.gubernos-awake"
 AGENTS_DIR="${GUBERNOS_LAUNCH_AGENTS:-$HOME/Library/LaunchAgents}"
@@ -31,7 +33,6 @@ check() {
   if command -v node >/dev/null; then
     v=$(node -p 'process.versions.node.split(".")[0]'); [[ $v -ge 20 ]] && ok "node $(node -v)" || no "node $(node -v) — need 20+ (run the installer again, or brew install node)"
   else no "node — run the installer again: curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash"; fi
-  command -v git >/dev/null && ok "git" || no "git — install: xcode-select --install"
   echo "Model (one is enough — on your own subscription or account)"
   models
   echo "Optional"
@@ -103,7 +104,8 @@ install() {
   echo "3/4 config"; $KIT config --vault "$vault" ${p:+--port "$p"} ${ovault:+--obsidian-vault "$ovault"} ${opath:+--obsidian-path "$opath"} >/dev/null && ok "$HOME/.config/gubernos/config.json"
   # Bug reports also go to the app's GitHub repo as issues, unless this is the repo owner's own install.
   local repo me
-  repo=$(git -C "$APP" remote get-url origin 2>/dev/null | sed -E 's#^(https://github.com/|git@github.com:)##; s#\.git$##' || true)
+  if [[ -d "$APP/.git" ]]; then repo=$(git -C "$APP" remote get-url origin 2>/dev/null | sed -E 's#^(https://github.com/|git@github.com:)##; s#\.git$##' || true)
+  else repo=$(cut -d' ' -f1 "$APP/.gubernos-version" 2>/dev/null || true); fi
   me=$(gh api user -q .login 2>/dev/null || true)
   if [[ "$repo" == */* && "${repo%%/*}" != "$me" ]]; then
     $KIT config --feedback-repo "$repo" >/dev/null

@@ -31,7 +31,7 @@ That model reads your inbox and voice notes, answers in the app's chat and runs 
    ```
    curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash
    ```
-   It gets what's needed without asking for your password (git from Apple, Node if the Mac has none) and puts the app in `~/gubernos`. If macOS asks to install the Command Line Tools, click Install and run the line again when it's done.
+   It gets what's needed without asking for your password (Node if the Mac has none) and puts the app in `~/gubernos`. Nothing else to install from Apple.
 2. **Install your model's agent** from the table above (the Install command, then the Sign in one), then open it in the app's folder:
    ```
    cd ~/gubernos && claude        # or: codex · gemini

@@ -5,3 +5,6 @@ server.log
 # this Mac's own data (caches, feedback snapshots, settings)
 data/
 .DS_Store
+# an install without git (install.sh): which version it is, and the vault kit before the last update
+.gubernos-version
+.kit-previous/
