@@ -50,6 +50,15 @@ else
   ok "Node $(node -v)"
 fi
 
+# Claude Code's installer puts it in ~/.local/bin, which a new Mac doesn't have on PATH ("claude: command not found"):
+# add it for new terminals, and here so the agent is found below
+case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *)
+  export PATH="$HOME/.local/bin:$PATH"
+  line='export PATH="$HOME/.local/bin:$PATH" # Gubernos: Claude Code'
+  grep -qsF "$line" "$HOME/.zprofile" || printf '\n%s\n' "$line" >> "$HOME/.zprofile"
+  ok "~/.local/bin on PATH (added to ~/.zprofile)" ;;
+esac
+
 # 2. the app: a git checkout (a developer's clone) updates with git; otherwise the repo's files as a download.
 # AICODE-NOTE: never call git unless the Command Line Tools are there: on a clean Mac /usr/bin/git is a stub that opens
 # Apple's install dialog (which wants ~19 GB free). The download needs only curl, tar and rsync, which macOS has.
@@ -93,7 +102,7 @@ if [[ -n "$agent" ]]; then
   echo "  cd $DIR && $agent"
 else
   say "Next: install one AI agent (any one), then open it in the app's folder and say \"run SETUP.md\":"
-  echo "  Claude (Pro or Max):  curl -fsSL https://claude.ai/install.sh | bash   then: cd $DIR && claude"
+  echo "  Claude (Pro or Max):  curl -fsSL https://claude.ai/install.sh | bash   then: cd $DIR && ~/.local/bin/claude"
   echo "  ChatGPT (Plus/Pro):   npm install -g @openai/codex && codex login     then: cd $DIR && codex"
   echo "  Gemini (API key):     npm install -g @google/gemini-cli               then: cd $DIR && gemini"
 fi

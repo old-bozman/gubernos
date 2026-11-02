@@ -18,6 +18,8 @@ set -euo pipefail
 APP="$(cd "$(dirname "$0")/.." && pwd)"
 # Node from install.sh (~/.gubernos/node), also when this shell started before it was put on PATH (an agent session)
 [[ -x "$HOME/.gubernos/node/bin/node" ]] && export PATH="$HOME/.gubernos/node/bin:$PATH"
+# Claude Code's installer puts it in ~/.local/bin, which a new Mac doesn't have on PATH
+export PATH="$HOME/.local/bin:$PATH"
 LABEL="com.${USER}.gubernos"
 AWAKE_LABEL="com.${USER}.gubernos-awake"
 AGENTS_DIR="${GUBERNOS_LAUNCH_AGENTS:-$HOME/Library/LaunchAgents}"
@@ -49,7 +51,7 @@ check() {
 # the model CLIs here, and whether each is signed in (as far as it can be told without calling the model)
 models() {
   if command -v claude >/dev/null; then ok "Claude Code $(claude --version 2>/dev/null | head -1) — a Claude Pro or Max plan"
-  else no "Claude Code — curl -fsSL https://claude.ai/install.sh | bash, then: claude (sign in)"; fi
+  else no "Claude Code — curl -fsSL https://claude.ai/install.sh | bash, then: ~/.local/bin/claude (sign in)"; fi
   if command -v codex >/dev/null; then
     codex login status >/dev/null 2>&1 && ok "Codex (ChatGPT) — signed in" || no "Codex is installed, not signed in: codex login"
   else no "Codex (ChatGPT Plus or Pro) — npm install -g @openai/codex, then: codex login"; fi

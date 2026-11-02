@@ -21,7 +21,7 @@ This already works: tasks, Inbox, projects, habits and protocols, reminders, voi
 
 | You have | Its agent for the Terminal | Install | Sign in |
 |---|---|---|---|
-| **Claude** Pro or Max | Claude Code | `curl -fsSL https://claude.ai/install.sh \| bash` | `claude` |
+| **Claude** Pro or Max | Claude Code | `curl -fsSL https://claude.ai/install.sh \| bash` | `~/.local/bin/claude` |
 | **ChatGPT** Plus or Pro | Codex | `npm install -g @openai/codex` | `codex login` |
 | a **Google** account (free tier) | Gemini CLI | `npm install -g @google/gemini-cli` | an API key from [aistudio.google.com/apikey](https://aistudio.google.com/apikey) → put `GEMINI_API_KEY=<key>` in `~/.gemini/.env`, then `gemini` once → **Use Gemini API key** |
 

@@ -14,7 +14,7 @@ few macOS dialogs, scan the pairing code and tap on your phone when it asks.
 
 | You have | Install | Sign in |
 |---|---|---|
-| **Claude** Pro or Max | `curl -fsSL https://claude.ai/install.sh \| bash` | `claude` |
+| **Claude** Pro or Max | `curl -fsSL https://claude.ai/install.sh \| bash` | `~/.local/bin/claude` (on a new Mac `claude` alone isn't found until Gubernos' installer adds that folder to your PATH) |
 | **ChatGPT** Plus or Pro | `npm install -g @openai/codex` | `codex login` |
 | a **Google** account (free tier) | `npm install -g @google/gemini-cli` | an API key from https://aistudio.google.com/apikey → `GEMINI_API_KEY=<key>` in `~/.gemini/.env`, then `gemini` once → Use Gemini API key (Login with Google no longer works for Gemini CLI) |
 
