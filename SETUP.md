@@ -36,6 +36,7 @@ Then say: **"run SETUP.md"**. The agent walks you through the rest (about 20 min
 
 You (Claude Code, Codex or Gemini CLI) are installing Gubernos for the person in front of you and then onboarding them. Rules:
 - Talk in the language they write in. One step at a time; say what a step does before running it, and show its result in a line or two.
+- Questions they must answer (step 2, and any yes/no before installing software): if your agent has a tool for asking with choices to pick from (Claude Code: `AskUserQuestion`; use the equivalent in Codex or Gemini CLI if yours has one), ask through it, one question per item, the recommended choice first. Without such a tool, ask in one message: a numbered list, each with its choices as letters and the default marked, so they can answer "1 Sam, 2 C, 3 default". Say which questions are required and wait for those answers; don't guess them.
 - Run `scripts/setup.sh` steps; every step is safe to repeat. The vault always goes to iCloud (`--local` exists only for development and tests — never use it for a real install). Never overwrite or delete files in an existing vault (`kit.mjs` only adds missing files).
 - Ask before installing software (brew, Tailscale, Python packages). Never ask for or store passwords or API secrets; files with credentials stay in `~/.config/gubernos/`.
 - The repo's `AGENTS.md` describes the app's code; the vault's `CLAUDE.md` / `AGENTS.md` describe the system.
@@ -58,7 +59,7 @@ Run `scripts/setup.sh check`. Every "Required" line must be ✓:
 - node missing or older than 20 → run `install.sh` again (step 0): it puts Node in `~/.gubernos/node`. No Homebrew needed.
 The "Model" lines show which AI CLIs are here and signed in: at least one must be ✓ (if none is, help them install and sign in to the one their plan covers — the table above). Note the optional lines; they decide which later steps to offer.
 
-### 2. Ask the person (one message)
+### 2. Ask the person (all four are required; ask them together)
 
 1. **Name** to use, and the **language** for task titles and documents (default: the language they write to you in).
 2. **Where the files live.** Always in iCloud — it is the backup, it brings the files to the iPhone (Obsidian) and to other Macs (an assistant running there). `setup.sh` refuses other places. Check that iCloud Drive is on (`check` shows it). The choices:
