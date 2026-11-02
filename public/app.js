@@ -2175,7 +2175,7 @@ const weekOrder = () => (S.settings?.weekStart === 'sunday' ? ['sun', 'mon', 'tu
 function habitModal(h, opts = {}) {
   const isNew = !h; // a new habit: the same form, empty, in the block it was added from
   if (!h) h = { slug: null, title: '', supports: [], serves: [], kind: 'build', protocol: opts.protocol || null, days: null, perWeek: null,
-    target: null, unit: null, minimum: null, cue: null, why: '', keystone: false, checkin: null };
+    target: null, unit: null, minimum: null, cue: null, why: '', keystone: !(S.day?.habits || []).length, checkin: null }; // the first one is the keystone
   const goals = S.data.goalDetails || [], projects = S.data.projects.filter((p) => p.status === 'active');
   const wants = (S.data.containers || []).filter((c) => c.type === 'want' && !c.archived), areas = S.data.areas || [];
   const name = (s) => goals.find((x) => x.slug === s)?.title || projects.find((x) => x.slug === s)?.title || wants.find((x) => x.slug === s)?.title || h.supports.find((x) => x.slug === s)?.title || s;
@@ -2183,27 +2183,35 @@ function habitModal(h, opts = {}) {
   const opt = (label, list) => (list.length ? `<optgroup label="${label}">${list.map((x) => `<option value="${esc(x.slug)}">${esc(x.title)}</option>`).join('')}</optgroup>` : '');
   const supHtml = () => `${sup.map((s) => `<span class="pill hm-sup">${esc(name(s))} <button type="button" data-rm="${esc(s)}" aria-label="Remove">✕</button></span>`).join('') || '<span class="muted">nothing yet</span>'}`;
   const blocks = [...(S.day?.protocols || []).map((p) => [p.slug, p.title]), ['', 'Day (no protocol)']];
+  // the form's rows; a new habit shows what to do, its minimum, when and why, the rest under "More" (all rows when editing)
+  const row = {
+    leads: `<div class="tri"><div class="lbl">Leads to</div><div><div class="hm-sups" id="hm-sups">${supHtml()}</div>
+      <select id="hm-add" class="pm-select"><option value="">+ Link a goal, project or want…</option>${opt('Goals', goals)}${opt('Projects', projects)}${opt('Wants', wants)}</select></div></div>`,
+    area: `${areas.length ? `<div class="tri"><div class="lbl">Area</div><select id="hm-area" class="pm-select"><option value="">— none —</option>${areas.map((a) => `<option value="${esc(a.slug)}" ${h.serves.includes(a.slug) ? 'selected' : ''}>${esc(a.title)}</option>`).join('')}</select></div>` : ''}`,
+    block: `<div class="tri"><div class="lbl">Block</div><select id="hm-block" class="pm-select">${blocks.map(([v, l]) => `<option value="${esc(v)}" ${(h.protocol || '') === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>`,
+    sched: `<div class="tri"><div class="lbl">Schedule</div><div><select id="hm-sched" class="pm-select"><option value="every" ${!h.days && !h.perWeek ? 'selected' : ''}>Every day</option><option value="days" ${h.days ? 'selected' : ''}>On some days</option><option value="week" ${h.perWeek ? 'selected' : ''}>Times a week, any days</option></select>
+      <div class="hm-days" id="hm-days" ${h.days ? '' : 'hidden'}>${weekOrder().map((d) => `<button type="button" class="chip ${(h.days || ['mon', 'tue', 'wed', 'thu', 'fri']).includes(d) ? 'on' : ''}" data-day="${d}">${d[0].toUpperCase() + d.slice(1, 2)}</button>`).join('')}</div>
+      <div class="hm-row" id="hm-week" ${h.perWeek ? '' : 'hidden'}><input id="hm-perweek" type="number" min="1" max="6" step="1" value="${h.perWeek || 2}"><span class="muted">times a week — the other days aren’t misses</span></div></div></div>`,
+    offwork: `<div class="tri"><div class="lbl">Days off work</div><select id="hm-offwork" class="pm-select"><option value="" ${h.offWork ? '' : 'selected'}>Keep — on vacation too</option><option value="pause" ${h.offWork ? 'selected' : ''}>Pause — a work habit (Settings → Off work)</option></select></div>`,
+    auto: `<div class="tri"><div class="lbl">Auto</div><div class="hm-row"><select id="hm-auto" class="pm-select">${AUTO_OPTS.map(([v, l]) => `<option value="${v}" ${(h.auto ? `${h.auto.source}:${h.auto.metric}` : '') === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      <input id="hm-auto-at" type="time" step="300" value="${h.auto?.at != null ? `${String(Math.floor(h.auto.at / 60)).padStart(2, '0')}:${String(h.auto.at % 60).padStart(2, '0')}` : '06:30'}" ${h.auto?.at != null ? '' : 'hidden'}></div></div>`,
+    checkin: `<div class="tri"><div class="lbl">Checked on</div><select id="hm-checkin" class="pm-select"><option value="" ${!h.checkin ? 'selected' : ''}>Protocol screen</option><option value="reflection" ${h.checkin === 'reflection' ? 'selected' : ''}>Daily reflection</option><option value="next-one" ${h.checkin === 'next-one' ? 'selected' : ''}>Daily reflection — by choosing tomorrow’s #1</option><option value="by-reflection" ${h.checkin === 'by-reflection' ? 'selected' : ''}>Daily reflection — by saving it</option></select></div>`,
+    kind: `<div class="tri"><div class="lbl">Kind</div><select id="hm-kind" class="pm-select"><option value="build" ${h.kind !== 'quit' ? 'selected' : ''}>Build — do it</option><option value="quit" ${h.kind === 'quit' ? 'selected' : ''}>Quit — kept / slipped</option></select></div>`,
+    target: `<div class="tri"><div class="lbl">Target</div><div class="hm-row"><input id="hm-target" type="number" inputmode="decimal" min="0" step="any" placeholder="none = done / not done" value="${h.target ?? ''}"><input id="hm-unit" placeholder="unit: min, steps, ml" value="${esc(h.unit || '')}"></div></div>`,
+    min: `<div class="tri"><div class="lbl">Minimum</div><input id="hm-min" class="pm-select" placeholder="the version for a bad day, e.g. “5 minutes around the block”" value="${esc(h.minimum || '')}"></div>`,
+    cue: `<div class="tri"><div class="lbl">${isNew ? 'When' : 'If-then'}</div><input id="hm-cue" class="pm-select" placeholder="after lunch → walk" value="${esc(h.cue || '')}"></div>`,
+    obstacle: `<div class="tri"><div class="lbl">Obstacle → plan</div><div class="hm-row"><input id="hm-obstacle" class="pm-select" placeholder="if… (what gets in the way)" value="${esc(h.obstacle || '')}"><input id="hm-plan" class="pm-select" placeholder="then… (what I do)" value="${esc(h.plan || '')}"></div></div>`,
+    why: `<div class="tri"><div class="lbl">Why</div><textarea id="hm-why" rows="3" placeholder="What it gives you">${esc(h.why || '')}</textarea></div>`,
+    key: `<div class="tri"><div class="lbl"></div><label class="hm-check"><input type="checkbox" id="hm-key" ${h.keystone ? 'checked' : ''}> 🔑 Keystone — the one habit that matters most now (only one)</label></div>`,
+  };
+  const rows = (keys) => keys.map((k) => row[k]).join('\n    ');
   $('#modal').innerHTML = `<div class="overlay" data-act="qa-close"><div class="qa pm hm">
     <div class="bd-h">${isNew ? 'New habit' : 'Edit habit'}</div>
-    <input class="q" id="hm-title" autocomplete="off" value="${esc(h.title)}" placeholder="Habit">
-    <div class="tri"><div class="lbl">Leads to</div><div><div class="hm-sups" id="hm-sups">${supHtml()}</div>
-      <select id="hm-add" class="pm-select"><option value="">+ Link a goal, project or want…</option>${opt('Goals', goals)}${opt('Projects', projects)}${opt('Wants', wants)}</select></div></div>
-    ${areas.length ? `<div class="tri"><div class="lbl">Area</div><select id="hm-area" class="pm-select"><option value="">— none —</option>${areas.map((a) => `<option value="${esc(a.slug)}" ${h.serves.includes(a.slug) ? 'selected' : ''}>${esc(a.title)}</option>`).join('')}</select></div>` : ''}
-    <div class="tri"><div class="lbl">Block</div><select id="hm-block" class="pm-select">${blocks.map(([v, l]) => `<option value="${esc(v)}" ${(h.protocol || '') === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>
-    <div class="tri"><div class="lbl">Schedule</div><div><select id="hm-sched" class="pm-select"><option value="every" ${!h.days && !h.perWeek ? 'selected' : ''}>Every day</option><option value="days" ${h.days ? 'selected' : ''}>On some days</option><option value="week" ${h.perWeek ? 'selected' : ''}>Times a week, any days</option></select>
-      <div class="hm-days" id="hm-days" ${h.days ? '' : 'hidden'}>${weekOrder().map((d) => `<button type="button" class="chip ${(h.days || ['mon', 'tue', 'wed', 'thu', 'fri']).includes(d) ? 'on' : ''}" data-day="${d}">${d[0].toUpperCase() + d.slice(1, 2)}</button>`).join('')}</div>
-      <div class="hm-row" id="hm-week" ${h.perWeek ? '' : 'hidden'}><input id="hm-perweek" type="number" min="1" max="6" step="1" value="${h.perWeek || 2}"><span class="muted">times a week — the other days aren’t misses</span></div></div></div>
-    <div class="tri"><div class="lbl">Days off work</div><select id="hm-offwork" class="pm-select"><option value="" ${h.offWork ? '' : 'selected'}>Keep — on vacation too</option><option value="pause" ${h.offWork ? 'selected' : ''}>Pause — a work habit (Settings → Off work)</option></select></div>
-    <div class="tri"><div class="lbl">Auto</div><div class="hm-row"><select id="hm-auto" class="pm-select">${AUTO_OPTS.map(([v, l]) => `<option value="${v}" ${(h.auto ? `${h.auto.source}:${h.auto.metric}` : '') === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
-      <input id="hm-auto-at" type="time" step="300" value="${h.auto?.at != null ? `${String(Math.floor(h.auto.at / 60)).padStart(2, '0')}:${String(h.auto.at % 60).padStart(2, '0')}` : '06:30'}" ${h.auto?.at != null ? '' : 'hidden'}></div></div>
-    <div class="tri"><div class="lbl">Checked on</div><select id="hm-checkin" class="pm-select"><option value="" ${!h.checkin ? 'selected' : ''}>Protocol screen</option><option value="reflection" ${h.checkin === 'reflection' ? 'selected' : ''}>Daily reflection</option><option value="next-one" ${h.checkin === 'next-one' ? 'selected' : ''}>Daily reflection — by choosing tomorrow’s #1</option><option value="by-reflection" ${h.checkin === 'by-reflection' ? 'selected' : ''}>Daily reflection — by saving it</option></select></div>
-    <div class="tri"><div class="lbl">Kind</div><select id="hm-kind" class="pm-select"><option value="build" ${h.kind !== 'quit' ? 'selected' : ''}>Build — do it</option><option value="quit" ${h.kind === 'quit' ? 'selected' : ''}>Quit — kept / slipped</option></select></div>
-    <div class="tri"><div class="lbl">Target</div><div class="hm-row"><input id="hm-target" type="number" inputmode="decimal" min="0" step="any" placeholder="none = done / not done" value="${h.target ?? ''}"><input id="hm-unit" placeholder="unit: min, steps, ml" value="${esc(h.unit || '')}"></div></div>
-    <div class="tri"><div class="lbl">Minimum</div><input id="hm-min" class="pm-select" placeholder="the version for a bad day" value="${esc(h.minimum || '')}"></div>
-    <div class="tri"><div class="lbl">If-then</div><input id="hm-cue" class="pm-select" placeholder="after coffee → …" value="${esc(h.cue || '')}"></div>
-    <div class="tri"><div class="lbl">Obstacle → plan</div><div class="hm-row"><input id="hm-obstacle" class="pm-select" placeholder="if… (what gets in the way)" value="${esc(h.obstacle || '')}"><input id="hm-plan" class="pm-select" placeholder="then… (what I do)" value="${esc(h.plan || '')}"></div></div>
-    <div class="tri"><div class="lbl">Why</div><textarea id="hm-why" rows="3" placeholder="What it gives you">${esc(h.why || '')}</textarea></div>
-    <div class="tri"><div class="lbl"></div><label class="hm-check"><input type="checkbox" id="hm-key" ${h.keystone ? 'checked' : ''}> 🔑 Keystone — the one habit that matters most now (only one)</label></div>
+    <input class="q" id="hm-title" autocomplete="off" value="${esc(h.title)}" placeholder="${isNew ? 'What you’ll do, e.g. “Walk 20 minutes”' : 'Habit'}">
+    ${isNew ? `${rows(['min', 'cue', 'why'])}
+    <details class="hm-more"><summary>More: goal, area, schedule, block, target…</summary>
+    ${rows(['leads', 'area', 'block', 'sched', 'kind', 'target', 'obstacle', 'offwork', 'auto', 'checkin', 'key'])}
+    </details>` : rows(['leads', 'area', 'block', 'sched', 'offwork', 'auto', 'checkin', 'kind', 'target', 'min', 'cue', 'obstacle', 'why', 'key'])}
     <div class="foot">${isNew ? '<span class="sp muted">Creates 05_model/habits/&lt;name&gt;.md</span>' : '<select id="hm-status" class="pm-select hm-status"><option value="active">Active</option><option value="paused">Pause</option><option value="retired">Retire</option></select><span class="sp"></span>'}
       <button class="btn" data-act="qa-close">Cancel</button><button class="btn primary" id="hm-save">${isNew ? 'Create habit' : 'Save'}</button></div></div></div>`;
   if (isNew) $('#hm-title').focus();

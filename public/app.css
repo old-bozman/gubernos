@@ -206,6 +206,8 @@ kbd { font: 11px ui-monospace, Menlo, monospace; border: 1px solid var(--line); 
 .hb-first b { color: var(--ink); font-size: 15px; }
 .hb-first p { margin: 0; }
 .hb-first .muted { font-size: 13px; }
+.hm-more > summary { cursor: pointer; color: var(--ink-2); font-size: 13px; padding: 8px 0 4px; }
+.hm-more > summary:hover { color: var(--ink); }
 
 .row { display: flex; gap: 10px; padding: 9px 6px 9px 2px; border-bottom: 1px solid var(--line); cursor: pointer; position: relative; border-radius: 4px; }
 .row:hover { background: var(--hover); }
