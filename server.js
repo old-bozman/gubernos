@@ -24,7 +24,7 @@ import * as Timers from './lib/timers.js';
 import { ask } from './lib/chat.js';
 import * as Triage from './lib/triage.js';
 import { saveAttachment, attachmentFile, attachmentByName } from './lib/attachments.js';
-import { PORT, PUBLIC_URL, APP_NAME, profile, clientConfig } from './lib/config.js';
+import { PORT, PROXY_PORT, PUBLIC_URL, APP_NAME, profile, clientConfig } from './lib/config.js';
 import { registerCore, routeParams } from './lib/core-routes.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { clock, validAt } from './lib/clock.js';
@@ -317,3 +317,6 @@ server.listen(PORT, HOST, () => {
   feedbackSync(); // answers to bug reports sent to someone else's GitHub repo (no-op on the developer's own install)
   console.log(`${APP_NAME} → http://${HOST}:${PORT}  (vault: ${V.VAULT})`);
 });
+// the same app on PROXY_PORT, loopback only, for Tailscale serve / funnel: nothing that arrives here counts as the Mac itself
+http.createServer(server.listeners('request')[0]).listen(PROXY_PORT, '127.0.0.1')
+  .on('error', (e) => console.error(`[proxy port ${PROXY_PORT}]`, e.message));

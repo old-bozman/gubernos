@@ -30,6 +30,8 @@ ok() { printf '  ✓ %s\n' "$1"; }
 no() { printf '  ✗ %s\n' "$1"; }
 die() { printf 'error: %s\n' "$1" >&2; exit 1; }
 port() { local p; p=$($KIT get port 2>/dev/null || true); echo "${p:-4747}"; }
+# where Tailscale delivers (lib/config.js PROXY_PORT): never counted as the Mac itself, whatever the request claims
+proxy_port() { local p; p=$($KIT get proxyPort 2>/dev/null || true); echo "${p:-$(( $(port) + 1 ))}"; }
 
 check() {
   echo "Required"
@@ -160,7 +162,7 @@ phone() {
     fs.mkdirSync(require("path").dirname(f),{recursive:true});fs.writeFileSync(f,JSON.stringify(s,null,1)+"\n",{mode:0o600})' "$pf"
   # The first time Tailscale prints login.tailscale.com links (turn on HTTPS, and for Funnel allow it): open, approve, it goes on.
   echo "  If a login.tailscale.com link appears below, open it and approve (HTTPS certificates, Funnel); the command then continues."
-  if [[ $mode == funnel ]]; then ts funnel --bg "$(port)"; else ts serve --bg "$(port)"; fi
+  if [[ $mode == funnel ]]; then ts funnel --bg "$(proxy_port)"; else ts serve --bg "$(proxy_port)"; fi
   local host; host=$(ts status --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).Self.DNSName.replace(/\.$/,"")))')
   $KIT config --public-url "https://$host" >/dev/null
   restart >/dev/null

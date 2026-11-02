@@ -167,7 +167,7 @@ export const archHtml = () => `<div class="cpt-arch">
       ${link('iCloud Drive<br>sync')}
       ${box('folder', 'Your files', 'One folder of Markdown: tasks, projects, goals, habits, days, reviews. Readable in any editor, today and in twenty years.', 'files')}
       ${link('the same<br>folder')}
-      <div class="cpt-stack">${box('mac', 'Your Mac', 'Gubernos for Mac: planning with your calendar, voice, the chat. Your phone reaches it over your own private network.')}
+      <div class="cpt-stack">${box('mac', 'Your Mac', 'Gubernos for Mac: planning with your calendar, voice, the chat. Your phone reaches it from anywhere, once paired with it.')}
         ${box('agent', 'Your agents', 'Claude Code, Codex or Gemini on your Mac, with your own subscription. They work in the same files.')}</div>
     </div></div>
   <div class="cpt-zone cpt-theirs"><div class="zl"><b>Services you already use</b><span>with your own accounts, only when you turn them on</span></div>

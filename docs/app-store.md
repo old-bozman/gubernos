@@ -56,7 +56,7 @@ tasks,to-do,habits,planner,productivity,agents,AI,markdown,obsidian,icloud,weekl
 ## App Privacy ("nutrition label")
 
 Answer **Data Not Collected**. Why it holds: the developer has no server; the app sends data only to the user's own Mac (an
-address they enter, over their Tailscale) and Apple's iCloud and APNs; Apple Health values are written into the user's own files.
+address they enter, served over HTTPS by Tailscale on that Mac; only devices paired with it get in) and Apple's iCloud and APNs; Apple Health values are written into the user's own files.
 Bug reports become GitHub issues posted by the user from their own Mac with their own GitHub account (optional, user-initiated,
 from the Mac app, not the iOS app). TestFlight crash logs are Apple's and don't count. Matches `PrivacyInfo.xcprivacy` (no collected data types, no tracking).
 
@@ -82,7 +82,7 @@ Sign-in: **not required** (no account exists).
 > 3. The Protocol screen → + New habit (e.g. "10,000 steps", from Apple Health: permission asked then) → tap it to check it off.
 > 4. Widgets: "Add to Gubernos", "Habits", "Protocol". Siri: "Add to Gubernos".
 >
-> Agents, the chat and calendar planning need the companion Mac app (free, open source: github.com/old-bozman/gubernos), which runs on the user's own Mac; the iPhone connects to it over the user's private Tailscale network. Without it these screens say "needs your Mac" — that's expected, not an error.
+> Agents, the chat and calendar planning need the companion Mac app (free, open source: github.com/old-bozman/gubernos), which runs on the user's own Mac; the iPhone connects to it over HTTPS (Tailscale on the user's Mac gives it the address) after pairing with a code the Mac shows; only paired devices get in. Without it these screens say "needs your Mac" — that's expected, not an error.
 >
 > HealthKit: read steps, active energy, water, daylight, mindful minutes, workouts, sleep (to tick off the user's habits); write mindful minutes from the app's meditation timer. Nothing leaves the user's devices and iCloud folder.
 
