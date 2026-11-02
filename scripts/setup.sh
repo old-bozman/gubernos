@@ -8,7 +8,9 @@
 #                            [--model claude|codex|gemini] [--voice-language en-US|ru-RU|…|mixed]
 #   scripts/setup.sh model claude|codex|gemini   the model behind the app (lib/llm.js; Settings → Agents → Model)
 #   scripts/setup.sh voice-language LOCALE|mixed the language spoken to the app (Settings → Voice; lib/voice.js)
-#   scripts/setup.sh phone [--private]           HTTPS for the phone: Tailscale Funnel on this Mac (--private: serve, Tailscale on the phone too)
+#   scripts/setup.sh phone [--private]           HTTPS for the phone: Tailscale Funnel on this Mac (--private: serve, Tailscale on the phone too);
+#                                                gets Tailscale first when it's missing (get-tailscale)
+#   scripts/setup.sh get-tailscale               only that: download Tailscale's installer, check its signature, open it, wait for the login
 #   scripts/setup.sh voice                       Whisper (MLX, Apple Silicon): Russian, mixed languages, accents. Without it the
 #                                                Mac's own speech models hear one language each (macOS 26+, nothing to install)
 #   scripts/setup.sh obsidian                    Dataview + Templater plugins in a vault that is its own Obsidian vault
@@ -146,15 +148,43 @@ install() {
 
 ts() { command -v tailscale >/dev/null && tailscale "$@" || /Applications/Tailscale.app/Contents/MacOS/Tailscale "$@"; }
 
+# Tailscale for this Mac, from Tailscale's own download (no App Store, no Homebrew): the official installer, its signature
+# checked, opened in macOS Installer. The person clicks Install, types the Mac's password (it adds a network extension),
+# allows the VPN configuration and logs in in the browser; this waits for each and says what to do.
+TS_PKG="https://pkgs.tailscale.com/stable/Tailscale-latest-macos.pkg"
+TS_SIGNER="Developer ID Installer: Tailscale Inc. (W5364U7YZB)"
+get-tailscale() {
+  if [[ ! -d /Applications/Tailscale.app ]]; then
+    local tmp; tmp="$(mktemp -d)"
+    echo "  downloading Tailscale (its official installer, ~25 MB)…"
+    curl -fsSL "$TS_PKG" -o "$tmp/Tailscale.pkg" || die "couldn't download Tailscale ($TS_PKG)"
+    pkgutil --check-signature "$tmp/Tailscale.pkg" 2>/dev/null | grep -qF "$TS_SIGNER" \
+      || die "the Tailscale installer isn't signed by Tailscale Inc. — not opening it"
+    ok "downloaded and checked: signed by Tailscale Inc."
+    echo "  macOS Installer opens now: Continue → Install, then your Mac's password (Tailscale adds a network extension)."
+    open -W "$tmp/Tailscale.pkg"
+    rm -rf "$tmp"
+    [[ -d /Applications/Tailscale.app ]] || die "Tailscale wasn't installed (the Installer was closed?) — run this again"
+    ok "Tailscale installed"
+  fi
+  if ! ts status >/dev/null 2>&1; then
+    open -a Tailscale
+    echo "  Tailscale opens: if macOS asks, allow its system extension (System Settings → Privacy & Security, or Login Items &"
+    echo "  Extensions) and its VPN configuration (Allow). Then click Log in (the Tailscale icon in the menu bar) and sign in"
+    echo "  in the browser with any Google, Apple, Microsoft or GitHub account. Waiting for that (up to 10 minutes)…"
+    local i; for i in $(seq 1 200); do ts status >/dev/null 2>&1 && break; sleep 3; done
+    ts status >/dev/null 2>&1 || die "Tailscale isn't logged in yet — run this again when it is"
+  fi
+  ok "Tailscale is running and logged in"
+}
+
 phone() {
   # The iPhone app reaches this Mac over HTTPS through Tailscale, installed and logged in on this Mac only:
   #   (default) Funnel: a public https://<mac>.<tailnet>.ts.net address; the phone needs nothing but the app and the pairing
   #             code (lib/pair.js: unpaired requests get nothing, repeated wrong codes are turned away)
   #   --private Serve: reachable only inside the tailnet, so the phone needs Tailscale too (logged in, VPN On Demand)
   local mode=funnel; [[ "${1:-}" == --private ]] && mode=serve
-  if ! ts status >/dev/null 2>&1; then
-    die "Tailscale isn't running or isn't logged in on this Mac: install it from https://tailscale.com/download/mac, open it and log in (any Google, Apple, Microsoft or GitHub account), then run this again"
-  fi
+  get-tailscale
   # pairing first: from now on only paired devices get in (an existing token stays, so paired devices stay paired)
   local pf="${GUBERNOS_CONFIG_DIR:-$HOME/.config/gubernos}/pair.json"
   node -e 'const fs=require("fs"),f=process.argv[1];let s={};try{s=JSON.parse(fs.readFileSync(f,"utf8"))}catch{}
@@ -232,4 +262,4 @@ restart() { launchctl kickstart -k "gui/$(id -u)/$LABEL" && wait_up && ok "resta
 status() { launchctl print "gui/$(id -u)/$LABEL" 2>/dev/null | grep -E "state|pid" | head -2; curl -sf "http://127.0.0.1:$(port)/api/state" >/dev/null && ok "answering on $(port)" || no "not answering on $(port)"; }
 
 cmd="${1:-check}"; shift || true
-case "$cmd" in check|install|model|voice-language|phone|voice|obsidian|awake|calendar|restart|status) "$cmd" "$@";; *) die "unknown command $cmd";; esac
+case "$cmd" in check|install|model|voice-language|get-tailscale|phone|voice|obsidian|awake|calendar|restart|status) "$cmd" "$@";; *) die "unknown command $cmd";; esac

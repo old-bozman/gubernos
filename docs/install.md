@@ -51,8 +51,8 @@ On the Mac the app is at http://127.0.0.1:4747 (Safari → File → Add to Dock 
 
 Your agent does this with you if you said you have an iPhone; you can also do it later: Gubernos on the Mac → ☰ → **Settings** → **Connections** → **Connect your iPhone**. That screen shows two codes and a ✓ when the phone is in.
 
-1. **Tailscale on the Mac** (nothing on the phone): install it from https://tailscale.com/download/mac and sign in with any Google, Apple, Microsoft or GitHub account.
-2. Tell your agent: **"connect my phone"** (that's `scripts/setup.sh phone`). The first time Tailscale shows login.tailscale.com links: open them and allow HTTPS and Funnel. Your Mac gets an HTTPS address the phone reaches from anywhere.
+1. Tell your agent: **"connect my phone"** (that's `scripts/setup.sh phone`). It gets **Tailscale** for the Mac (nothing goes on the phone): its official installer opens, you click Install and type your Mac's password, allow its network extension, and sign in in the browser with any Google, Apple, Microsoft or GitHub account.
+2. The first time, Tailscale shows two login.tailscale.com links: open them and allow HTTPS and Funnel. Your Mac gets an HTTPS address the phone reaches from anywhere.
 3. Point the **iPhone camera** at the code on the Connect your iPhone screen → Open in Gubernos. The app remembers the Mac and connects: agents, chat and the calendar appear.
 
 Only devices with the code get in: everyone else gets nothing, and an address that keeps trying wrong codes is turned away. Lost a phone? On the Mac, Settings → Connections → **New code**: every old device is unpaired. Rather not have the Mac on the internet at all? `scripts/setup.sh phone --private` keeps it inside your Tailscale network; then the iPhone needs Tailscale too (same account, VPN On Demand on).
