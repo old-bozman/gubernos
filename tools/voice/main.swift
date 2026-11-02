@@ -17,35 +17,46 @@ func emit(_ obj: [String: Any]) {
   FileHandle.standardOutput.write(data + Data("\n".utf8))
 }
 
+// The module for a language, its locale, and which engine: the newer SpeechTranscriber where this Mac has it (isAvailable:
+// not on every Mac, e.g. not in a virtual machine), else DictationTranscriber.
 @available(macOS 26, *)
-func module(for id: String) async -> (any SpeechModule, String, () -> AsyncThrowingStream<String, Error>)? {
+func module(for id: String) async -> (any SpeechModule, Locale, String, () -> AsyncThrowingStream<String, Error>)? {
   let loc = Locale(identifier: id)
-  if let l = await SpeechTranscriber.supportedLocale(equivalentTo: loc) {
+  if SpeechTranscriber.isAvailable, let l = await SpeechTranscriber.supportedLocale(equivalentTo: loc) {
     let m = SpeechTranscriber(locale: l, preset: .transcription)
-    return (m, "speech", { AsyncThrowingStream { c in Task { do { for try await r in m.results { c.yield(String(r.text.characters)) }; c.finish() } catch { c.finish(throwing: error) } } } })
+    return (m, l, "speech", { AsyncThrowingStream { c in Task { do { for try await r in m.results { c.yield(String(r.text.characters)) }; c.finish() } catch { c.finish(throwing: error) } } } })
   }
   if let l = await DictationTranscriber.supportedLocale(equivalentTo: loc) {
     let m = DictationTranscriber(locale: l, preset: .shortDictation)
-    return (m, "dictation", { AsyncThrowingStream { c in Task { do { for try await r in m.results { c.yield(String(r.text.characters)) }; c.finish() } catch { c.finish(throwing: error) } } } })
+    return (m, l, "dictation", { AsyncThrowingStream { c in Task { do { for try await r in m.results { c.yield(String(r.text.characters)) }; c.finish() } catch { c.finish(throwing: error) } } } })
   }
   return nil
+}
+
+// A language's model must be reserved before macOS downloads it ("not subscribed to transcription.en" otherwise); an app
+// may reserve only a few, so the others go (Gubernos hears one language at a time)
+@available(macOS 26, *)
+func ensureModel(_ m: any SpeechModule, _ l: Locale) async throws {
+  for r in await AssetInventory.reservedLocales where r.identifier != l.identifier { await AssetInventory.release(reservedLocale: r) }
+  try await AssetInventory.reserve(locale: l)
+  if let req = try await AssetInventory.assetInstallationRequest(supporting: [m]) { try await req.downloadAndInstall() }
 }
 
 @available(macOS 26, *)
 func run(_ a: [String]) async throws {
   switch a.first {
   case "locales":
-    let speech = await SpeechTranscriber.supportedLocales.map(\.identifier).sorted()
+    let speech = SpeechTranscriber.isAvailable ? await SpeechTranscriber.supportedLocales.map(\.identifier).sorted() : []
     let dictation = await DictationTranscriber.supportedLocales.map(\.identifier).sorted()
     emit(["speech": speech, "dictation": dictation])
   case "prepare" where a.count >= 2:
-    guard let (m, engine, _) = await module(for: a[1]) else { return emit(["error": "no speech model for \(a[1]) on this Mac"]) }
-    if let req = try await AssetInventory.assetInstallationRequest(supporting: [m]) { try await req.downloadAndInstall() }
+    guard let (m, l, engine, _) = await module(for: a[1]) else { return emit(["error": "no speech model for \(a[1]) on this Mac"]) }
+    try await ensureModel(m, l)
     emit(["ok": true, "engine": engine])
   case "transcribe" where a.count >= 4:
     let t0 = Date()
-    guard let (m, engine, results) = await module(for: a[1]) else { return emit(["error": "no speech model for \(a[1]) on this Mac"]) }
-    if let req = try await AssetInventory.assetInstallationRequest(supporting: [m]) { try await req.downloadAndInstall() }
+    guard let (m, l, engine, results) = await module(for: a[1]) else { return emit(["error": "no speech model for \(a[1]) on this Mac"]) }
+    try await ensureModel(m, l)
     let analyzer = SpeechAnalyzer(modules: [m])
     let words = a[2] == "-" ? [] : a[2].split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
     if !words.isEmpty { let ctx = AnalysisContext(); ctx.contextualStrings = [.general: words]; try await analyzer.setContext(ctx) }
