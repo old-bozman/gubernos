@@ -215,6 +215,7 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   try {
     // pairing (lib/pair.js): other devices need the Mac's token once it is required; the Mac itself always gets in
+    if (Pair.blocked(req)) return Pair.tooMany(req, res); // too many wrong codes from one client (lib/pair.js)
     if (url.pathname === '/pair') return Pair.pairPage(req, res, url);
     if (!Pair.allowed(req)) return Pair.deny(req, res, url);
     if (url.pathname.startsWith('/api/pair')) {

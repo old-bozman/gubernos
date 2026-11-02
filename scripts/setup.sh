@@ -8,7 +8,7 @@
 #                            [--model claude|codex|gemini] [--voice-language en-US|ru-RU|…|mixed]
 #   scripts/setup.sh model claude|codex|gemini   the model behind the app (lib/llm.js; Settings → Agents → Model)
 #   scripts/setup.sh voice-language LOCALE|mixed the language spoken to the app (Settings → Voice; lib/voice.js)
-#   scripts/setup.sh phone                       HTTPS for the phone via Tailscale (tailscale serve)
+#   scripts/setup.sh phone [--private]           HTTPS for the phone: Tailscale Funnel on this Mac (--private: serve, Tailscale on the phone too)
 #   scripts/setup.sh voice                       Whisper (MLX, Apple Silicon): Russian, mixed languages, accents. Without it the
 #                                                Mac's own speech models hear one language each (macOS 26+, nothing to install)
 #   scripts/setup.sh obsidian                    Dataview + Templater plugins in a vault that is its own Obsidian vault
@@ -145,19 +145,28 @@ install() {
 ts() { command -v tailscale >/dev/null && tailscale "$@" || /Applications/Tailscale.app/Contents/MacOS/Tailscale "$@"; }
 
 phone() {
-  ts status >/dev/null 2>&1 || die "Tailscale isn't running or you're not logged in: open the Tailscale app on this Mac and the iPhone, log in with the same account"
-  # The first time Tailscale may print a link to enable HTTPS / Serve for the tailnet: open it, approve, and the command continues.
-  echo "  If a login.tailscale.com link appears below, open it and approve HTTPS for your tailnet."
-  ts serve --bg "$(port)"
+  # The iPhone app reaches this Mac over HTTPS through Tailscale, installed and logged in on this Mac only:
+  #   (default) Funnel: a public https://<mac>.<tailnet>.ts.net address; the phone needs nothing but the app and the pairing
+  #             code (lib/pair.js: unpaired requests get nothing, repeated wrong codes are turned away)
+  #   --private Serve: reachable only inside the tailnet, so the phone needs Tailscale too (logged in, VPN On Demand)
+  local mode=funnel; [[ "${1:-}" == --private ]] && mode=serve
+  if ! ts status >/dev/null 2>&1; then
+    die "Tailscale isn't running or isn't logged in on this Mac: install it from https://tailscale.com/download/mac, open it and log in (any Google, Apple, Microsoft or GitHub account), then run this again"
+  fi
+  # pairing first: from now on only paired devices get in (an existing token stays, so paired devices stay paired)
+  local pf="${GUBERNOS_CONFIG_DIR:-$HOME/.config/gubernos}/pair.json"
+  node -e 'const fs=require("fs"),f=process.argv[1];let s={};try{s=JSON.parse(fs.readFileSync(f,"utf8"))}catch{}
+    s.token||=require("crypto").randomBytes(24).toString("base64url");s.required=true;
+    fs.mkdirSync(require("path").dirname(f),{recursive:true});fs.writeFileSync(f,JSON.stringify(s,null,1)+"\n",{mode:0o600})' "$pf"
+  # The first time Tailscale prints login.tailscale.com links (turn on HTTPS, and for Funnel allow it): open, approve, it goes on.
+  echo "  If a login.tailscale.com link appears below, open it and approve (HTTPS certificates, Funnel); the command then continues."
+  if [[ $mode == funnel ]]; then ts funnel --bg "$(port)"; else ts serve --bg "$(port)"; fi
   local host; host=$(ts status --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).Self.DNSName.replace(/\.$/,"")))')
   $KIT config --public-url "https://$host" >/dev/null
-  # pairing (lib/pair.js): a new install lets in only devices that scanned the Mac's code; an existing pair.json is kept
-  local pf="${GUBERNOS_CONFIG_DIR:-$HOME/.config/gubernos}/pair.json"
-  [[ -f "$pf" ]] || node -e 'const fs=require("fs");fs.writeFileSync(process.argv[1],JSON.stringify({token:require("crypto").randomBytes(24).toString("base64url"),required:true},null,1)+"\n",{mode:0o600})' "$pf"
   restart >/dev/null
-  ok "phone URL: https://$host  (only your Tailscale devices can reach it, and only paired ones get in)"
-  echo "  Pair the iPhone: open http://127.0.0.1:$(port) on this Mac → Settings → Connections → Pair a device → Show code,"
-  echo "  and point the iPhone's Camera at it (the app opens and connects)."
+  if [[ $mode == funnel ]]; then ok "phone URL: https://$host — reachable from anywhere, only paired devices get in (no Tailscale needed on the phone)"
+  else ok "phone URL: https://$host — only your Tailscale devices reach it (the phone needs Tailscale, logged in, VPN On Demand on)"; fi
+  echo "  Connect the iPhone: open http://127.0.0.1:$(port)/#/phone on this Mac and follow the two codes there."
 }
 
 voice() {

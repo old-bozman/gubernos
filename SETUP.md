@@ -50,8 +50,7 @@ probe with `git`, `python3` or `make` first — on a clean Mac each is a stub th
 (which asks for ~19 GB free), and Gubernos doesn't need them. Then work in `~/gubernos` and read this
 file from there (it may be newer than the copy you fetched).
 
-The iPhone app comes from TestFlight: https://testflight.apple.com/join/rBUGmgJG — give them the link when you reach the
-phone step (they install TestFlight first, then open the link on the iPhone → Accept → Install).
+The iPhone app comes from TestFlight; step 3b walks them through it.
 
 ### 1. Check the Mac
 
@@ -59,7 +58,7 @@ Run `scripts/setup.sh check`. Every "Required" line must be ✓:
 - node missing or older than 20 → run `install.sh` again (step 0): it puts Node in `~/.gubernos/node`. No Homebrew needed.
 The "Model" lines show which AI CLIs are here and signed in: at least one must be ✓ (if none is, help them install and sign in to the one their plan covers — the table above). Note the optional lines; they decide which later steps to offer.
 
-### 2. Ask the person (all five are required; ask them together)
+### 2. Ask the person (all six are required; ask them together)
 
 1. **Name** to use, and the **language** for task titles and documents (default: the language they write to you in).
 2. **Where the files live.** Always in iCloud — it is the backup, it brings the files to the iPhone (Obsidian) and to other Macs (an assistant running there). `setup.sh` refuses other places. Check that iCloud Drive is on (`check` shows it). The choices:
@@ -70,6 +69,7 @@ The "Model" lines show which AI CLIs are here and signed in: at least one must b
 3. **Which model** the app should use, when more than one is ✓ (default: the one running this setup). It reads their inbox and voice notes, answers in the app's chat and runs agents on tasks — on their own plan. They can switch later in Settings → Agents → Model.
 4. Is this Mac **always on** (a desktop, or a laptop that stays plugged in)? Then `--awake` keeps it from sleeping on power, so the phone app and notifications work all day. A laptop they carry around works too; the app is simply unavailable while it sleeps.
 5. **Voice**: which language will they speak to the app (the mic button)? Default: the language from question 1. One language that this Mac's own speech model knows (English, German, French, Spanish, Italian, Japanese, Korean, Chinese and more; `tools/voice/gubernos-voice locales` lists them; macOS 26+) works right away, nothing to install. **Russian**, **several languages mixed**, or a **strong accent** they want heard well: recommend Whisper (`scripts/setup.sh voice` in step 4, a ~1.6 GB download on first use, Apple Silicon); it is much better there. Pass `--voice-language <locale>` (`en-US`, `ru-RU`, …) or `mixed`.
+6. **iPhone**: do they have one? Then they get the Gubernos iPhone app and connect it to this Mac in step 3b (about 10 minutes: Tailscale on this Mac, two codes to scan). Without an iPhone, skip 3b; the app works in a browser too.
 
 ### 3. Install
 
@@ -83,10 +83,19 @@ Then tell them:
 - **Keep the folder downloaded**: Finder → iCloud Drive (or Obsidian) → right-click the system folder → **Keep Downloaded**. Otherwise macOS may offload files and the app can't read them.
 - **Open the app**: `open http://127.0.0.1:4747`. For a separate app window: Safari → File → **Add to Dock**.
 
+### 3b. iPhone (when they have one)
+
+Lead them through it; don't stop at a link. Open the guide on the Mac: `open "http://127.0.0.1:<port>/#/phone"` — it shows both codes and turns to ✓ when the phone has connected.
+1. **The app**: they scan code 1 with the iPhone's Camera (TestFlight from the App Store if asked, then Accept → Install) and open Gubernos once (allow notifications). It already works on its own from here.
+2. **Tailscale on this Mac only** (the phone needs none): if `scripts/setup.sh check` shows it missing, they install it from https://tailscale.com/download/mac (the Mac App Store, or the standalone download), open it and log in in the browser with any Google, Apple, Microsoft or GitHub account. You can't do the sign-in for them.
+3. `scripts/setup.sh phone`: turns on Tailscale Funnel, a public HTTPS address for this Mac that only paired devices can use (lib/pair.js; repeated wrong codes are turned away). The first time it may print login.tailscale.com links (turn on HTTPS certificates; allow Funnel): give each link, they approve, it continues. Someone who'd rather keep the Mac off the internet: `scripts/setup.sh phone --private` instead, and Tailscale goes on the iPhone too (same account, VPN On Demand on).
+4. **Connect**: the guide's code 2 appears; they scan it with the Camera → Open in Gubernos. Wait for ✓ on the guide (or `curl -s 127.0.0.1:<port>/api/pair` shows `seenAt`), then ask them to check that the phone shows their tasks.
+5. Tell them: the Mac has to be awake for agents, chat and voice on the phone (offer `--awake` / `scripts/setup.sh awake on` if they didn't choose it).
+
 ### 4. Optional extras — offer each, do what they want
 
 - **Bug reports to the developer**: `install` sets this up when the repo isn't theirs (it says so) — reports from the app's Report button also open a GitHub issue in the repo, and answers come back to their task. It needs `gh` logged in (`gh auth login`); if `check` shows it missing, install with `brew install gh`.
-- **Phone** (the Gubernos iPhone app, from TestFlight / the App Store; needs Tailscale on the Mac and the iPhone, logged in with the same account: https://tailscale.com/download — on the iPhone turn on VPN On Demand): `scripts/setup.sh phone` sets up HTTPS for the phone and requires pairing. The first time Tailscale may show a link to enable HTTPS for their tailnet: they open it and approve. Then pairing: on the Mac, the app → Settings → Connections → **Pair a device** → Show code; they scan it with the iPhone camera → Open in Gubernos. If they made their system on the iPhone first (Start a new system), the vault in step 2 is that folder (choice D). The Mac must be awake for agents, chat and calendar on the phone.
+- **Phone later**: if they skipped 3b, it can be done any time the same way (Settings → Connections → Connect your iPhone).
 - **Keep the Mac awake**: if this Mac should serve the phone all day, `scripts/setup.sh awake on` — a login item running `caffeinate -s`: no sleep while on power (on battery it sleeps as usual; a laptop with its lid closed still sleeps). `awake off` undoes it, `awake status` checks. Same as `--awake` at install.
 - **Voice**: with one language the Mac's own model knows, the mic already works (install said so). Whisper (`scripts/setup.sh voice`, Apple Silicon): needed for Russian or mixed languages, better with accents; no Homebrew or Command Line Tools (it gets its own Python via `uv`), models ~1.6 GB on first use. Language later: the app → Settings → Voice.
 - **Obsidian** (option A or C with Obsidian installed): `scripts/setup.sh obsidian` installs the Dataview and Templater plugins into the vault; then in Obsidian: **Open folder as vault** → the system folder → trust the plugins when asked. (For option B their vault already has its own plugin setup — leave it.)

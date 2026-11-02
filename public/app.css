@@ -1662,3 +1662,16 @@ button.dc-ev:hover, .dc-ev.cal-hl { box-shadow: 0 0 0 2px var(--accent); z-index
 .pomo-len-u { font-size: 13px; color: var(--muted); }
 .pomo-len input, #set-sprint-in { width: 72px; font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); text-align: center; }
 .set-select { width: auto; max-width: 260px; }
+/* #/phone: Connect your iPhone (two QR codes) */
+.phone-setup .ph-lead { color: var(--ink-2); margin: 0 0 18px; max-width: 620px; }
+.ph-steps { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 22px; counter-reset: ph; }
+.ph-steps > li { counter-increment: ph; border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
+.ph-steps > li > h3 { margin: 0 0 10px; font-size: 16px; }
+.ph-steps > li > h3::before { content: counter(ph) ". "; color: var(--muted); }
+.ph-steps > li.ph-ok { border-color: var(--done); }
+.ph-row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
+.phone-setup .pair-qr { width: 180px; padding: 8px; border-radius: 12px; background: #fff; line-height: 0; flex: none; }
+.phone-setup .pair-qr svg { width: 100%; height: auto; }
+.ph-text { flex: 1; min-width: 220px; margin: 0; }
+.ph-text p { margin: 0 0 8px; }
+.ph-sel { user-select: all; word-break: break-all; }

@@ -76,7 +76,7 @@ is `public/concept.js` (`node scripts/build-concept.mjs` refreshes the site and 
 The app over the vault of Markdown files: the files are the only store, no database. Obsidian and agents keep working on
 the same files.
 
-Runs on a Mac, reached from the phone through Tailscale as a home-screen web app.
+Runs on a Mac; the iPhone app (or a home-screen web app) reaches it over HTTPS through Tailscale on the Mac (Funnel: nothing to install on the phone).
 **New here? [SETUP.md](SETUP.md)** (the short version, iPhone first: [docs/install.md](docs/install.md)) — clone, open your AI agent (Claude Code, Codex or Gemini CLI), say "run SETUP.md": it installs the app, creates the vault from
 `kit/vault/` and onboards you. Working on the code? Read [AGENTS.md](AGENTS.md).
 
@@ -230,7 +230,7 @@ Whisper models download to `~/.cache/huggingface` on first use.
 - `deploy/gubernos.plist.template` → `~/Library/LaunchAgents/com.<user>.gubernos.plist` (setup.sh renders it): the server,
   started at login, restarted on crash. After server changes: `scripts/setup.sh restart` (UI-only changes: reload the page).
 - `deploy/gubernos-awake.plist.template` (`--awake`, or later `scripts/setup.sh awake on|off|status`): `caffeinate -s` — no system sleep on AC power (closing the lid still sleeps).
-- Phone: `scripts/setup.sh phone` = `tailscale serve --bg 4747` + the URL saved as `publicUrl` (tailnet only). The mic needs HTTPS.
+- Phone: `scripts/setup.sh phone` = `tailscale funnel --bg 4747` (a public HTTPS address; only paired devices get in, lib/pair.js) + the URL saved as `publicUrl`; `--private` = `tailscale serve` (tailnet only, Tailscale on the phone too). The mic needs HTTPS. On the Mac, `#/phone` walks through getting the app and pairing.
   iPhone: open it in Safari → Share → Add to Home Screen.
 - Desktop: open the same URL in Safari → File → Add to Dock — a separate app window with its own Dock icon, so it looks native (macOS 14+).
 - Logs: `server.log`; voice events from the phone are the `[voice]` lines.

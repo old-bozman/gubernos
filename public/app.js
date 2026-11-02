@@ -165,7 +165,8 @@ const VIEWS = {
   logbook: { title: 'Completed', icon: '✓', key: '7' },
   projects: { title: 'Projects', icon: '▤', count: () => S.data.projects.filter((p) => p.status === 'active').length }, // the phone's list (More → Projects)
   more: { title: 'More', icon: '…' }, // the phone's fifth tab: pinned, projects, goals, the other screens
-  how: { title: 'How it works', icon: '?' }, // the personal OS explained (public/concept.js); More and Settings → About
+  how: { title: 'How it works', icon: '?' },
+  phone: { title: 'Connect your iPhone', icon: '▯' }, // on the Mac: the app from TestFlight, then the pairing code (SETUP.md; Settings → Connections) // the personal OS explained (public/concept.js); More and Settings → About
   reflect: { title: 'Daily reflection', icon: '☾' },
   weekly: { title: 'Weekly review', icon: '↻', key: '8' },
   settings: { title: 'Settings', icon: '⚙', key: '9' },
@@ -530,7 +531,7 @@ function toggleExpanded(id, force) {
 let flat = [];
 // ---------- group by (per view, remembered in this browser) ----------
 const GROUPS = { default: 'Default', project: 'Project', priority: 'Priority', owner: 'Owner', category: 'Category' };
-const groupModes = () => (['inbox', 'project'].includes(S.view) ? ['default', 'priority', 'owner'] : ['logbook', 'weekly', 'reflect', 'settings', 'goals', 'decisions', 'week', 'plan', 'day', 'more', 'projects', 'how'].includes(S.view) ? [] : ['default', 'project', 'category', 'priority', 'owner']);
+const groupModes = () => (['inbox', 'project'].includes(S.view) ? ['default', 'priority', 'owner'] : ['logbook', 'weekly', 'reflect', 'settings', 'goals', 'decisions', 'week', 'plan', 'day', 'more', 'projects', 'how', 'phone'].includes(S.view) ? [] : ['default', 'project', 'category', 'priority', 'owner']);
 function groupMode() {
   let m = 'default';
   try { m = localStorage.getItem(`group:${S.view}`) || 'default'; } catch { /* private mode */ }
@@ -617,6 +618,7 @@ function renderMain() {
   }
   if (S.view === 'more') { html += moreHtml(); html += '</div>'; return paintMain(html); }
   if (S.view === 'how') { html += howHtml(); html += '</div>'; return paintMain(html); }
+  if (S.view === 'phone') { html += phoneHtml(); html += '</div>'; return paintMain(html); }
   if (S.view === 'projects') { html += projectsPageHtml(); html += '</div>'; return paintMain(html); }
   if (S.view === 'decisions') { html += decisionsHtml(); html += '</div>'; return paintMain(html); }
   if (S.view === 'week') { html += weekHtml(); html += '</div>'; return paintMain(html); }
@@ -4053,6 +4055,7 @@ function settingsHtml() {
     ${agentsSettingsHtml()}
     ${g('Connections')}
     <div class="set-row"><div class="set-l">Google<small>calendar for Plan the day; mail, contacts, docs for agents</small></div><div class="set-note">${googleNote()}</div></div>
+    ${local ? '' : '<div class="set-row"><div class="set-l">Connect your iPhone<small>the app from TestFlight, then the pairing code: a few minutes, step by step</small></div><a class="btn" href="#/phone">Open</a></div>'}
     ${local ? '' : pairHtml()}
     ${window.gubernosNative ? '<div class="set-row"><div class="set-l">iPhone app<small>Mac address, system folder in iCloud</small></div><button class="btn" data-act="native-settings">Open</button></div>' : ''}
     <div class="set-row"><div class="set-l">Profile<small>profile.md in the vault</small></div><div class="set-note">${esc(ME().name)} · ${esc(ME().categories.join(', '))}${ME().assistant ? ` · assistant ${esc(ME().assistant.name)}` : ''}</div></div>
@@ -4079,15 +4082,50 @@ function pairHtml() {
       ${p.local ? '<div class="set-mf"><button class="linkbtn" data-act="set-pair-rotate">New code — unpairs every device</button></div>' : ''}</div>
       ${seg('set-pair-required', p.required ? 'on' : 'off', [['off', 'Off'], ['on', 'On']], !p.local)}</div>`;
 }
-// the QR code itself as SVG (public/vendor/qrcode.js, loaded the first time it is shown, then the page is drawn again)
-function pairQr() {
-  if (!S.pair?.appLink) return '';
+// a QR code as SVG (public/vendor/qrcode.js, loaded the first time one is shown, then the page is drawn again)
+function qrSvg(text) {
+  if (!text) return '';
   if (!window.qrcode) {
-    if (!pairQr.loading) { pairQr.loading = true; const sc = document.createElement('script'); sc.src = '/vendor/qrcode.js'; sc.onload = () => { if (S.view === 'settings') renderMain(); }; document.head.append(sc); }
+    if (!qrSvg.loading) { qrSvg.loading = true; const sc = document.createElement('script'); sc.src = '/vendor/qrcode.js'; sc.onload = () => { if (['settings', 'phone'].includes(S.view)) renderMain(); }; document.head.append(sc); }
     return '';
   }
-  const q = window.qrcode(0, 'M'); q.addData(S.pair.appLink); q.make();
+  const q = window.qrcode(0, 'M'); q.addData(text); q.make();
   return q.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+}
+const pairQr = () => qrSvg(S.pair?.appLink);
+
+// #/phone, on the Mac: get the iPhone app (TestFlight), connect it (the pairing code), ✓ when it has reached the Mac.
+// The setup agent opens it (SETUP.md → iPhone); Settings → Connections → Connect your iPhone.
+const TESTFLIGHT = 'https://testflight.apple.com/join/rBUGmgJG';
+function phoneHtml() {
+  const p = S.pair;
+  if (!p) { if (p !== false) { S.pair = false; api('GET', '/api/pair').then((x) => { S.pair = x; if (S.view === 'phone') renderMain(); }).catch(() => {}); } return ''; }
+  phonePoll();
+  if (!p.local) return '<div class="empty">Open this screen on your Mac: it shows the codes to scan with the iPhone.</div>';
+  const host = (p.publicUrl || '').replace(/^https?:\/\//, '');
+  const ago = p.seenAt ? (Date.now() - p.seenAt < 90e3 ? 'just now' : `${Math.round((Date.now() - p.seenAt) / 60e3)} min ago`) : '';
+  return `<div class="phone-setup">
+    <p class="ph-lead">Your system on the phone: Today, habits, reminders, voice, the Watch. Two codes, each scanned with the iPhone’s Camera.</p>
+    <ol class="ph-steps">
+      <li><h3>Get the app</h3><div class="ph-row"><div class="pair-qr">${qrSvg(TESTFLIGHT)}</div>
+        <div class="ph-text"><p>Point the iPhone’s Camera at the code and open the link. If it asks, install <b>TestFlight</b> from the App Store first, then come back to the link: <b>Accept</b> → <b>Install</b>.</p>
+        <p class="muted">Or open it on the iPhone: <span class="ph-sel">${TESTFLIGHT}</span></p></div></div></li>
+      <li><h3>Connect it to this Mac</h3>${p.publicUrl ? `<div class="ph-row"><div class="pair-qr">${qrSvg(p.appLink)}</div>
+        <div class="ph-text"><p>Open ${esc(APP_NAME)} on the iPhone once and allow notifications. Then point the Camera at this code → <b>Open in ${esc(APP_NAME)}</b>.</p>
+        <p class="muted">The phone reaches this Mac at ${esc(host)}, from anywhere, as long as the Mac is awake. Only devices with this code get in.</p></div></div>`
+    : `<p class="ph-text">This Mac isn’t reachable from the phone yet. Your agent sets it up: <code>scripts/setup.sh phone</code> (Tailscale, on this Mac only). The code appears here when it’s done.</p>`}</li>
+      <li class="${p.seenAt ? 'ph-ok' : ''}"><h3>${p.seenAt ? '✓ Connected' : 'Waiting for the iPhone…'}</h3>
+        <p class="ph-text">${p.seenAt ? `A paired device reached this Mac ${ago}. That’s it: the app on the phone now shows your system.` : 'This turns into ✓ once the phone has connected.'}</p></li>
+    </ol></div>`;
+}
+// while #/phone is open: ask every 3 s whether the phone has come (and whether setup.sh phone has given the Mac its address)
+function phonePoll() {
+  if (phonePoll.t) return;
+  phonePoll.t = setTimeout(async () => {
+    phonePoll.t = null;
+    if (S.view !== 'phone') return;
+    try { const x = await api('GET', '/api/pair'); const changed = x.seenAt !== S.pair?.seenAt || x.publicUrl !== S.pair?.publicUrl; S.pair = x; if (changed && S.view === 'phone') renderMain(); else phonePoll(); } catch { phonePoll(); }
+  }, 3000);
 }
 // Settings → Today → Mac Focus: the Mac's Focus follows the Focus view, through two Shortcuts made once (lib/macfocus.js)
 S.macFocus = null;
