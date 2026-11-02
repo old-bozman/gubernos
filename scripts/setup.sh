@@ -100,8 +100,8 @@ install() {
   command -v node >/dev/null || die "node is missing — run install.sh (see SETUP.md)"
   echo "1/4 dependencies"; (cd "$APP" && npm ci --silent --no-audit --no-fund)
   echo "2/4 vault"; $KIT vault --vault "$vault" ${name:+--name "$name"} ${language:+--language "$language"} ${opath:+--obsidian-path "$opath"}
-  [[ -n "$llm" ]] && model "$llm"
   echo "3/4 config"; $KIT config --vault "$vault" ${p:+--port "$p"} ${ovault:+--obsidian-vault "$ovault"} ${opath:+--obsidian-path "$opath"} >/dev/null && ok "$HOME/.config/gubernos/config.json"
+  [[ -n "$llm" ]] && model "$llm" # after the config: the model is saved next to it
   # Bug reports also go to the app's GitHub repo as issues, unless this is the repo owner's own install.
   local repo me
   if [[ -d "$APP/.git" ]]; then repo=$(git -C "$APP" remote get-url origin 2>/dev/null | sed -E 's#^(https://github.com/|git@github.com:)##; s#\.git$##' || true)
