@@ -104,7 +104,7 @@ function things() {
 // ---------- Todoist (API v1, read only) ----------
 const TODOIST = process.env.GUBERNOS_TODOIST_API || 'https://api.todoist.com/api/v1';
 async function ask(q) {
-  if (!process.stdin.isTTY) throw new Error('set TODOIST_TOKEN (Todoist → Settings → Integrations → Developer → API token)');
+  if (!process.stdin.isTTY) throw new Error('no terminal to ask in: copy your API token (Todoist → Settings → Integrations → Developer) and run\n  TODOIST_TOKEN=$(pbpaste) node scripts/import-tasks.mjs todoist');
   const rl = readline.createInterface({ input: process.stdin, output: process.stderr });
   const a = await new Promise((r) => rl.question(q, r)); rl.close(); return a.trim();
 }
