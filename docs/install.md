@@ -45,7 +45,7 @@ That model reads your inbox and voice notes, answers in the app's chat and runs 
 
 On the Mac the app is at http://127.0.0.1:4747 (Safari → File → Add to Dock opens it in its own window).
 
-**Agents** are ready right away, on your own plan. A task assigned to "agent" starts with ▶ Run on the task card; the result arrives as a push on the phone.
+**Agents** are ready right away, on your own plan. A task assigned to "agent" starts with ▶ Run on the task card; the result shows in the app (Agents). Pushes from the Mac to the iPhone app ("the agent finished") are coming soon; reminders and the morning plan already come from the phone itself.
 
 ## 3. Connect the iPhone to the Mac (5 minutes)
 
@@ -68,7 +68,7 @@ If the Mac sits at home on power, tell your agent **"keep my Mac awake"**: that'
 
 ## Report a bug or an idea
 
-From any screen: menu ☰ → **Report bug / idea**, or by voice: "bug: …", "app idea: …". The report becomes a **public** GitHub issue in the app's repository, under your GitHub account, so leave out private details. It holds your text, the screen name, the device and errors. Screenshots (yours, and a snapshot of the screen) go along too, which helps the most: they show your tasks, and anyone with the link can open them, so untick **Publish screenshots** to send only the text. A voice report opens the form first, so you see what goes out. The answer comes back as a push.
+From any screen: menu ☰ → **Report bug / idea**, or by voice: "bug: …", "app idea: …". It goes to the developer privately (no account needed) with your text, the screen name, the device and errors. Screenshots (yours, and a snapshot of the screen) go along too, which helps the most: they show your tasks, and only the developer sees them; untick **Send screenshots** to send only the text. The answer comes back to the report's task (Gubernos feedback): a question → **Reply**; done → **Works now** or **Still wrong**.
 
 In TestFlight you can also take a screenshot → Share Beta Feedback.
 
