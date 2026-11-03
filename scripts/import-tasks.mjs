@@ -122,8 +122,11 @@ async function todoist() {
   };
   const [projects, sections, tasks] = [await all('projects'), await all('sections'), await all('tasks')];
   const pById = new Map(projects.map((p) => [p.id, p])), sById = new Map(sections.map((s) => [s.id, s.name]));
+  // a project with projects under it is an area; "Someday/maybe" is someday
+  const parents = new Set(projects.map((p) => p.parent_id).filter(Boolean));
+  const kind = (p) => p.inbox_project ? 'inbox' : parents.has(p.id) ? 'area' : /^someday/i.test(p.name) ? 'someday' : 'project';
   const lists = new Map(projects.filter((p) => !p.is_archived && !p.is_deleted).map((p) => [p.id, clean({
-    name: p.inbox_project ? 'Inbox' : p.name, kind: p.inbox_project ? 'inbox' : 'project', area: p.parent_id ? pById.get(p.parent_id)?.name : null, notes: p.description, items: [],
+    name: p.inbox_project ? 'Inbox' : p.name, kind: kind(p), area: p.parent_id ? pById.get(p.parent_id)?.name : null, notes: p.description, items: [],
   })]));
   for (const l of lists.values()) l.items ||= [];
   const open = tasks.filter((t) => !t.is_deleted && (withDone || !t.checked));
