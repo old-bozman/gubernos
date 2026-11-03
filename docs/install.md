@@ -45,7 +45,7 @@ That model reads your inbox and voice notes, answers in the app's chat and runs 
 
 On the Mac the app is at http://127.0.0.1:4747 (Safari → File → Add to Dock opens it in its own window).
 
-**Agents** are ready right away, on your own plan. A task assigned to "agent" starts with ▶ Run on the task card; the result shows in the app (Agents). Pushes from the Mac to the iPhone app ("the agent finished") are coming soon; reminders and the morning plan already come from the phone itself.
+**Agents** are ready right away, on your own plan. A task assigned to "agent" starts with ▶ Run on the task card; the result arrives as a push on the phone (your Mac sends it through relay.gubernos.app, which signs it for Apple; it carries the notification text only).
 
 ## 3. Connect the iPhone to the Mac (5 minutes)
 
