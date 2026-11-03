@@ -4065,6 +4065,7 @@ function settingsHtml() {
     <div class="set-row"><div class="set-l">On this device<small>reminders, morning digest, agents</small></div><div>${notif}</div></div>
     <div class="set-row"><div class="set-l">Reminder pushes from the Mac<small>off if the iPhone app reminds you (no doubles)</small></div>${seg('set-reminder-push', st.reminderPush === false ? 'off' : 'on', [['off', 'Off'], ['on', 'On']])}</div>
     <div class="set-row"><div class="set-l">Morning &amp; evening pushes from the Mac<small>off if the iPhone app sends them (no doubles)</small></div>${seg('set-checkin-push', st.checkinPush === false ? 'off' : 'on', [['off', 'Off'], ['on', 'On']])}</div>
+    ${ME().feedbackRemote ? `<div class="set-row"><div class="set-l">Pushes through the relay<small>this Mac sends pushes to the iPhone app (agent finished, reminders…) through relay.gubernos.app, which signs them for Apple: the alert's text passes through, nothing is stored. Off = no pushes from this Mac</small></div>${seg('set-relay-push', st.relayPush === false ? 'off' : 'on', [['off', 'Off'], ['on', 'On']])}</div>` : ''}
     ${g('Agents')}
     ${local ? '' : modelSettingsHtml()}
     ${local ? '' : voiceSettingsHtml()}
@@ -4282,6 +4283,7 @@ document.addEventListener('click', (e) => {
   if (b.dataset.act === 'set-lunch-min') return saveSetting({ lunchMinutes: +v }).then(() => { S.planInfoAt = 0; });
   if (b.dataset.act === 'set-reminder-push') return saveSetting({ reminderPush: v === 'on' });
   if (b.dataset.act === 'set-checkin-push') return saveSetting({ checkinPush: v === 'on' });
+  if (b.dataset.act === 'set-relay-push') return saveSetting({ relayPush: v === 'on' });
   if (b.dataset.act === 'set-time-off') return saveSetting({ [b.dataset.key]: v === 'on' ? b.dataset.def : '' });
   if (b.dataset.act === 'set-reflect-format') return saveSetting({ reflectionFormat: v });
   if (b.dataset.act === 'set-habits') return saveSetting({ habits: v === 'on' }).then(() => load());

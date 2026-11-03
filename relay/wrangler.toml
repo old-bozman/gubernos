@@ -6,6 +6,10 @@ main = "worker.js"
 compatibility_date = "2026-10-01"
 routes = [{ pattern = "relay.gubernos.app", custom_domain = true }]
 
+# no Workers Logs: report texts and push alerts pass through, nothing is kept
+[observability]
+enabled = false
+
 [vars]
 FEEDBACK_REPO = "old-bozman/gubernos-feedback"
 APNS_KEY_ID = "9G4AAJ4UYJ"

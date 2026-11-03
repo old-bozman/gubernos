@@ -131,6 +131,7 @@ install() {
   # own install ("devAgent": true in config.json): there they go to the dev session.
   if [[ "$(node -e 'try{console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).devAgent===true)}catch{console.log(false)}' "$HOME/.config/gubernos/config.json")" != true ]]; then
     $KIT config --feedback-relay https://relay.gubernos.app >/dev/null && ok "bug reports from the app also go to the developer (privately, no account needed)"
+    ok "pushes to the iPhone app go through relay.gubernos.app (it signs them for Apple; the alert text passes through, nothing is stored) — off: Settings → Notifications"
   fi
   if [[ $launchd == 0 ]]; then echo "4/4 background service skipped (--no-launchd): start with  npm start"; return; fi
   echo "4/4 background service"

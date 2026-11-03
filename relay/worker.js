@@ -9,7 +9,9 @@
 //   POST /push  {env: sandbox|production, tokens: [≤10 device tokens], payload: "<APNs JSON, ≤4 KB>", collapse?}
 //     → {results: [{device, status, reason}]}: Apple Push for the iPhone app on someone else's install. APNs takes only
 //     the app owner's key, so their Mac (lib/apns.js, no apns.p8 of its own) hands the push here; the key never leaves.
-//     The topic is fixed (APNS_TOPIC), so it pushes to Gubernos devices only, and a sender has to know the device token.
+//     The topic is fixed (APNS_TOPIC), so it pushes to Gubernos devices only. No auth beyond that: whoever holds a device
+//     token (only that phone's own Mac has it) could send that phone an alert. Nothing is logged or stored (no console.log;
+//     observability off in wrangler.toml).
 // Secrets: GITHUB_TOKEN, KEY_SECRET, APNS_KEY (the .p8 text) (wrangler secret put …). Vars: FEEDBACK_REPO, APNS_KEY_ID,
 // APNS_TEAM_ID, APNS_TOPIC. Bindings: LIMIT (reports per IP), PUSH_LIMIT (pushes per IP).
 const MAX = 2 * 1024 * 1024;
