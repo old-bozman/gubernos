@@ -1,6 +1,6 @@
 ---
 name: onboarding
-description: First-time setup of the owner's vault through an interview — who they are, their areas, people, commitments, wants, decisions, focus — plus importing tasks from a previous app (Todoist, Things, TickTick, Apple Reminders, Notion, a text list). Use after installation, or when the owner says "onboarding", "set up my system", "import my tasks", "let's fill the model".
+description: First-time setup of the owner's vault through an interview — who they are, their areas, people, commitments, wants, decisions, focus — plus importing tasks from a previous app (Apple Reminders, Things 3 and Todoist directly; TickTick, Google Tasks, Notion, a text list from an export). Use after installation, or when the owner says "onboarding", "set up my system", "import my tasks", "let's fill the model".
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
@@ -54,10 +54,9 @@ Write `05_model/responsibilities/<slug>.md` (template `responsibility.md`) with 
 ## 3. What's on your plate (import + brain dump)
 
 Ask whether they have a previous system. Ways to get its contents:
-- **Todoist**: Settings → Backups, or a project's "Export as CSV"; or paste.
-- **Things 3**: select all in a list → copy (plain text with notes); or File → Export.
-- **TickTick / Microsoft To Do / Google Tasks**: their CSV / JSON export.
-- **Apple Reminders**: with permission, read it via `osascript` (e.g. `osascript -e 'tell application "Reminders" to get {name, due date} of (reminders whose completed is false)'`), or the owner copies from the app.
+- **Apple Reminders, Things 3, Todoist**: the app's importer, `node <app>/scripts/import-tasks.mjs reminders | things | todoist` (`<app>` = the Gubernos folder, `~/gubernos` by default). Read only. Reminders and Things: macOS asks once (Allow / OK). Todoist: the script asks for the API token (Todoist → Settings → Integrations → Developer); they paste it into the script's prompt in their terminal, or you run it with `TODOIST_TOKEN=…` only if they hand you the token themselves. It saves one JSON (`data/import/…`): lists (inbox, list, project with its area, area, someday) with their items (title, notes, due / time, deadline, priority, tags, `recurrence` already in the vault's form, subtasks, section). Things gives no checklists or repeat rules; Reminders no subtasks or tags.
+- **TickTick / Microsoft To Do / Google Tasks / OmniFocus**: their CSV / JSON export (Google Tasks: Google Takeout with only Tasks).
+- **Todoist without a token**: Settings → Backups, or a project's "Export as CSV"; or paste.
 - **Notion / Trello / a notes file**: export as CSV / markdown, or paste.
 - **Nothing**: a brain dump — "everything on your mind, one per line, any order", in a few rounds by area.
 
@@ -73,7 +72,7 @@ Then, for anything longer than ~15 items, write a **seeding sheet** `40_referenc
 ```
 
 Call: ✅ yes · ✏️ change (say how) · ❌ skip · 💤 someday. Group the sheet by area; propose, for each old project, what it really is (project / list project / commitment / want / decision) and, for tasks, import / someday / skip (skip anything done, stale or duplicate; say why).
-Create only the confirmed rows: projects (`20_projects/`, with `## Outcome`, `serves` the area, `category`), list projects for single actions (outcome "No end: …"), tasks (`10_tasks/`, `source: import`, keep due dates and deadlines that are still meaningful, `priority: someday` for 💤). Recurring items: `recurrence` in the forms from `CLAUDE.md` (cron or `every N weeks`).
+Create only the confirmed rows: projects (`20_projects/`, with `## Outcome`, `serves` the area, `category`), list projects for single actions (outcome "No end: …"), tasks (`10_tasks/`, `source: import`, subtasks as `## Subtasks` checkboxes, keep due dates and deadlines that are still meaningful, `priority: someday` for 💤). Recurring items: `recurrence` in the forms from `CLAUDE.md` (cron or `every N weeks`).
 Report counts and point to the app (Inbox, Today, Upcoming, the projects in the menu).
 
 ## 4. Commitments

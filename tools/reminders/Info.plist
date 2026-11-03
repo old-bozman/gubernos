@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Embedded into gubernos-reminders at build time (-sectcreate __TEXT __info_plist): the name and the reason macOS shows
+     in the Reminders access dialog. -->
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key><string>app.gubernos.reminders</string>
+	<key>CFBundleName</key><string>Gubernos Reminders</string>
+	<key>CFBundleDisplayName</key><string>Gubernos Reminders</string>
+	<key>CFBundleVersion</key><string>1</string>
+	<key>NSRemindersFullAccessUsageDescription</key><string>Gubernos reads your reminders once, to bring them into your system. It changes nothing in Reminders.</string>
+	<key>NSRemindersUsageDescription</key><string>Gubernos reads your reminders once, to bring them into your system. It changes nothing in Reminders.</string>
+</dict>
+</plist>
