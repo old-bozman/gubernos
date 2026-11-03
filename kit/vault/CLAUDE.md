@@ -188,7 +188,7 @@ keystone: true | null               # the one habit that matters most right now 
 days: [mon, tue, wed, thu, fri] | null   # schedule: the days it's due (null = every day)
 per_week: N | null                  # instead of days: N times a week, any days
 checkin: reflection | next-one | by-reflection | null   # null = the Protocol screen; else Daily reflection (next-one = by choosing tomorrow's #1; by-reflection = by saving it)
-auto: "health:steps" | "health:wake<=06:30" | "oura:bedtime<=22:00" | null   # filled in automatically (Apple Health on the iPhone, Oura on the Mac)
+auto: "health:steps" | "health:wake<=06:30" | "oura:bedtime<=22:00" | "app:tasks" | null   # filled in automatically (Apple Health on the iPhone, Oura on the Mac, app = Gubernos itself: focus sprint minutes, tasks closed that day); nap = minutes of daytime sleep
 
 # protocol
 window: { start: "HH:MM", end: "HH:MM" }   # e.g. am 06:30–09:00, pm 19:00–22:00; between them is the workday
