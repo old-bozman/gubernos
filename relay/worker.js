@@ -1,6 +1,7 @@
 // Gubernos relay (Cloudflare Worker, relay.gubernos.app): bug reports and ideas from people's installs reach the
 // developer without a GitHub account on their side. A report becomes an issue in a PRIVATE repo, opened with the
-// developer's fine-grained token (that repo only: issues + contents), so reports, screenshots and task titles stay private.
+// developer's fine-grained token (that repo only: issues + contents), so reports, screenshots and task titles aren't public
+// (the developer's dev session — Claude Code — reads them to work on them).
 //   POST /feedback  {install, kind: bug|idea, title, body, attachment?: html}  → {issue, key}
 //   GET  /feedback/<issue>?key=…                         → {state: OPEN|CLOSED, comments: [{body, at, from: developer|reporter}]}
 //   POST /feedback/<issue>/reply?key=…  {body}           → the reporter's answer or "still wrong": a comment, reopens the issue

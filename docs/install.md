@@ -68,7 +68,7 @@ If the Mac sits at home on power, tell your agent **"keep my Mac awake"**: that'
 
 ## Report a bug or an idea
 
-From any screen: menu ☰ → **Report bug / idea**, or by voice: "bug: …", "app idea: …". It goes to the developer privately (no account needed) with your text, the screen name, the device and errors. Screenshots (yours, and a snapshot of the screen) go along too, which helps the most: they show your tasks, and only the developer sees them; untick **Send screenshots** to send only the text. The answer comes back to the report's task (Gubernos feedback): a question → **Reply**; done → **Works now** or **Still wrong**.
+From any screen: menu ☰ → **Report bug / idea**, or by voice: "bug: …", "app idea: …". It goes to the app's developer, not public (no account needed): your text, the screen name, the device and errors. It's kept in the developer's private GitHub repository, and their AI coding agent (Claude) reads it to fix the problem. Screenshots (yours, and a snapshot of the screen) go along too, which helps the most; they show what's on the screen (tasks, notes, health numbers), so untick **Send screenshots** to send only the text. A voice report ("bug: …") opens the form first, so you see what goes out. The answer comes back to the report's task (Gubernos feedback): a question → **Reply**; done → **Works now** or **Still wrong**.
 
 In TestFlight you can also take a screenshot → Share Beta Feedback.
 

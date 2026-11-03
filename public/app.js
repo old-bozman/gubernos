@@ -1557,7 +1557,8 @@ async function saveWeeklyNotes() {
 }
 
 // ---------- feedback about the app: from any screen (menu, ⌘K, voice "баг: …"); lib/feedback.js ----------
-const FEEDBACK_RE = /^\s*(баг|ошибка в приложении|фидб[еэ]к|bug|feedback|иде[яю] для приложения|app idea)\s*[:,.—-]?\s*/i;
+// a whole word: "Багаж собрать", "Bugs Bunny" aren't reports (\b doesn't know Cyrillic)
+const FEEDBACK_RE = /^\s*(баг|ошибка в приложении|фидб[еэ]к|bug|feedback|иде[яю] для приложения|app idea)(?![\p{L}\p{N}])\s*[:,.—-]?\s*/iu;
 function screenContext() {
   const t = taskById(S.openId), ua = navigator.userAgent;
   return { url: location.hash, view: S.view, arg: S.arg,
@@ -1575,10 +1576,12 @@ function screenSnapshot() {
   live.forEach((x, i) => { if (copies[i] && x.type !== 'file') copies[i].setAttribute('value', x.value); }); // what was typed
   return b.innerHTML;
 }
-// share: someone else's install sends screenshots and the snapshot to the developer (privately, through the relay) when
-// ticked: on by default (otherwise nobody sends them), and the form says they show their tasks. A voice report sends them too.
+// share: someone else's install sends screenshots and the snapshot to the developer (through the relay) when ticked: on
+// by default (otherwise nobody sends them), and the form says what they show. There a voice report opens the form first
+// (dictation misfires; nothing leaves the Mac until they tap Send); on the developer's own install it goes straight in.
 function reportByVoice(kind, text) {
-  return sendFeedback({ kind, text, share: true });
+  if (!ME().feedbackRemote) return sendFeedback({ kind, text });
+  closeModal(); reportModal(kind, text);
 }
 async function sendFeedback({ kind = 'bug', text = '', images = [], snapshot = screenSnapshot(), context = screenContext(), share = false }) {
   await api('POST', '/api/feedback', { kind, text, images, snapshot, context, errors: ERRS, share });
@@ -1604,10 +1607,10 @@ function reportModal(kind = 'bug', text = '') {
     <div class="bd-h">Report a bug or idea</div>
     <span class="seg fb-kind"><button type="button" data-k="bug">Bug</button><button type="button" data-k="idea">Idea</button></span>
     <textarea id="fb-text" rows="4" placeholder="What happened, or what would be better? (the keyboard mic dictates)">${esc(text)}</textarea>
-    ${ME().feedbackRemote ? `<div class="fb-ctx">🔒 Goes to the developer only, with the screen name (${esc(context.screen)}), the device and errors. Answers come back to the task.</div>`
+    ${ME().feedbackRemote ? `<div class="fb-ctx">🔒 Goes to the app's developer, not public: your text, the screen name (${esc(context.screen)}), the device and errors. It's kept in the developer's private GitHub, and their AI coding agent (Claude) reads it to fix it. Answers come back to the task.</div>`
       : `<div class="fb-ctx">📍 ${esc(context.screen)}${context.openTitle ? ` · ${esc(context.openTitle.slice(0, 50))}` : ''} — a snapshot of this screen goes along</div>`}
     <div class="fb-imgs"><label class="btn ghost">+ Screenshot<input type="file" id="fb-files" accept="image/*" multiple hidden></label><span id="fb-n" class="fb-ctx"></span></div>
-    ${ME().feedbackRemote ? `<label class="fb-ctx fb-share"><input type="checkbox" id="fb-share" checked> Send screenshots with it: this screen, and the ones you add. They show your tasks (only the developer sees them). Untick to send only the text.</label>` : ''}
+    ${ME().feedbackRemote ? `<label class="fb-ctx fb-share"><input type="checkbox" id="fb-share" checked> Send screenshots with it: this screen, and the ones you add. They show what's on it: tasks, notes, health numbers. Untick to send only the text.</label>` : ''}
     <div class="foot"><span class="sp"></span><button class="btn" data-act="qa-close">Cancel</button><button class="btn primary" id="fb-send">Send</button></div></div></div>`;
   const setKind = (k) => { kind = k; $$('.fb-kind button').forEach((b) => b.classList.toggle('on', b.dataset.k === k)); };
   $$('.fb-kind button').forEach((b) => { b.onclick = () => setKind(b.dataset.k); });
