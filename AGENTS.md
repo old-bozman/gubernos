@@ -99,6 +99,12 @@ for it: ▶ Queue (or a bug report) sets `assigned: agent, agent: dev, agent_sta
   or lib/ changed; then hand it back as above (log line + `agent_state: review`, or `blocked` with the question). A
   product choice the task doesn't settle → blocked with the question, before building.
 - The owner's ongoing conversation comes first: take the queue between turns, not in the middle of their request.
+- Reports from other people's installs (label `from-user`, `<!-- inbox:N -->` in the body; config.json `feedbackInbox`,
+  `lib/feedback-inbox.js`) come into the same queue every 5 minutes. The issue body says how to fetch the snapshot.
+  To ask the reporter, `gh issue comment N -R <feedbackInbox> -b "…"` (plain words, no internals), log it, and set the
+  task `status: wait` with no `agent_state`: their answer comes back as a `reporter` log line and queues it again.
+  Your hand-back log line is what the reporter reads when the owner accepts and closes the task (the issue closes with
+  it): say what changed for them, plainly — no commits, paths or vault names. Dropped → closed as not planned.
 
 ## Gotchas (learned the hard way)
 

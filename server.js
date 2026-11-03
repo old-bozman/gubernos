@@ -29,6 +29,7 @@ import { registerCore, routeParams } from './lib/core-routes.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { clock, validAt } from './lib/clock.js';
 import { report, replyRemote, startSync as feedbackSync } from './lib/feedback.js';
+import { startInbox as feedbackInbox } from './lib/feedback-inbox.js';
 
 const HOST = process.env.HOST || '127.0.0.1';
 const PUBLIC = path.join(path.dirname(new URL(import.meta.url).pathname), 'public');
@@ -317,6 +318,7 @@ server.listen(PORT, HOST, () => {
   if (!process.env.GUBERNOS_NO_NOTIFY && !sharedData) Notify.start();
   Timers.boot(() => changed(true)); // running habit timers finish at their end, also after a restart
   feedbackSync(); // answers to bug reports sent through the relay (no-op on the developer's own install)
+  feedbackInbox(); // the developer's install: reports from other installs → dev tasks (lib/feedback-inbox.js)
   console.log(`${APP_NAME} → http://${HOST}:${PORT}  (vault: ${V.VAULT})`);
 });
 // the same app on PROXY_PORT, loopback only, for Tailscale serve / funnel: nothing that arrives here counts as the Mac itself
