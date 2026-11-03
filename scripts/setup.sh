@@ -162,7 +162,13 @@ get-tailscale() {
       || die "the Tailscale installer isn't signed by Tailscale Inc. — not opening it"
     ok "downloaded and checked: signed by Tailscale Inc."
     echo "  macOS Installer opens now: Continue → Install, then your Mac's password (Tailscale adds a network extension)."
-    open -W "$tmp/Tailscale.pkg"
+    # done = a new package receipt (Installer itself stays open on "successful" until Close: close it for them)
+    local rcpt=com.tailscale.ipn.macsys was; was=$(pkgutil --pkg-info "$rcpt" 2>/dev/null | grep install-time)
+    open "$tmp/Tailscale.pkg"; sleep 3
+    while pgrep -xq Installer; do
+      [[ "$(pkgutil --pkg-info "$rcpt" 2>/dev/null | grep install-time)" != "$was" ]] && { sleep 2; osascript -e 'quit app "Installer"' >/dev/null 2>&1; break; }
+      sleep 2
+    done
     rm -rf "$tmp"
     [[ -d /Applications/Tailscale.app ]] || die "Tailscale wasn't installed (the Installer was closed?) — run this again"
     ok "Tailscale installed"
