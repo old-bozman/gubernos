@@ -87,7 +87,7 @@ snapshot: the gist linked in the issue (`--filename <id>-share.html`), rendered 
 
 ## Dev session (the dev agent's queue)
 
-On the developer's own install (no `feedbackRepo` in config.json) tasks can be assigned to the agent `dev`: the
+On the developer's own install (`"devAgent": true` and no `feedbackRelay` in config.json) tasks can be assigned to the agent `dev`: the
 developer's Claude Code session in this repo, with this file, memory and the conversation as context. Nothing is started
 for it: ▶ Queue (or a bug report) sets `assigned: agent, agent: dev, agent_state: queued`, and the session takes the queue.
 

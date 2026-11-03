@@ -2,7 +2,7 @@
 // File work for scripts/setup.sh: create a vault from kit/vault, set the owner's profile, write the machine config.
 // Never overwrites a file that exists — safe to run again on a vault in use.
 //   node scripts/kit.mjs vault  --vault PATH [--name NAME] [--language LANG] [--obsidian-path SUB]
-//   node scripts/kit.mjs config --vault PATH [--port N] [--public-url URL] [--obsidian-vault NAME] [--obsidian-path SUB] [--feedback-repo OWNER/NAME|none] [--agent-tools Bash,…|none]
+//   node scripts/kit.mjs config --vault PATH [--port N] [--public-url URL] [--obsidian-vault NAME] [--obsidian-path SUB] [--feedback-relay URL|none] [--agent-tools Bash,…|none]
 //   node scripts/kit.mjs get KEY            (prints a value from ~/.config/gubernos/config.json)
 import fs from 'node:fs';
 import path from 'node:path';
@@ -66,7 +66,7 @@ if (cmd === 'vault') {
   if (opt.port) c.port = Number(opt.port);
   if (opt['public-url']) c.publicUrl = opt['public-url'] === 'none' ? null : opt['public-url'];
   if (opt['agent-tools']) c.agentTools = opt['agent-tools'] === 'none' ? [] : opt['agent-tools'].split(',').map((x) => x.trim()).filter(Boolean);
-  if (opt['feedback-repo']) c.feedbackRepo = opt['feedback-repo'] === 'none' ? null : opt['feedback-repo'];
+  if (opt['feedback-relay']) { c.feedbackRelay = opt['feedback-relay'] === 'none' ? null : opt['feedback-relay']; delete c.feedbackRepo; }
   if (opt['obsidian-vault']) c.obsidian = opt['obsidian-vault'] === 'none' ? null : { vault: opt['obsidian-vault'], path: String(opt['obsidian-path'] || '').replace(/^\/+|\/+$/g, '') };
   if (!c.vault) throw new Error('--vault required (no vault in the config yet)');
   fs.mkdirSync(CONFIG_DIR, { recursive: true });

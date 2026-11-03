@@ -94,7 +94,7 @@ Lead them through it; don't stop at a link. Open the guide on the Mac: `open "ht
 
 ### 4. Optional extras — offer each, do what they want
 
-- **Bug reports to the developer**: `install` sets this up when the repo isn't theirs (it says so) — reports from the app's Report button also open a GitHub issue in the repo, and answers come back to their task. It needs `gh` logged in (`gh auth login`); if `check` shows it missing, install with `brew install gh`.
+- **Bug reports to the developer**: nothing to do — `install` turns it on (it says so). Reports from the app's Report button go to the developer privately through relay.gubernos.app (no GitHub account), and answers come back to their task.
 - **Phone later**: if they skipped 3b, it can be done any time the same way (Settings → Connections → Connect your iPhone).
 - **Keep the Mac awake**: if this Mac should serve the phone all day, `scripts/setup.sh awake on` — a login item running `caffeinate -s`: no sleep while on power (on battery it sleeps as usual; a laptop with its lid closed still sleeps). `awake off` undoes it, `awake status` checks. Same as `--awake` at install.
 - **Voice**: with one language the Mac's own model knows, the mic already works (install said so). Whisper (`scripts/setup.sh voice`, Apple Silicon): needed for Russian or mixed languages, better with accents; no Homebrew or Command Line Tools (it gets its own Python via `uv`), models ~1.6 GB on first use. Language later: the app → Settings → Voice.

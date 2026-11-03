@@ -44,7 +44,6 @@ check() {
   echo "Model (one is enough — on your own subscription or account)"
   models
   echo "Optional"
-  gh auth status >/dev/null 2>&1 && ok "gh (GitHub) logged in" || no "gh (GitHub) — only for sending bug reports from the app: brew install gh && gh auth login"
   [[ -d "$HOME/Library/Mobile Documents/com~apple~CloudDocs" ]] && ok "iCloud Drive" || no "iCloud Drive (System Settings → Apple Account → iCloud → iCloud Drive)"
   [[ -d /Applications/Obsidian.app ]] && ok "Obsidian app" || no "Obsidian (optional, to read the files: https://obsidian.md)"
   [[ -d "$HOME/Library/Mobile Documents/iCloud~md~obsidian/Documents" ]] && ok "Obsidian iCloud folder" || no "Obsidian iCloud folder (appears once Obsidian on iPhone/Mac stores a vault in iCloud)"
@@ -128,14 +127,10 @@ install() {
   echo "3/4 config"; $KIT config --vault "$vault" ${p:+--port "$p"} ${ovault:+--obsidian-vault "$ovault"} ${opath:+--obsidian-path "$opath"} >/dev/null && ok "$HOME/.config/gubernos/config.json"
   [[ -n "$llm" ]] && model "$llm" # after the config: the model is saved next to it
   [[ -n "$vlang" ]] && voice-language "$vlang"
-  # Bug reports also go to the app's GitHub repo as issues, unless this is the repo owner's own install.
-  local repo me
-  if [[ -d "$APP/.git" ]]; then repo=$(git -C "$APP" remote get-url origin 2>/dev/null | sed -E 's#^(https://github.com/|git@github.com:)##; s#\.git$##' || true)
-  else repo=$(cut -d' ' -f1 "$APP/.gubernos-version" 2>/dev/null || true); fi
-  me=$(gh api user -q .login 2>/dev/null || true)
-  if [[ "$repo" == */* && "${repo%%/*}" != "$me" ]]; then
-    $KIT config --feedback-repo "$repo" >/dev/null
-    if [[ -n "$me" ]]; then ok "bug reports also go to github.com/$repo (as $me)"; else no "bug reports stay local until gh is logged in (gh auth login)"; fi
+  # Bug reports also go to the app's developer (privately, through relay.gubernos.app), unless this is the developer's
+  # own install ("devAgent": true in config.json): there they go to the dev session.
+  if [[ "$(node -e 'try{console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).devAgent===true)}catch{console.log(false)}' "$HOME/.config/gubernos/config.json")" != true ]]; then
+    $KIT config --feedback-relay https://relay.gubernos.app >/dev/null && ok "bug reports from the app also go to the developer (privately, no account needed)"
   fi
   if [[ $launchd == 0 ]]; then echo "4/4 background service skipped (--no-launchd): start with  npm start"; return; fi
   echo "4/4 background service"

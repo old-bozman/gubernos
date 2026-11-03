@@ -201,12 +201,13 @@ phone URL, Obsidian vault) and the vault's `profile.md` (name, language, categor
   Sends the text, Bug/Idea, optional screenshots from Photos, the screen's context (view, open task, device, viewport,
   recent errors) and a snapshot of the page's HTML. Becomes a task in the project "Gubernos feedback" (waiting on the
   developer) plus a line in `data/feedback.jsonl`; files in `data/feedback/`. `lib/feedback.js`.
-  On someone else's install (`feedbackRepo` in config.json, set by setup.sh when the repo's owner isn't the `gh` user)
-  each report is also a GitHub issue in that repo (labels `feedback` + `bug|idea`), via `gh`, under their account — public,
-  and the form says so (a voice report opens the form first). Screenshots and the screen snapshot go with the
-  "Publish screenshots" tick (on by default, they can untick it; they show their tasks), as one secret gist linked from the issue.
-  Every 20 min the app reads the issue back: comments → the task's log; a comment on an open issue → `blocked`, a closed
-  issue → `review` — each with a push.
+  On someone else's install (`feedbackRelay` in config.json, set by setup.sh on every install but the developer's own,
+  `"devAgent": true`) each report also goes to the developer through the relay (`relay/worker.js`, relay.gubernos.app),
+  no GitHub account needed: an issue in the developer's private repo (labels `feedback` + `bug|idea`). Screenshots and the
+  screen snapshot go with the "Send screenshots" tick (on by default, they can untick it; they show their tasks), stored
+  next to the issue. Every 20 min the app asks the relay: the developer's comments → the task's log; a comment on an open
+  issue → `blocked` (Reply), a closed issue → `review` (Works now / Still wrong) — each with a push. Reply and Still wrong
+  go back as a comment and reopen the issue.
 - **Settings** (menu ☰ → Settings): theme (Auto / Light / Dark, per device), notifications (per device), morning digest
   time or off, Undo window (3 / 5 / 10 s). Shared settings live in `data/settings.json` on the Mac.
 - **⌘K** command palette, keyboard shortcuts (`?` lists them all): `g` then a letter goes to a screen (`g t` Today, `g i` Inbox, `g u` Upcoming, `g d` Protocol, `g p` Plan the day…); on the selected task `e` completes, `t` schedules, `y` steps the priority; `z` undoes; `d` cycles the theme. PWA icon.

@@ -1575,12 +1575,10 @@ function screenSnapshot() {
   live.forEach((x, i) => { if (copies[i] && x.type !== 'file') copies[i].setAttribute('value', x.value); }); // what was typed
   return b.innerHTML;
 }
-// share: someone else's install publishes screenshots and the snapshot when ticked: on by default (otherwise nobody sends
-// them), and the form says they show their tasks.
-// There the report is a public GitHub issue, so a voice report opens the form (with the warning) instead of sending.
+// share: someone else's install sends screenshots and the snapshot to the developer (privately, through the relay) when
+// ticked: on by default (otherwise nobody sends them), and the form says they show their tasks. A voice report sends them too.
 function reportByVoice(kind, text) {
-  if (!ME().feedbackRemote) return sendFeedback({ kind, text });
-  closeModal(); reportModal(kind, text);
+  return sendFeedback({ kind, text, share: true });
 }
 async function sendFeedback({ kind = 'bug', text = '', images = [], snapshot = screenSnapshot(), context = screenContext(), share = false }) {
   await api('POST', '/api/feedback', { kind, text, images, snapshot, context, errors: ERRS, share });
@@ -1606,17 +1604,17 @@ function reportModal(kind = 'bug', text = '') {
     <div class="bd-h">Report a bug or idea</div>
     <span class="seg fb-kind"><button type="button" data-k="bug">Bug</button><button type="button" data-k="idea">Idea</button></span>
     <textarea id="fb-text" rows="4" placeholder="What happened, or what would be better? (the keyboard mic dictates)">${esc(text)}</textarea>
-    ${ME().feedbackRemote ? `<div class="fb-ctx fb-public">🌐 <b>Public:</b> it becomes an issue in <a href="https://github.com/${esc(ME().feedbackRepo || '')}/issues" target="_blank" rel="noopener">${esc(ME().feedbackRepo || 'the app’s repo')}</a> under your GitHub account, and anyone can read it. Leave out private details. It holds your text, the screen name (${esc(context.screen)}), the device and errors.</div>`
+    ${ME().feedbackRemote ? `<div class="fb-ctx">🔒 Goes to the developer only, with the screen name (${esc(context.screen)}), the device and errors. Answers come back to the task.</div>`
       : `<div class="fb-ctx">📍 ${esc(context.screen)}${context.openTitle ? ` · ${esc(context.openTitle.slice(0, 50))}` : ''} — a snapshot of this screen goes along</div>`}
     <div class="fb-imgs"><label class="btn ghost">+ Screenshot<input type="file" id="fb-files" accept="image/*" multiple hidden></label><span id="fb-n" class="fb-ctx"></span></div>
-    ${ME().feedbackRemote ? `<label class="fb-ctx fb-share"><input type="checkbox" id="fb-share" checked> Publish screenshots with it: this screen, and the ones you add. They show your tasks, and anyone with the link can see them. Untick to send only the text.</label>` : ''}
+    ${ME().feedbackRemote ? `<label class="fb-ctx fb-share"><input type="checkbox" id="fb-share" checked> Send screenshots with it: this screen, and the ones you add. They show your tasks (only the developer sees them). Untick to send only the text.</label>` : ''}
     <div class="foot"><span class="sp"></span><button class="btn" data-act="qa-close">Cancel</button><button class="btn primary" id="fb-send">Send</button></div></div></div>`;
   const setKind = (k) => { kind = k; $$('.fb-kind button').forEach((b) => b.classList.toggle('on', b.dataset.k === k)); };
   $$('.fb-kind button').forEach((b) => { b.onclick = () => setKind(b.dataset.k); });
   setKind(kind);
   $('#fb-files').onchange = async (e) => {
     try { images = [...images, ...(await Promise.all([...e.target.files].slice(0, 3).map(shrinkImage)))].slice(0, 3); } catch (err) { toast(err.message); }
-    $('#fb-n').textContent = images.length ? `${images.length} screenshot${images.length > 1 ? 's' : ''} attached${ME().feedbackRemote ? ' — published unless you untick below' : ''}` : '';
+    $('#fb-n').textContent = images.length ? `${images.length} screenshot${images.length > 1 ? 's' : ''} attached${ME().feedbackRemote ? ' — sent unless you untick below' : ''}` : '';
   };
   $('#fb-text').focus(); $('#fb-text').setSelectionRange(text.length, text.length);
   $('#fb-send').onclick = async () => {
@@ -2638,7 +2636,13 @@ function agentStrip(t) {
   const back = '<button class="linkbtn" data-set="assigned" data-val="me" title="Take the task back from the agent">Take back</button>';
   const noBrief = !t.body.replace(/^##\s+Subtasks\s*$/m, '').replace(/^\s*- \[ \]\s*$/gm, '').trim();
   let line, btns;
-  if (!run && st === 'running' && t.agent === 'dev') { line = 'The dev session is working on it'; btns = ''; }
+  const toDev = /<!-- relay:\d+:/.test(t.body); // a report sent to the developer through the relay
+  if (toDev && st === 'review') {
+    line = 'The developer says it’s done — check it';
+    btns = `<button class="btn primary" data-act="accept-close" title="It works now: complete the report">✓ Works now</button>
+      <button class="btn" data-act="reply-dev" title="Write what's still wrong in the box below, then tap">↺ Still wrong</button>`;
+  } else if (toDev && st === 'blocked') { line = 'The developer asks — answer below'; btns = '<button class="btn agent" data-act="reply-dev" title="Send your answer from the box below">Reply</button>'; }
+  else if (!run && st === 'running' && t.agent === 'dev') { line = 'The dev session is working on it'; btns = ''; }
   else if (run || st === 'running') { line = `${agentName(run?.who) || 'The agent'} is working… <span id="strip-now">${esc(runNow(events))}</span>`; btns = '<button class="btn" data-act="stop">■ Stop</button>'; }
   else if (st === 'review') {
     line = 'Done — check the result above';
@@ -3573,6 +3577,15 @@ document.addEventListener('click', async (e) => {
       await load();
       return renderDrawer(true);
     }
+    case 'reply-dev': {
+      const text = ($('#tc-in')?.value || '').trim();
+      if (!text) { const box = $('#tc-in'); if (box) { box.placeholder = 'Your answer to the developer…'; box.focus(); } return toast('Write it in the chat box, then tap again'); }
+      const tid = S.openId;
+      $$('.agent-strip button').forEach((x) => (x.disabled = true));
+      try { await api('POST', `/api/tasks/${tid}/reply-dev`, { text }); if ($('#tc-in')) $('#tc-in').value = ''; toast('Sent to the developer'); } catch { $$('.agent-strip button').forEach((x) => (x.disabled = false)); return; }
+      await load();
+      return renderDrawer(true);
+    }
     case 'sendback': case 'sendback-run': {
       const fb = ($('#tc-in')?.value || '').trim();
       if (!fb) { const box = $('#tc-in'); if (box) { box.placeholder = 'What should the agent change?'; box.focus(); } return toast('Write what to change in the chat box, then tap again'); }
@@ -4458,7 +4471,7 @@ function paletteItems(q) {
       { label: `Block time for “${cur.title.slice(0, 36)}”`, hint: 'Calendar', run: () => timeblockModal(cur) },
       { label: `Drop “${cur.title.slice(0, 40)}”`, hint: 'not done, no longer relevant · ⌫', run: () => dropTask(cur.id) }] : []),
     { label: `Process inbox${S.data.inbox.length ? ` (${S.data.inbox.length})` : ''}`, hint: 'captures one by one', run: () => startMode('inbox') },
-    { label: 'Report a bug or idea', hint: ME().feedbackRemote ? 'about this app — a public GitHub issue' : 'about this app — with a snapshot of this screen', run: () => reportModal() },
+    { label: 'Report a bug or idea', hint: ME().feedbackRemote ? 'about this app — to its developer' : 'about this app — with a snapshot of this screen', run: () => reportModal() },
     { label: `Review agents${VIEWS.agent.hot() ? ` (${VIEWS.agent.hot()})` : ''}`, hint: 'handed-back work one by one', run: () => startMode('review') },
     { label: 'New task', hint: 'q', run: () => quickAdd() },
     { label: 'New project', hint: 'name, category, outcome', run: () => projectModal() },

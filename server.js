@@ -28,7 +28,7 @@ import { PORT, PROXY_PORT, PUBLIC_URL, APP_NAME, profile, clientConfig } from '.
 import { registerCore, routeParams } from './lib/core-routes.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { clock, validAt } from './lib/clock.js';
-import { report, startSync as feedbackSync } from './lib/feedback.js';
+import { report, replyRemote, startSync as feedbackSync } from './lib/feedback.js';
 
 const HOST = process.env.HOST || '127.0.0.1';
 const PUBLIC = path.join(path.dirname(new URL(import.meta.url).pathname), 'public');
@@ -103,6 +103,8 @@ const route = (method, pattern, handler) => routes.push({ method, re: new RegExp
 registerCore(route, { stateExtras: () => ({ voice: voiceAvailable(), runs: [...runs.values()].map(publicRun), agents: agentsAvailable(), timers: Timers.list() }) });
 
 route('POST', '/api/feedback', (_, __, b) => report(b));
+// a report sent through the relay: the owner's answer or "still wrong" goes back to the developer (not to a local agent)
+route('POST', '/api/tasks/:id/reply-dev', async ({ id }, _, b) => (await replyRemote(id, String(b.text || '').trim())) || (() => { throw V.httpError(400, 'not a report sent to the developer'); })());
 route('POST', '/api/tasks/:id/run', ({ id }, _, b) => publicRun(startRun(id, { brief: b.brief, agent: b.agent, now: !!b.now })));
 route('POST', '/api/runs/:id/stop', ({ id }) => publicRun(stopRun(id) || { id }));
 // habit countdowns (lib/timers.js): the Protocol screen and the watch (through the iPhone app)
@@ -314,7 +316,7 @@ server.listen(PORT, HOST, () => {
   const sharedData = process.env.GUBERNOS_VAULT && !process.env.GUBERNOS_DATA_DIR;
   if (!process.env.GUBERNOS_NO_NOTIFY && !sharedData) Notify.start();
   Timers.boot(() => changed(true)); // running habit timers finish at their end, also after a restart
-  feedbackSync(); // answers to bug reports sent to someone else's GitHub repo (no-op on the developer's own install)
+  feedbackSync(); // answers to bug reports sent through the relay (no-op on the developer's own install)
   console.log(`${APP_NAME} → http://${HOST}:${PORT}  (vault: ${V.VAULT})`);
 });
 // the same app on PROXY_PORT, loopback only, for Tailscale serve / funnel: nothing that arrives here counts as the Mac itself
