@@ -1,9 +1,11 @@
 // The server's API on a fresh kit vault: what every install relies on.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
-import { startServer } from './helpers.js';
+import { ROOT, startServer } from './helpers.js';
 
 let s;
 before(async () => { s = await startServer(); });
@@ -59,4 +61,14 @@ test('mirror: the phone copy has active files, not the archive', async () => {
   assert.equal(Object.keys(r.body.files).length, r.body.paths.length);
   const later = await s.get(`/api/mirror?since=${r.body.now}`);
   assert.deepEqual(Object.keys(later.body.files), []);
+});
+
+test('the page: every script in public/ parses (one bad character takes the whole app down)', () => {
+  const dir = path.join(ROOT, 'public'), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gubernos-js-'));
+  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.js'))) {
+    const copy = path.join(tmp, `${f}.mjs`); fs.copyFileSync(path.join(dir, f), copy);
+    const r = spawnSync(process.execPath, ['--check', copy], { encoding: 'utf8' });
+    assert.equal(r.status, 0, `${f}: ${r.stderr}`);
+  }
+  fs.rmSync(tmp, { recursive: true, force: true });
 });

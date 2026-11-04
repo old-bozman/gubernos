@@ -4095,7 +4095,7 @@ function pairHtml() {
       <button class="linkbtn" data-act="set-pair-copy">Copy link</button></div></div>` : '';
   return `<div class="set-row"><div class="set-l">Pair a device<small>a phone or another computer reaches this Mac through ${esc(p.publicUrl.replace(/^https?:\/\//, ''))} once it has the code</small>${code}</div>
       <button class="btn" data-act="set-pair-show">${S.pairShow ? 'Hide' : 'Show code'}</button></div>
-    <div class="set-row"><div class="set-l">Require pairing<small>${p.local ? 'on: only paired devices get in (the Mac itself always does) · off: anyone who reaches this Mac's address' : 'changed on the Mac itself'}</small>
+    <div class="set-row"><div class="set-l">Require pairing<small>${p.local ? 'on: only paired devices get in (the Mac itself always does) · off: anyone who reaches this address' : 'changed on the Mac itself'}</small>
       ${p.local ? '<div class="set-mf"><button class="linkbtn" data-act="set-pair-rotate">New code — unpairs every device</button></div>' : ''}</div>
       ${seg('set-pair-required', p.required ? 'on' : 'off', [['off', 'Off'], ['on', 'On']], !p.local)}</div>`;
 }
