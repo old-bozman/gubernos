@@ -1,0 +1,43 @@
+// A throwaway server for tests: a fresh vault from the kit (never the owner's), its own data, config and pairing files,
+// no notifier, no feedback relay. startServer() → {url, proxyUrl, dir, vault, get, post, patch, stop}.
+import { spawn, execFileSync } from 'node:child_process';
+import fs from 'node:fs';
+import net from 'node:net';
+import os from 'node:os';
+import path from 'node:path';
+
+export const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+
+const freePort = () => new Promise((resolve) => { const s = net.createServer().listen(0, '127.0.0.1', () => { const { port } = s.address(); s.close(() => resolve(port)); }); });
+
+export function kitVault(dir, name = 'Tester') {
+  execFileSync('node', [path.join(ROOT, 'scripts/kit.mjs'), 'vault', '--vault', dir, '--name', name], { stdio: 'ignore' });
+  return dir;
+}
+
+export async function startServer() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gubernos-t-'));
+  const vault = kitVault(path.join(dir, 'vault'));
+  for (const d of ['data', 'config']) fs.mkdirSync(path.join(dir, d));
+  const port = await freePort(), proxy = await freePort();
+  const env = { ...process.env, GUBERNOS_VAULT: vault, GUBERNOS_DATA_DIR: path.join(dir, 'data'), GUBERNOS_CONFIG_DIR: path.join(dir, 'config'),
+    GUBERNOS_PAIR_FILE: path.join(dir, 'data', 'pair.json'), GUBERNOS_BACKUP_DIR: path.join(dir, 'backups'), GUBERNOS_NO_NOTIFY: '1', GUBERNOS_MAC_FOCUS: '0',
+    GUBERNOS_FEEDBACK_RELAY: '', GUBERNOS_FEEDBACK_INBOX: '', GUBERNOS_PUSH_RELAY: '', PORT: String(port), GUBERNOS_PROXY_PORT: String(proxy), HOST: '127.0.0.1' };
+  const child = spawn(process.execPath, [path.join(ROOT, 'server.js')], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+  let log = '';
+  child.stdout.on('data', (d) => { log += d; }); child.stderr.on('data', (d) => { log += d; });
+  const url = `http://127.0.0.1:${port}`, proxyUrl = `http://127.0.0.1:${proxy}`;
+  for (let i = 0; i < 100; i++) {
+    try { if ((await fetch(`${url}/api/settings`)).ok) break; } catch { /* starting */ }
+    if (child.exitCode != null) throw new Error(`server exited:\n${log}`);
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  const call = (method) => async (p, body) => {
+    const r = await fetch(url + p, { method, headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+    const text = await r.text();
+    let json; try { json = JSON.parse(text); } catch { json = text; }
+    return { status: r.status, body: json };
+  };
+  return { url, proxyUrl, dir, vault, log: () => log, get: call('GET'), post: call('POST'), patch: call('PATCH'),
+    stop: async () => { child.kill(); await new Promise((r) => child.once('exit', r)); fs.rmSync(dir, { recursive: true, force: true }); } };
+}

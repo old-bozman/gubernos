@@ -59,8 +59,19 @@ writes into task files, update those two as well.
   Static files are served with `no-cache`, so UI-only changes just need a page reload.
 - `server.log`; voice/client diagnostics are `[voice]` lines (the phone posts them via `/api/log`).
 
+## Branches and releases
+
+People install and update from `main` (install.sh, update.sh, the SETUP.md link), so `main` is what they run. Work on
+`dev`, commit and push there; `scripts/release.sh` runs `npm test` and only then moves `main` forward to `dev`
+(fast-forward). Never push to `main` by hand. The iPhone app: `scripts/build.sh testflight` (gubernos-ios) runs its
+`scripts/sim-test.sh` first and uploads nothing if it fails.
+
 ## Testing changes
 
+- **`npm test`** (node:test, `tests/*.test.js`, ~2 s): the API on a fresh kit vault (tasks, inbox, the day, pairing:
+  unpaired → 401, the phone's mirror), backups, the relay worker with GitHub and Apple stubbed, and `setup.sh install`
+  into a fake home. A change to what an install relies on gets a test there. `tests/helpers.js` `startServer()` gives a
+  throwaway server.
 - **Never test writes against the real vault.** Quickest: `scripts/test-server.sh start [port]` (a fresh copy in a temp dir, its own
   data dir, no notifier; prints the URL and the copy's path) and `scripts/test-server.sh stop [port]`. By hand: copy it: `cp -R "<vault>" ~/dev/.gubernos-testvault` and run a second
   server with `GUBERNOS_VAULT=~/dev/.gubernos-testvault PORT=4748`. It shares `data/` (push subscriptions!) unless you also set
@@ -97,7 +108,7 @@ for it: ▶ Queue (or a bug report) sets `assigned: agent, agent: dev, agent_sta
   queued dev tasks, prints them (`id | title [labels]`, oldest first) and exits; it also marks the session alive in
   `data/dev-session.json`. Take the tasks, then start it again. `--now` prints the queue without waiting.
 - Per task: `PATCH /api/tasks/<id> {agent_state:"running"}`; read the task (`GET /api/tasks/<id>`; a bug's snapshot as
-  above); do it — test on a vault copy, commit and push, restart the service, rebuild the iPhone app when public/, local/
+  above); do it — test on a vault copy, `npm test`, commit and push to `dev`, release (`scripts/release.sh`), restart the service, rebuild the iPhone app when public/, local/
   or lib/ changed; then hand it back as above (log line + `agent_state: review`, or `blocked` with the question). A
   product choice the task doesn't settle → blocked with the question, before building.
 - The owner's ongoing conversation comes first: take the queue between turns, not in the middle of their request.

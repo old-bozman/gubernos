@@ -6,7 +6,8 @@
   "description": "Gubernos: a personal operating system over plain Markdown files, with agents",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "test": "node --test tests/*.test.js"
   },
   "dependencies": {
     "yaml": "^2.5.0"
