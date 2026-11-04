@@ -74,4 +74,6 @@ Check: the app's Settings → Google, or `curl -s http://127.0.0.1:4747/api/gcal
 
 ## Removing access
 
-https://myaccount.google.com/permissions → Gubernos (or the name you gave it) → Remove access. Delete `~/.config/gubernos/google_calendar_token.json` too.
+Settings → Google → **Disconnect**: it revokes the access at Google and deletes the token on this Mac.
+
+By hand: https://myaccount.google.com/permissions → Gubernos (or the name you gave it) → Remove access, and delete `~/.config/gubernos/google_calendar_token.json`.
