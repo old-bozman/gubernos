@@ -9,7 +9,15 @@ What it gives: **Calendar** — Plan the day sees your meetings and free time, t
 
 Several calendars: Plan the day reads the main calendar, plus the ones ticked in **Settings → Google → Calendars** (a work calendar shared into this account, a family one…). Their events marked "free" and declined invitations don't take time; time blocks are always written to the main calendar.
 
-Google needs your own "OAuth client" — a one-time setup in Google Cloud (15–20 minutes, free). The one decision is **where the Cloud project lives**, because that decides whether the connection lasts:
+## Sign in with Google
+
+On the Mac, open Gubernos → Settings → Google → **Sign in with Google**, pick your account and allow what you want. That's all.
+
+Gubernos is in beta and Google hasn't verified it yet, so Google first shows "Google hasn't verified this app": click **Advanced → Go to Gubernos**. Until it's verified, Google lets at most 100 people sign in to it in total. The connection stays: it doesn't expire after a week.
+
+## Your own client (optional)
+
+Rather use your own "OAuth client" (for example an internal app in your Google Workspace: no warning, no limits)? A one-time setup in Google Cloud (15–20 minutes, free); put its JSON at `~/.config/gubernos/google_oauth_client.json` and it's used instead of Gubernos' one. The one decision is **where the Cloud project lives**, because that decides whether the connection lasts:
 
 | | Lasts | Effort | Cost |
 |---|---|---|---|
