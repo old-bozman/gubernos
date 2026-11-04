@@ -66,12 +66,18 @@ People install and update from `main` (install.sh, update.sh, the SETUP.md link)
 (fast-forward). Never push to `main` by hand. The iPhone app: `scripts/build.sh testflight` (gubernos-ios) runs its
 `scripts/sim-test.sh` first and uploads nothing if it fails.
 
+The developer's own install runs from `~/gubernos-live` (a git worktree of `main`; launchd `WorkingDirectory`, `server.log`
+there; `data` and `.venv` are symlinks into this checkout), not from this folder, so a saved edit on `dev` reaches no one.
+`release.sh` updates and restarts it. To see a change before releasing: `scripts/test-server.sh start`.
+
 ## Testing changes
 
-- **`npm test`** (node:test, `tests/*.test.js`, ~2 s): the API on a fresh kit vault (tasks, inbox, the day, pairing:
-  unpaired → 401, the phone's mirror), backups, the relay worker with GitHub and Apple stubbed, and `setup.sh install`
-  into a fake home. A change to what an install relies on gets a test there. `tests/helpers.js` `startServer()` gives a
-  throwaway server.
+- **`npm test`** (node:test, `tests/*.test.js`, ~10 s, needs Google Chrome): the API on a fresh kit vault (tasks, inbox,
+  the day, pairing: unpaired → 401, the phone's mirror), backups, the relay worker with GitHub, Apple and Cloudflare stubbed,
+  `setup.sh install` and `phone` into a fake home, and **the page in headless Chrome** (`tests/page.test.js`: every screen
+  renders with no error, desktop and phone width; add a new screen to its list). A change to what an install relies on
+  gets a test there. `tests/helpers.js` `startServer()` gives a throwaway server, `tests/chrome.js` `openPage()` a browser.
+  A new test isn't done until it has been seen failing on a deliberately broken app.
 - **Never test writes against the real vault.** Quickest: `scripts/test-server.sh start [port]` (a fresh copy in a temp dir, its own
   data dir, no notifier; prints the URL and the copy's path) and `scripts/test-server.sh stop [port]`. By hand: copy it: `cp -R "<vault>" ~/dev/.gubernos-testvault` and run a second
   server with `GUBERNOS_VAULT=~/dev/.gubernos-testvault PORT=4748`. It shares `data/` (push subscriptions!) unless you also set
