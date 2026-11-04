@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { startServer } from './helpers.js';
 import { openPage } from './chrome.js';
 
-const SCREENS = ['today', 'inbox', 'upcoming', 'agent', 'waiting', 'someday', 'day', 'plan', 'logbook', 'projects', 'more', 'how', 'phone', 'reflect', 'weekly', 'settings'];
+const SCREENS = ['today', 'inbox', 'upcoming', 'agent', 'waiting', 'someday', 'day', 'plan', 'logbook', 'projects', 'more', 'how', 'phone', 'onboard', 'reflect', 'weekly', 'settings'];
 let s, page;
 before(async () => {
   s = await startServer();
@@ -34,6 +34,8 @@ for (const [label, w, h, mobile] of [['desktop', 1280, 800, false], ['phone', 39
       if (!shown) failed.push(`${screen}: blank`);
     }
     assert.deepEqual(failed, []);
+    await page.eval('location.hash = "#/onboard"');
+    assert.ok(await page.waitFor('document.querySelector(".onboard")?.innerText.includes("Connect a model first")'), 'no model: the interview should say so');
     assert.deepEqual(page.errors, []);
   });
 }

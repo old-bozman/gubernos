@@ -166,6 +166,7 @@ const VIEWS = {
   projects: { title: 'Projects', icon: '▤', count: () => S.data.projects.filter((p) => p.status === 'active').length }, // the phone's list (More → Projects)
   more: { title: 'More', icon: '…' }, // the phone's fifth tab: pinned, projects, goals, the other screens
   how: { title: 'How it works', icon: '?' },
+  onboard: { title: 'Set up your system', icon: '✦' }, // the first interview (lib/onboarding.js); first run lands here
   phone: { title: 'Connect your iPhone', icon: '▯' }, // on the Mac: the app from TestFlight, then the pairing code (SETUP.md; Settings → Connections) // the personal OS explained (public/concept.js); More and Settings → About
   reflect: { title: 'Daily reflection', icon: '☾' },
   weekly: { title: 'Weekly review', icon: '↻', key: '8' },
@@ -619,6 +620,7 @@ function renderMain() {
   if (S.view === 'more') { html += moreHtml(); html += '</div>'; return paintMain(html); }
   if (S.view === 'how') { html += howHtml(); html += '</div>'; return paintMain(html); }
   if (S.view === 'phone') { html += phoneHtml(); html += '</div>'; return paintMain(html); }
+  if (S.view === 'onboard') { html += onboardHtml(); html += '</div>'; return paintMain(html); }
   if (S.view === 'projects') { html += projectsPageHtml(); html += '</div>'; return paintMain(html); }
   if (S.view === 'decisions') { html += decisionsHtml(); html += '</div>'; return paintMain(html); }
   if (S.view === 'week') { html += weekHtml(); html += '</div>'; return paintMain(html); }
@@ -3683,6 +3685,8 @@ document.addEventListener('click', async (e) => {
     case 'report': e.preventDefault(); return reportModal();
     case 'licenses': return licensesModal();
     case 'tour': return tourOpen(0);
+    case 'phone-setup': S.phoneSetup = true; renderMain(); return api('POST', '/api/phone/setup').catch((err) => { S.phoneSetup = false; toast(err.message); renderMain(); });
+    case 'onboard-send': return onboardSend();
     case 'native-settings': return window.webkit?.messageHandlers?.gubernos?.postMessage({ op: 'settings' });
     case 'plan-run': if (S.plan) { S.plan.run[a.dataset.id] = !S.plan.run[a.dataset.id]; renderMain(); } return;
     case 'win-up': case 'win-down': {
@@ -4111,6 +4115,28 @@ function qrSvg(text) {
 }
 const pairQr = () => qrSvg(S.pair?.appLink);
 
+// #/onboard: the first interview with the owner's model, right here (lib/onboarding.js). It starts itself on the first visit.
+function onboardHtml() {
+  const o = S.onboard;
+  if (!o) { if (o !== false) { S.onboard = false; api('GET', '/api/onboard').then((x) => { S.onboard = x; if (S.view === 'onboard') { renderMain(); if (!x.turns.length && x.model) onboardSend(); } }).catch((e) => { S.onboard = { turns: [], error: e.message }; renderMain(); }); } return '<div class="empty">…</div>'; }
+  const bubbles = o.turns.map((t) => `<div class="ob-t ob-${t.from}">${t.from === 'agent' ? md(t.text) : esc(t.text)}</div>`).join('');
+  const foot = !o.model ? '<p class="ph-text">Connect a model first: Settings → Agents → Model. Then come back here.</p>'
+    : `<div class="ob-input"><textarea id="ob-msg" rows="2" placeholder="Answer here" ${S.onboardBusy ? 'disabled' : ''}></textarea><button class="btn primary" data-act="onboard-send" ${S.onboardBusy ? 'disabled' : ''}>${S.onboardBusy ? 'Thinking…' : 'Send'}</button></div>`;
+  return `<div class="onboard"><p class="ph-lead">A short interview: who you are, what you’re responsible for, what’s in progress. Nothing is created until you say yes. Stop any time and come back.</p>
+    ${bubbles}${o.error ? `<p class="d-over">${esc(o.error)}</p>` : ''}${o.finished ? '<p class="ph-text"><b>That’s the setup.</b> <a href="#/today">Go to Today</a> · <a href="#/phone">Connect your iPhone</a></p>' : foot}</div>`;
+}
+async function onboardSend() {
+  if (S.onboardBusy) return;
+  const message = ($('#ob-msg')?.value || '').trim();
+  if (!message && S.onboard?.turns.length) return;
+  S.onboardBusy = true;
+  if (message) S.onboard.turns.push({ from: 'you', text: message });
+  S.onboard.error = null;
+  renderMain();
+  try { S.onboard = await api('POST', '/api/onboard', { message }); } catch (e) { S.onboard.error = e.message; if (message) S.onboard.turns.pop(); }
+  S.onboardBusy = false;
+  if (S.view === 'onboard') renderMain();
+}
 // #/phone, on the Mac: get the iPhone app (TestFlight), connect it (the pairing code), ✓ when it has reached the Mac.
 // The setup agent opens it (SETUP.md → iPhone); Settings → Connections → Connect your iPhone.
 const TESTFLIGHT = 'https://testflight.apple.com/join/rBUGmgJG';
@@ -4130,7 +4156,7 @@ function phoneHtml() {
       <li><h3>Connect it to this Mac</h3>${p.publicUrl ? `<div class="ph-row"><div class="pair-qr">${qrSvg(p.appLink)}</div>
         <div class="ph-text"><p>Open ${esc(APP_NAME)} on the iPhone once and allow notifications. Then point the Camera at this code → <b>Open in ${esc(APP_NAME)}</b>.</p>
         <p class="muted">The phone reaches this Mac at ${esc(host)}, from anywhere, as long as the Mac is awake. Only devices with this code get in.</p></div></div>`
-    : `<p class="ph-text">This Mac isn’t reachable from the phone yet. Your agent sets it up: <code>scripts/setup.sh phone</code> (an https address for this Mac, nothing on the phone). The code appears here when it’s done.</p>`}</li>
+    : `<p class="ph-text">This Mac isn’t reachable from the phone yet. <button class="btn primary" data-act="phone-setup" ${S.phoneSetup ? 'disabled' : ''}>${S.phoneSetup ? 'Setting up…' : 'Set up the address'}</button> It gives this Mac an https address through Cloudflare; nothing to sign in to, nothing on the phone. The traffic passes through Cloudflare, under our account, so it could be seen there; we don’t store it. (Or by hand: <code>scripts/setup.sh phone</code>, with <code>--tailscale</code> to use Tailscale.) The code appears here when it’s done.</p>`}</li>
       <li class="${p.seenAt ? 'ph-ok' : ''}"><h3>${p.seenAt ? '✓ Connected' : 'Waiting for the iPhone…'}</h3>
         <p class="ph-text">${p.seenAt ? `A paired device reached this Mac ${ago}. That’s it: the app on the phone now shows your system.` : 'This turns into ✓ once the phone has connected.'}</p></li>
     </ol></div>`;

@@ -1,5 +1,6 @@
 // Gubernos server: JSON API over the vault + static UI + live change events.
 import http from 'node:http';
+import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import * as V from './lib/vault.js';
@@ -24,6 +25,7 @@ import * as Timers from './lib/timers.js';
 import { ask } from './lib/chat.js';
 import * as Triage from './lib/triage.js';
 import * as Backup from './lib/backup.js';
+import * as Onboarding from './lib/onboarding.js';
 import { mirror } from './lib/mirror.js';
 import { saveAttachment, attachmentFile, attachmentByName } from './lib/attachments.js';
 import { PORT, PROXY_PORT, PUBLIC_URL, APP_NAME, profile, clientConfig } from './lib/config.js';
@@ -187,6 +189,8 @@ route('POST', '/api/gmail/draft', async (_, __, b) => {
   return r;
 });
 // Notifications (Web Push to the home-screen app).
+route('GET', '/api/onboard', () => Onboarding.state());
+route('POST', '/api/onboard', (_, __, b) => Onboarding.turn(b.message));
 route('GET', '/api/mirror', (_, q) => mirror(Number(q.since) || 0)); // the iPhone's offline copy of a vault outside iCloud (lib/mirror.js)
 route('GET', '/api/push/key', () => ({ key: Push.publicKey(), devices: Push.subscriptions().length }));
 route('POST', '/api/push/subscribe', (_, __, b) => Push.subscribe(b.subscription, b.ua));
@@ -266,6 +270,14 @@ const server = http.createServer(async (req, res) => {
       for await (const c of req) { size += c.length; if (size > 25e6) throw V.httpError(413, 'recording too long'); chunks.push(c); }
       const out = await transcribe(Buffer.concat(chunks), req.headers['content-type'], { quick: url.searchParams.get('quick') === '1' });
       res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(out));
+      return;
+    }
+    // Connect your iPhone → Set up: scripts/setup.sh phone, on the Mac only. It restarts this server at the end (detached).
+    if (url.pathname === '/api/phone/setup' && req.method === 'POST') {
+      if (!Pair.isLocal(req)) throw V.httpError(403, 'only on the Mac itself');
+      const log = fs.openSync(path.join(path.dirname(new URL(import.meta.url).pathname), 'server.log'), 'a');
+      spawn('bash', [path.join(path.dirname(new URL(import.meta.url).pathname), 'scripts/setup.sh'), 'phone'], { detached: true, stdio: ['ignore', log, log] }).unref();
+      res.writeHead(200, { 'Content-Type': 'application/json' }).end('{"ok":true}');
       return;
     }
     if (url.pathname === '/api/gcal/connect') {

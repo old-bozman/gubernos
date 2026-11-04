@@ -8,7 +8,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { ROOT, kitVault } from './helpers.js';
+import { ROOT, kitVault, startServer } from './helpers.js';
 
 test('phone: a tunnel address from the relay, kept; pairing required', { timeout: 60000 }, async () => {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'gubernos-phone-'));
@@ -43,4 +43,21 @@ test('phone: a tunnel address from the relay, kept; pairing required', { timeout
     assert.ok(!fs.existsSync(path.join(cfg, 'tunnel.json')) && !fs.existsSync(path.join(cfg, 'tunnel.token')));
     assert.ok(!fs.readdirSync(agents).some((f) => f.endsWith('gubernos-tunnel.plist')));
   } finally { relay.close(); fs.rmSync(d, { recursive: true, force: true }); }
+});
+
+test('Connect your iPhone → Set up: runs on the Mac itself, refused from outside', { timeout: 60000 }, async () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'gubernos-phonebtn-'));
+  const home = path.join(d, 'home'), cfg = path.join(home, '.config/gubernos');
+  fs.mkdirSync(path.join(home, '.gubernos/bin'), { recursive: true }); fs.mkdirSync(cfg, { recursive: true });
+  fs.writeFileSync(path.join(home, '.gubernos/bin/cloudflared'), '#!/bin/sh\necho "cloudflared version 2026.1.0"\n', { mode: 0o755 });
+  const relay = http.createServer((req, res) => res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ id: 'tid', hostname: 'm-btn.gubernos.dev', token: 'T', key: 'K' }))).listen(0, '127.0.0.1');
+  await new Promise((r) => relay.once('listening', r));
+  const s = await startServer({ HOME: home, GUBERNOS_CONFIG_DIR: cfg, GUBERNOS_NO_LAUNCHD: '1', GUBERNOS_LAUNCH_AGENTS: path.join(d, 'agents'), GUBERNOS_TUNNEL_RELAY: `http://127.0.0.1:${relay.address().port}` });
+  try {
+    fs.writeFileSync(path.join(cfg, 'config.json'), JSON.stringify({ vault: s.vault, port: 4799 }));
+    assert.equal((await fetch(`${s.proxyUrl}/api/phone/setup`, { method: 'POST' })).status, 403);
+    assert.equal((await s.post('/api/phone/setup', {})).status, 200);
+    for (let i = 0; i < 150 && !fs.existsSync(path.join(cfg, 'tunnel.json')); i++) await new Promise((r) => setTimeout(r, 100));
+    assert.ok(fs.existsSync(path.join(cfg, 'tunnel.json')), 'the script never ran');
+  } finally { relay.close(); await s.stop(); fs.rmSync(d, { recursive: true, force: true }); }
 });

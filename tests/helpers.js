@@ -22,7 +22,9 @@ export async function startServer(extraEnv = {}) {
   const port = await freePort(), proxy = await freePort();
   const env = { ...process.env, GUBERNOS_VAULT: vault, GUBERNOS_DATA_DIR: path.join(dir, 'data'), GUBERNOS_CONFIG_DIR: path.join(dir, 'config'),
     GUBERNOS_PAIR_FILE: path.join(dir, 'data', 'pair.json'), GUBERNOS_BACKUP_DIR: path.join(dir, 'backups'), GUBERNOS_NO_NOTIFY: '1', GUBERNOS_MAC_FOCUS: '0',
-    GUBERNOS_FEEDBACK_RELAY: '', GUBERNOS_FEEDBACK_INBOX: '', GUBERNOS_PUSH_RELAY: '', PORT: String(port), GUBERNOS_PROXY_PORT: String(proxy), HOST: '127.0.0.1', GUBERNOS_GOOGLE_SHARED_CLIENT: '', GUBERNOS_STT_PYTHON: '/nonexistent', ...extraEnv }; // no Whisper models in a test
+    GUBERNOS_FEEDBACK_RELAY: '', GUBERNOS_FEEDBACK_INBOX: '', GUBERNOS_PUSH_RELAY: '', PORT: String(port), GUBERNOS_PROXY_PORT: String(proxy), HOST: '127.0.0.1', GUBERNOS_GOOGLE_SHARED_CLIENT: '', GUBERNOS_STT_PYTHON: '/nonexistent', // no Whisper models in a test
+    // and never the owner's real AI model or plan: no triage, and every model CLI points at nothing unless a test sets a stand-in
+    GUBERNOS_TRIAGE: '0', GUBERNOS_CLAUDE_BIN: '/nonexistent', GUBERNOS_CODEX_BIN: '/nonexistent', GUBERNOS_GEMINI_BIN: '/nonexistent', ...extraEnv };
   const child = spawn(process.execPath, [path.join(ROOT, 'server.js')], { env, stdio: ['ignore', 'pipe', 'pipe'] });
   let log = '';
   child.stdout.on('data', (d) => { log += d; }); child.stderr.on('data', (d) => { log += d; });
