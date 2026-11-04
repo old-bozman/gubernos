@@ -1,5 +1,5 @@
 # Gubernos relay (worker.js): bug reports from people's installs → issues in a private repo; Apple Push for their iPhones.
-# Deploy (developer, once): npx wrangler login, then secrets GITHUB_TOKEN, KEY_SECRET and APNS_KEY (the .p8:
+# Deploy (developer, once): npx wrangler login, then secrets GITHUB_TOKEN, KEY_SECRET, CF_API_TOKEN and APNS_KEY (the .p8:
 #   npx wrangler secret put APNS_KEY < ~/.config/gubernos/apns.p8), then npx wrangler deploy   (from this folder)
 name = "gubernos-relay"
 main = "worker.js"
@@ -15,6 +15,8 @@ FEEDBACK_REPO = "old-bozman/gubernos-feedback"
 APNS_KEY_ID = "9G4AAJ4UYJ"
 APNS_TEAM_ID = "JGXLFTDAZ2"
 APNS_TOPIC = "app.gubernos"
+TUNNEL_DOMAIN = "gubernos.app"
+# CF_ACCOUNT_ID and CF_ZONE_ID: the account and the gubernos.app zone (set before the first tunnel)
 
 # 5 reports a minute per IP
 [[ratelimits]]
@@ -27,3 +29,9 @@ simple = { limit = 5, period = 60 }
 name = "PUSH_LIMIT"
 namespace_id = "1002"
 simple = { limit = 60, period = 60 }
+
+# 3 new tunnels a minute per IP (a Mac makes one, once)
+[[ratelimits]]
+name = "TUNNEL_LIMIT"
+namespace_id = "1003"
+simple = { limit = 3, period = 60 }

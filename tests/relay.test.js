@@ -49,3 +49,27 @@ test('push: only APNs JSON to well-formed device tokens, topic fixed', async () 
 test('anything else is 404', async () => {
   assert.equal((await call('GET', '/')).status, 404);
 });
+
+test('tunnel: a Cloudflare tunnel, its ingress to the Mac port and its DNS name; only its key deletes it', async () => {
+  const tenv = { ...env, CF_API_TOKEN: 'cf', CF_ACCOUNT_ID: 'acc', CF_ZONE_ID: 'zone', TUNNEL_DOMAIN: 'mac.test' };
+  const id = '11111111-2222-3333-4444-555555555555';
+  globalThis.fetch = async (url, init = {}) => {
+    calls.push({ url: String(url), init });
+    const ok = (result) => reply(200, { success: true, result });
+    if (init.method === 'POST' && url.endsWith('/cfd_tunnel')) return ok({ id, token: 'TOK' });
+    if (init.method === 'GET' && url.includes('/dns_records?')) return ok([{ id: 'd1' }]);
+    return ok({});
+  };
+  const tcall = (method, path, body) => worker.fetch(new Request(`https://relay.test${path}`, { method, body: body ? JSON.stringify(body) : undefined }), tenv);
+  assert.equal((await tcall('POST', '/tunnel', { port: 80 })).status, 400);
+  const t = await (await tcall('POST', '/tunnel', { port: 4748 })).json();
+  assert.equal(t.id, id); assert.equal(t.token, 'TOK');
+  assert.match(t.hostname, /^m-[0-9a-f]{12}\.mac\.test$/);
+  const cfg = JSON.parse(calls.find((c) => c.url.endsWith('/configurations')).init.body);
+  assert.deepEqual(cfg.config.ingress[0], { hostname: t.hostname, service: 'http://localhost:4748', originRequest: {} });
+  const dns = JSON.parse(calls.find((c) => c.init.method === 'POST' && c.url.endsWith('/dns_records')).init.body);
+  assert.equal(dns.content, `${id}.cfargotunnel.com`);
+  assert.equal((await tcall('DELETE', `/tunnel/${id}?key=nope`)).status, 403);
+  assert.equal((await tcall('DELETE', `/tunnel/${id}?key=${t.key}`)).status, 200);
+  assert.ok(calls.some((c) => c.init.method === 'DELETE' && c.url.endsWith(`/cfd_tunnel/${id}`)));
+});

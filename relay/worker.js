@@ -12,15 +12,23 @@
 //     The topic is fixed (APNS_TOPIC), so it pushes to Gubernos devices only. No auth beyond that: whoever holds a device
 //     token (only that phone's own Mac has it) could send that phone an alert. Nothing is logged or stored (no console.log;
 //     observability off in wrangler.toml).
-// Secrets: GITHUB_TOKEN, KEY_SECRET, APNS_KEY (the .p8 text) (wrangler secret put …). Vars: FEEDBACK_REPO, APNS_KEY_ID,
-// APNS_TEAM_ID, APNS_TOPIC. Bindings: LIMIT (reports per IP), PUSH_LIMIT (pushes per IP).
+//   POST /tunnel  {port}                                 → {id, hostname, token, key}: an HTTPS address for someone's Mac
+//     (scripts/setup.sh phone): a remotely managed Cloudflare Tunnel delivering https://m-<random>.<TUNNEL_DOMAIN> to
+//     http://localhost:<port> on that Mac (its proxy port, where only paired devices get in: lib/pair.js), and the DNS name.
+//     One level under the domain, so Universal SSL covers it. The Mac runs cloudflared with the token. The tunnel ends TLS
+//     at Cloudflare; nothing is logged here.
+//   DELETE /tunnel/<id>?key=…                            → the tunnel and its DNS name gone (a reinstall, or leaving)
+// key = HMAC(tunnel id): only the Mac that made a tunnel can delete it.
+// Secrets: GITHUB_TOKEN, KEY_SECRET, APNS_KEY (the .p8 text), CF_API_TOKEN (Account: Cloudflare Tunnel Edit; Zone
+// TUNNEL_DOMAIN: DNS Edit) (wrangler secret put …). Vars: FEEDBACK_REPO, APNS_KEY_ID, APNS_TEAM_ID, APNS_TOPIC,
+// CF_ACCOUNT_ID, CF_ZONE_ID, TUNNEL_DOMAIN. Bindings: LIMIT (reports per IP), PUSH_LIMIT (pushes per IP), TUNNEL_LIMIT.
 const MAX = 2 * 1024 * 1024;
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json' } });
 const enc = new TextEncoder();
 
-async function sign(env, n) {
+async function sign(env, n, what = 'feedback') {
   const k = await crypto.subtle.importKey('raw', enc.encode(env.KEY_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const mac = new Uint8Array(await crypto.subtle.sign('HMAC', k, enc.encode(`feedback:${n}`)));
+  const mac = new Uint8Array(await crypto.subtle.sign('HMAC', k, enc.encode(`${what}:${n}`)));
   return btoa(String.fromCharCode(...mac)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '').slice(0, 32);
 }
 const same = (a, b) => a.length === b.length && [...a].reduce((d, c, i) => d | (c.charCodeAt(0) ^ b.charCodeAt(i)), 0) === 0;
@@ -113,6 +121,44 @@ async function push(req, env) {
   return json({ results });
 }
 
+// Cloudflare API (tunnels, DNS)
+async function cf(env, method, path, body) {
+  const r = await fetch(`${env.CF_API || 'https://api.cloudflare.com/client/v4'}${path}`, {
+    method, headers: { authorization: `Bearer ${env.CF_API_TOKEN}`, ...(body ? { 'content-type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.success === false) throw new Error(`Cloudflare ${method} ${path.split('/').slice(0, 4).join('/')}: ${(j.errors || []).map((e) => e.message).join('; ') || r.status}`);
+  return j.result;
+}
+async function tunnel(req, env) {
+  let r; try { r = JSON.parse(await req.text()); } catch { return json({ error: 'not JSON' }, 400); }
+  const port = Number(r.port);
+  if (!Number.isInteger(port) || port < 1024 || port > 65535) return json({ error: 'port: the Mac\'s proxy port, 1024–65535' }, 400);
+  const name = `m-${[...crypto.getRandomValues(new Uint8Array(6))].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
+  const hostname = `${name}.${env.TUNNEL_DOMAIN}`, acc = `/accounts/${env.CF_ACCOUNT_ID}/cfd_tunnel`;
+  let t;
+  try {
+    t = await cf(env, 'POST', acc, { name, config_src: 'cloudflare' });
+    await cf(env, 'PUT', `${acc}/${t.id}/configurations`, { config: { ingress: [{ hostname, service: `http://localhost:${port}`, originRequest: {} }, { service: 'http_status:404' }] } });
+    await cf(env, 'POST', `/zones/${env.CF_ZONE_ID}/dns_records`, { type: 'CNAME', proxied: true, name: hostname, content: `${t.id}.cfargotunnel.com`, comment: 'gubernos tunnel' });
+  } catch (e) {
+    if (t?.id) await cf(env, 'DELETE', `${acc}/${t.id}`).catch(() => {}); // half made: nothing left behind
+    return json({ error: e.message }, 502);
+  }
+  const token = t.token || await cf(env, 'GET', `${acc}/${t.id}/token`);
+  return json({ id: t.id, hostname, token, key: await sign(env, t.id, 'tunnel') });
+}
+async function untunnel(id, key, env) {
+  if (!key || !same(key, await sign(env, id, 'tunnel'))) return json({ error: 'wrong key' }, 403);
+  const acc = `/accounts/${env.CF_ACCOUNT_ID}/cfd_tunnel`;
+  try {
+    const recs = await cf(env, 'GET', `/zones/${env.CF_ZONE_ID}/dns_records?type=CNAME&content=${id}.cfargotunnel.com`);
+    for (const d of recs || []) await cf(env, 'DELETE', `/zones/${env.CF_ZONE_ID}/dns_records/${d.id}`);
+    await cf(env, 'DELETE', `${acc}/${id}/connections`).catch(() => {}); // a running cloudflared would keep it alive
+    await cf(env, 'DELETE', `${acc}/${id}`);
+  } catch (e) { return json({ error: e.message }, 502); }
+  return json({ ok: true });
+}
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
@@ -125,6 +171,12 @@ export default {
       const ok = !env.PUSH_LIMIT || (await env.PUSH_LIMIT.limit({ key: req.headers.get('cf-connecting-ip') || 'ip?' })).success;
       return ok ? push(req, env) : json({ error: 'too many pushes, try again in a minute' }, 429);
     }
+    if (url.pathname === '/tunnel' && req.method === 'POST') {
+      const ok = !env.TUNNEL_LIMIT || (await env.TUNNEL_LIMIT.limit({ key: req.headers.get('cf-connecting-ip') || 'ip?' })).success;
+      return ok ? tunnel(req, env) : json({ error: 'too many tunnels, try again in a minute' }, 429);
+    }
+    const tm = url.pathname.match(/^\/tunnel\/([0-9a-f-]{36})$/);
+    if (tm && req.method === 'DELETE') return untunnel(tm[1], url.searchParams.get('key') || '', env);
     const m = url.pathname.match(/^\/feedback\/(\d{1,9})(\/reply)?$/);
     if (m && !m[2] && req.method === 'GET') return answers(Number(m[1]), url.searchParams.get('key') || '', env);
     if (m && m[2] && req.method === 'POST') return reply(req, Number(m[1]), url.searchParams.get('key') || '', env);
