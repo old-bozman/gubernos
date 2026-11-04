@@ -51,3 +51,18 @@ test('filled in the browser, it sets everything up and hands over to the intervi
   assert.match(profile, /Sam/); assert.match(profile, /Dutch/);
   assert.match(await page.eval('location.href'), /:4747\/#\/onboard$/);
 });
+
+test('a page left open after its setup stopped says what to do, not "Failed to fetch"', { timeout: 30000 }, async () => {
+  const html = fs.readFileSync(path.join(ROOT, 'public/first-run.html'), 'utf8').replace('__CODE__', 'x');
+  const p = await openPage();
+  try {
+    const port = await freePort(); // nothing listens here: the setup is gone
+    const srv = (await import('node:http')).createServer((_, res) => res.writeHead(200, { 'content-type': 'text/html' }).end(html)).listen(port, '127.0.0.1');
+    await new Promise((r) => srv.once('listening', r));
+    await p.goto(`http://127.0.0.1:${port}/`);
+    await p.waitFor('document.querySelector("#go")');
+    srv.closeAllConnections(); await new Promise((r) => srv.close(r));
+    await p.eval('document.querySelector("#name").value = "Sam"; document.querySelector("#status").textContent = ""; refresh().catch((e) => { document.querySelector("#status").textContent = e.message; })');
+    assert.ok(await p.waitFor('document.querySelector("#status").textContent.includes("open Gubernos again")'), await p.eval('document.querySelector("#status").textContent'));
+  } finally { await p.close(); }
+});

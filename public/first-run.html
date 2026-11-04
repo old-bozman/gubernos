@@ -61,7 +61,8 @@
 const CODE = '__CODE__';
 const $ = (s) => document.querySelector(s);
 const call = async (method, path, body) => {
-  const r = await fetch(path, { method, headers: { 'x-first-run': CODE }, body: body ? JSON.stringify(body) : undefined });
+  // the setup behind this page has stopped (the Gubernos window closed, the Mac restarted): say what to do, not "Failed to fetch"
+  const r = await fetch(path, { method, headers: { 'x-first-run': CODE }, body: body ? JSON.stringify(body) : undefined }).catch(() => { throw new Error('This page has stopped working. Close it and open Gubernos again.'); });
   const j = await r.json();
   if (!r.ok) throw new Error(j.error || r.status);
   return j;
