@@ -9,7 +9,15 @@ import path from 'node:path';
 const CHROME = process.env.GUBERNOS_CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Chrome occasionally doesn't come up cleanly: try again, and never leave a half-started one behind (it would keep the test
+// process alive for ever: a hung release)
 export async function openPage() {
+  let last;
+  for (let i = 0; i < 3; i++) { try { return await start(); } catch (e) { last = e; } }
+  throw last;
+}
+
+async function start() {
   if (!fs.existsSync(CHROME)) throw new Error(`no Chrome at ${CHROME} (set GUBERNOS_CHROME)`);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gubernos-chrome-'));
   const proc = spawn(CHROME, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${dir}`, '--no-first-run', '--no-default-browser-check', '--disable-extensions', 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
@@ -17,9 +25,11 @@ export async function openPage() {
   proc.stderr.on('data', (d) => { chromeLog = (chromeLog + d).slice(-2000); });
   proc.once('exit', (code, signal) => { gone = `Chrome exited (${code ?? signal}): ${chromeLog.slice(-500)}`; for (const w of waiting.values()) w.reject(new Error(gone)); waiting.clear(); });
   const waiting = new Map(), errors = [];
+  const giveUp = (e) => { proc.kill('SIGKILL'); try { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); } catch { /* temp */ } throw e; };
+  try {
   const portFile = path.join(dir, 'DevToolsActivePort');
   for (let i = 0; i < 150 && !fs.existsSync(portFile) && !gone; i++) await sleep(100);
-  if (!fs.existsSync(portFile)) { proc.kill(); throw new Error(gone || `Chrome didn't start in 15 s: ${chromeLog.slice(-500)}`); }
+  if (!fs.existsSync(portFile)) throw new Error(gone || `Chrome didn't start in 15 s: ${chromeLog.slice(-500)}`);
   const port = fs.readFileSync(portFile, 'utf8').split('\n')[0];
   const targets = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
   const ws = new WebSocket(targets.find((t) => t.type === 'page').webSocketDebuggerUrl);
@@ -47,7 +57,7 @@ export async function openPage() {
     if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text);
     return r.result.value;
   };
-  return {
+  const page = {
     errors, sleep, eval: evaluate,
     goto: (url) => send('Page.navigate', { url }),
     resize: (width, height, mobile = false) => send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile }),
@@ -59,4 +69,7 @@ export async function openPage() {
       try { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); } catch { /* the OS cleans its temp dir */ }
     },
   };
+  await evaluate('1');
+  return page;
+  } catch (e) { return giveUp(e); }
 }
