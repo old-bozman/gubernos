@@ -44,7 +44,7 @@ Rather use your own "OAuth client" (for example an internal app in your Google W
    - **A:** User type **Internal**. Done — nothing to publish, nothing expires.
    - **B / C:** User type **External**, add your own address under **Test users**.
 3. **Data access → Add or remove scopes**, add the ones for the APIs you enabled:
-   - `.../auth/calendar.events`, `.../auth/calendar.freebusy`
+   - `.../auth/calendar.events`, `.../auth/calendar.freebusy`, `.../auth/calendar.calendarlist.readonly`
    - `.../auth/gmail.readonly`, `.../auth/gmail.compose`
    - `.../auth/contacts.readonly`, `.../auth/contacts.other.readonly`
    - `.../auth/drive.readonly`

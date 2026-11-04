@@ -33,6 +33,7 @@ test('no own client: the shared one signs in, with PKCE', async () => {
   const u = new URL(r.headers.get('location'));
   assert.equal(u.searchParams.get('client_id'), 'shared-id.apps.googleusercontent.com');
   assert.equal(u.searchParams.get('code_challenge_method'), 'S256');
+  assert.match(u.searchParams.get('scope'), /calendar\.calendarlist\.readonly/);
   const cb = await fetch(`${s.url}/api/gcal/callback?code=c1&state=${u.searchParams.get('state')}`);
   assert.equal(cb.status, 200, await cb.text());
   assert.equal(got.code, 'c1');
