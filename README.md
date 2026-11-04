@@ -20,8 +20,8 @@ Install Gubernos for me: read https://raw.githubusercontent.com/old-bozman/guber
 ```
 
 It checks the Mac, installs what's missing (asking first), creates your folder (on the Mac, or in iCloud if you like), starts the app, sets up the
-phone connection and then interviews you to fill the system. It asks you for what only you can do: signing in (Tailscale,
-for the phone), a few Allow dialogs, and these taps on your iPhone:
+phone connection and then interviews you to fill the system. It asks you for what only you can do: a few Allow dialogs,
+and these taps on your iPhone:
 
 1. On your iPhone, install **TestFlight** from the App Store.
 2. On the iPhone, open **[testflight.apple.com/join/rBUGmgJG](https://testflight.apple.com/join/rBUGmgJG)** → **Accept** →
@@ -59,7 +59,7 @@ flowchart LR
     mac["Your Mac<br/>Gubernos for Mac"] <--> files[("Your files<br/>plain Markdown")]
     phone["iPhone and Watch<br/>(a copy for offline)"]
     agents["Your agents<br/>Claude Code · Codex · Gemini"] <--> files
-    phone <-. "your private network" .-> mac
+    phone <-. "HTTPS through Cloudflare, paired devices only" .-> mac
   end
   agents -. "the text a task needs, your account" .-> ai["Your AI provider"]
   mac -. "free time, blocks you apply" .-> cal["Your calendar"]
@@ -76,7 +76,7 @@ is `public/concept.js` (`node scripts/build-concept.mjs` refreshes the site and 
 The app over the vault of Markdown files: the files are the only store, no database. Obsidian and agents keep working on
 the same files.
 
-Runs on a Mac; the iPhone app (or a home-screen web app) reaches it over HTTPS through Tailscale on the Mac (Funnel: nothing to install on the phone).
+Runs on a Mac; the iPhone app (or a home-screen web app) reaches it over HTTPS through a Cloudflare Tunnel to the Mac (`cloudflared`; nothing to install on the phone), or Tailscale if you prefer.
 **New here? [SETUP.md](SETUP.md)** (the short version, iPhone first: [docs/install.md](docs/install.md)) — clone, open your AI agent (Claude Code, Codex or Gemini CLI), say "run SETUP.md": it installs the app, creates the vault from
 `kit/vault/` and onboards you. Working on the code? Read [AGENTS.md](AGENTS.md).
 
@@ -231,7 +231,7 @@ Whisper models download to `~/.cache/huggingface` on first use.
 - `deploy/gubernos.plist.template` → `~/Library/LaunchAgents/com.<user>.gubernos.plist` (setup.sh renders it): the server,
   started at login, restarted on crash. After server changes: `scripts/setup.sh restart` (UI-only changes: reload the page).
 - `deploy/gubernos-awake.plist.template` (`--awake`, or later `scripts/setup.sh awake on|off|status`): `caffeinate -s` — no system sleep on AC power (closing the lid still sleeps).
-- Phone: `scripts/setup.sh phone` = `tailscale funnel --bg 4747` (a public HTTPS address; only paired devices get in, lib/pair.js) + the URL saved as `publicUrl`; `--private` = `tailscale serve` (tailnet only, Tailscale on the phone too). The mic needs HTTPS. On the Mac, `#/phone` walks through getting the app and pairing.
+- Phone: `scripts/setup.sh phone` = a Cloudflare Tunnel made by the relay (`https://m-….gubernos.app` → the proxy port; `cloudflared` as launchd `com.<user>.gubernos-tunnel`; only paired devices get in, lib/pair.js) + the URL saved as `publicUrl`; `--tailscale` = `tailscale funnel`; `--private` = `tailscale serve` (tailnet only, Tailscale on the phone too). The mic needs HTTPS. On the Mac, `#/phone` walks through getting the app and pairing.
   iPhone: open it in Safari → Share → Add to Home Screen.
 - Desktop: open the same URL in Safari → File → Add to Dock — a separate app window with its own Dock icon, so it looks native (macOS 14+).
 - Logs: `server.log`; voice events from the phone are the `[voice]` lines.

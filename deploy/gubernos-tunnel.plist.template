@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- The phone's way in: cloudflared (Cloudflare's signed build, ~/.gubernos/bin) runs the tunnel the relay made for this
+       Mac (scripts/setup.sh phone), delivering its https address to the proxy port, where only paired devices get in. -->
+  <key>Label</key><string>{{LABEL}}</string>
+  <key>ProgramArguments</key>
+  <array><string>{{HOME}}/.gubernos/bin/cloudflared</string><string>tunnel</string><string>--no-autoupdate</string><string>run</string>
+    <string>--token-file</string><string>{{TOKEN_FILE}}</string></array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>{{APP}}/tunnel.log</string>
+  <key>StandardErrorPath</key><string>{{APP}}/tunnel.log</string>
+</dict>
+</plist>

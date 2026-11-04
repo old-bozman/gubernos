@@ -8,8 +8,11 @@
 #                            [--model claude|codex|gemini] [--voice-language en-US|ru-RU|…|mixed]
 #   scripts/setup.sh model claude|codex|gemini   the model behind the app (lib/llm.js; Settings → Agents → Model)
 #   scripts/setup.sh voice-language LOCALE|mixed the language spoken to the app (Settings → Voice; lib/voice.js)
-#   scripts/setup.sh phone [--private]           HTTPS for the phone: Tailscale Funnel on this Mac (--private: serve, Tailscale on the phone too);
-#                                                gets Tailscale first when it's missing (get-tailscale)
+#   scripts/setup.sh phone                       HTTPS for the phone: an https://m-….gubernos.app address through Cloudflare Tunnel
+#                                                (the relay makes it; cloudflared runs here as a background service). Nothing to sign in to
+#   scripts/setup.sh phone --tailscale           …through Tailscale Funnel instead (TLS ends on this Mac; a Tailscale account)
+#   scripts/setup.sh phone --private             …Tailscale Serve: only your tailnet, so the phone needs Tailscale too
+#   scripts/setup.sh get-cloudflared             only that: Cloudflare's signed cloudflared into ~/.gubernos/bin
 #   scripts/setup.sh get-tailscale               only that: download Tailscale's installer, check its signature, open it, wait for the login
 #   scripts/setup.sh voice                       Whisper (MLX, Apple Silicon): Russian, mixed languages, accents. Without it the
 #                                                Mac's own speech models hear one language each (macOS 26+, nothing to install)
@@ -26,6 +29,10 @@ APP="$(cd "$(dirname "$0")/.." && pwd)"
 export PATH="$HOME/.local/bin:$PATH"
 LABEL="com.${USER}.gubernos"
 AWAKE_LABEL="com.${USER}.gubernos-awake"
+TUNNEL_LABEL="com.${USER}.gubernos-tunnel"
+CFG_DIR="${GUBERNOS_CONFIG_DIR:-$HOME/.config/gubernos}"
+CFD="$HOME/.gubernos/bin/cloudflared"
+TUNNEL_RELAY="${GUBERNOS_TUNNEL_RELAY:-https://relay.gubernos.app}"
 AGENTS_DIR="${GUBERNOS_LAUNCH_AGENTS:-$HOME/Library/LaunchAgents}"
 KIT="node $APP/scripts/kit.mjs"
 ok() { printf '  ✓ %s\n' "$1"; }
@@ -95,7 +102,9 @@ render() { # template → plist
       -e "s#{{PATH}}#$HOME/.local/bin:$(dirname "$(command -v node)"):/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin#g" "$1"
 }
 
+# GUBERNOS_NO_LAUNCHD=1 (tests): write the plists, start and restart nothing
 load() { # label plist
+  [[ -n "${GUBERNOS_NO_LAUNCHD:-}" ]] && return 0
   local uid; uid=$(id -u)
   launchctl bootout "gui/$uid/$1" 2>/dev/null || true
   for _ in $(seq 1 20); do launchctl print "gui/$uid/$1" >/dev/null 2>&1 || break; sleep 0.5; done # bootout finishes asynchronously
@@ -178,26 +187,66 @@ get-tailscale() {
   ok "Tailscale is running and logged in"
 }
 
-phone() {
-  # The iPhone app reaches this Mac over HTTPS through Tailscale, installed and logged in on this Mac only:
-  #   (default) Funnel: a public https://<mac>.<tailnet>.ts.net address; the phone needs nothing but the app and the pairing
-  #             code (lib/pair.js: unpaired requests get nothing, repeated wrong codes are turned away)
-  #   --private Serve: reachable only inside the tailnet, so the phone needs Tailscale too (logged in, VPN On Demand)
-  local mode=funnel; [[ "${1:-}" == --private ]] && mode=serve
-  get-tailscale
-  # pairing first: from now on only paired devices get in (an existing token stays, so paired devices stay paired)
-  local pf="${GUBERNOS_CONFIG_DIR:-$HOME/.config/gubernos}/pair.json"
+# pairing first: from now on only paired devices get in (an existing token stays, so paired devices stay paired)
+pairing_on() {
   node -e 'const fs=require("fs"),f=process.argv[1];let s={};try{s=JSON.parse(fs.readFileSync(f,"utf8"))}catch{}
     s.token||=require("crypto").randomBytes(24).toString("base64url");s.required=true;
-    fs.mkdirSync(require("path").dirname(f),{recursive:true});fs.writeFileSync(f,JSON.stringify(s,null,1)+"\n",{mode:0o600})' "$pf"
-  # The first time Tailscale prints login.tailscale.com links (turn on HTTPS, and for Funnel allow it): open, approve, it goes on.
-  echo "  If a login.tailscale.com link appears below, open it and approve (HTTPS certificates, Funnel); the command then continues."
-  if [[ $mode == funnel ]]; then ts funnel --bg "$(proxy_port)"; else ts serve --bg "$(proxy_port)"; fi
-  local host; host=$(ts status --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).Self.DNSName.replace(/\.$/,"")))')
+    fs.mkdirSync(require("path").dirname(f),{recursive:true});fs.writeFileSync(f,JSON.stringify(s,null,1)+"\n",{mode:0o600})' "$CFG_DIR/pair.json"
+}
+
+# Cloudflare's own build (signed by Cloudflare Inc., team 68WVV388M8), checked before it's kept. No Homebrew, no password.
+get-cloudflared() {
+  if [[ -x "$CFD" ]]; then ok "cloudflared $("$CFD" --version | awk '{print $3}')"; return; fi
+  local arch tmp; arch=$([[ "$(uname -m)" == arm64 ]] && echo arm64 || echo amd64); tmp=$(mktemp -d)
+  curl -fsSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-$arch.tgz" | tar -xz -C "$tmp" || die "couldn't download cloudflared"
+  { codesign --verify --strict "$tmp/cloudflared" && codesign -dv "$tmp/cloudflared" 2>&1 | grep -q 'TeamIdentifier=68WVV388M8'; } \
+    || { rm -rf "$tmp"; die "the downloaded cloudflared isn't signed by Cloudflare — not installed"; }
+  mkdir -p "$(dirname "$CFD")"; mv "$tmp/cloudflared" "$CFD"; rm -rf "$tmp"
+  ok "cloudflared $("$CFD" --version | awk '{print $3}') (Cloudflare's signed build) in ~/.gubernos/bin"
+}
+
+# This Mac's tunnel: made once by the relay (relay/worker.js POST /tunnel) for the proxy port, kept in tunnel.json
+# (+ the token in tunnel.token, both 0600); made again only when the proxy port changed.
+cloudflare-tunnel() {
+  local tf="$CFG_DIR/tunnel.json" tok="$CFG_DIR/tunnel.token" pp; pp=$(proxy_port)
+  if [[ ! -s "$tok" ]] || [[ "$(node -p 'try{require(process.argv[1]).port}catch{0}' "$tf")" != "$pp" ]]; then
+    local out; out=$(curl -fsS -X POST "$TUNNEL_RELAY/tunnel" -H 'content-type: application/json' -d "{\"port\":$pp}") || die "the relay couldn't make an address for this Mac (try again in a minute)"
+    mkdir -p "$CFG_DIR"; ( umask 077
+      node -e 'const j=JSON.parse(process.argv[1]);require("fs").writeFileSync(process.argv[2],JSON.stringify({id:j.id,hostname:j.hostname,key:j.key,port:+process.argv[4]},null,1)+"\n");require("fs").writeFileSync(process.argv[3],j.token)' "$out" "$tf" "$tok" "$pp" )
+  fi
+  mkdir -p "$AGENTS_DIR"
+  render "$APP/deploy/gubernos-tunnel.plist.template" "$TUNNEL_LABEL" | sed "s#{{TOKEN_FILE}}#$tok#g" > "$AGENTS_DIR/$TUNNEL_LABEL.plist"
+  load "$TUNNEL_LABEL" "$AGENTS_DIR/$TUNNEL_LABEL.plist"
+  node -p 'require(process.argv[1]).hostname' "$tf"
+}
+
+phone() {
+  # The iPhone app reaches this Mac over HTTPS; the phone needs nothing but the app and the pairing code (lib/pair.js:
+  # unpaired requests get nothing, repeated wrong codes are turned away). Three ways:
+  #   (default)   Cloudflare Tunnel: https://m-<random>.gubernos.app, made by the relay; cloudflared runs here. TLS ends at
+  #               Cloudflare (it could see the traffic; nothing is logged). Nothing for the person to sign in to.
+  #   --tailscale Tailscale Funnel: https://<mac>.<tailnet>.ts.net; TLS ends on this Mac. A Tailscale account and its installer.
+  #   --private   Tailscale Serve: only the tailnet, so the phone needs Tailscale too (logged in, VPN On Demand)
+  local mode=cloudflare host
+  case "${1:-}" in --tailscale) mode=funnel;; --private) mode=serve;; "") ;; *) die "unknown option $1";; esac
+  pairing_on
+  if [[ $mode == cloudflare ]]; then
+    get-cloudflared
+    host=$(cloudflare-tunnel)
+  else
+    get-tailscale
+    # The first time Tailscale prints login.tailscale.com links (turn on HTTPS, and for Funnel allow it): open, approve, it goes on.
+    echo "  If a login.tailscale.com link appears below, open it and approve (HTTPS certificates, Funnel); the command then continues."
+    if [[ $mode == funnel ]]; then ts funnel --bg "$(proxy_port)"; else ts serve --bg "$(proxy_port)"; fi
+    host=$(ts status --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).Self.DNSName.replace(/\.$/,"")))')
+  fi
   $KIT config --public-url "https://$host" >/dev/null
   restart >/dev/null
-  if [[ $mode == funnel ]]; then ok "phone URL: https://$host — reachable from anywhere, only paired devices get in (no Tailscale needed on the phone)"
-  else ok "phone URL: https://$host — only your Tailscale devices reach it (the phone needs Tailscale, logged in, VPN On Demand on)"; fi
+  case $mode in
+    cloudflare) ok "phone URL: https://$host — reachable from anywhere through Cloudflare, only paired devices get in";;
+    funnel) ok "phone URL: https://$host — reachable from anywhere, only paired devices get in (no Tailscale needed on the phone)";;
+    serve) ok "phone URL: https://$host — only your Tailscale devices reach it (the phone needs Tailscale, logged in, VPN On Demand on)";;
+  esac
   echo "  Connect the iPhone: open http://127.0.0.1:$(port)/#/phone on this Mac and follow the two codes there."
 }
 
@@ -258,8 +307,8 @@ calendar() {
   else no "no calendar access ($out): System Settings → Privacy & Security → Calendars → Gubernos Calendar → Full Access"; fi
 }
 
-restart() { launchctl kickstart -k "gui/$(id -u)/$LABEL" && wait_up && ok "restarted"; }
+restart() { [[ -n "${GUBERNOS_NO_LAUNCHD:-}" ]] && return 0; launchctl kickstart -k "gui/$(id -u)/$LABEL" && wait_up && ok "restarted"; }
 status() { launchctl print "gui/$(id -u)/$LABEL" 2>/dev/null | grep -E "state|pid" | head -2; curl -sf "http://127.0.0.1:$(port)/api/state" >/dev/null && ok "answering on $(port)" || no "not answering on $(port)"; }
 
 cmd="${1:-check}"; shift || true
-case "$cmd" in check|install|model|voice-language|get-tailscale|phone|voice|obsidian|awake|calendar|restart|status) "$cmd" "$@";; *) die "unknown command $cmd";; esac
+case "$cmd" in check|install|model|voice-language|get-tailscale|get-cloudflared|phone|voice|obsidian|awake|calendar|restart|status) "$cmd" "$@";; *) die "unknown command $cmd";; esac
