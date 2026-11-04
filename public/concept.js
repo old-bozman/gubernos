@@ -168,7 +168,7 @@ export const archHtml = () => `<div class="cpt-arch">
       ${link('a copy from<br>your Mac')}
       ${box('folder', 'Your files', 'One folder of Markdown: tasks, projects, goals, habits, days, reviews. Readable in any editor, today and in twenty years.', 'files')}
       ${link('the same<br>folder')}
-      <div class="cpt-stack">${box('mac', 'Your Mac', 'Gubernos for Mac: planning with your calendar, voice, the chat. Your phone reaches it from anywhere, once paired with it.')}
+      <div class="cpt-stack">${box('mac', 'Your Mac', 'Gubernos for Mac: planning with your calendar, voice, the chat. Your phone reaches it from anywhere through Cloudflare, once paired with it.')}
         ${box('agent', 'Your agents', 'Claude Code, Codex or Gemini on your Mac, with your own subscription. They work in the same files.')}</div>
     </div></div>
   <div class="cpt-zone cpt-theirs"><div class="zl"><b>Services you already use</b><span>with your own accounts, only when you turn them on</span></div>
@@ -196,7 +196,7 @@ export const TEXT = {
   lede: 'What you are responsible for, what you have promised, what you want and what you still have to decide, wired to your projects, your tasks and today. Gubernos keeps that model in plain files you own and gives you, and your AI agents, one place to steer it.',
   wheel: ['Your life as a wheel: today at the hub, the reasons around it', 'Each ring is a slower horizon. Anything on an inner ring links outward to why it matters, so a task is never just a task, and an area is never just a wish without a next step.'],
   loops: ['Life loops: a day inside a week inside a quarter', 'Every loop plans, does and looks back. The day reports to the week, the week to the quarter, and each review carries what you learned back into the model.'],
-  arch: ['Everything stays with you. Gubernos keeps nothing of yours except a report you send.', 'Your system is a folder of plain Markdown files on your Mac (or in your iCloud Drive, if you like). The apps and the agents read and write those files on your devices; your iPhone keeps a copy from the Mac. There is no Gubernos account and no analytics. A small relay passes notifications through without keeping them, and carries the bug reports you send to us, where we keep them to fix the app.'],
+  arch: ['Everything stays with you. Gubernos keeps nothing of yours except a report you send.', 'Your system is a folder of plain Markdown files on your Mac (or in your iCloud Drive, if you like). The apps and the agents read and write those files on your devices; your iPhone keeps a copy from the Mac. There is no Gubernos account and no analytics. Your phone reaches your Mac through Cloudflare, which can see that traffic; we don\u2019t store it. A small relay passes notifications through without keeping them, and carries the bug reports you send to us, where we keep them to fix the app.'],
   role: ['Your agent can do anything. The app gives your life’s routines a shape.', 'You can already ask Claude or Codex to work in a folder of notes. Gubernos adds the structure an agent does not keep on its own: the model, the loops and a screen for each step, on your Mac, phone and wrist.'],
 };
 

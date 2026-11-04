@@ -16,8 +16,9 @@ test('phone: a tunnel address from the relay, kept; pairing required', { timeout
   fs.mkdirSync(path.join(home, '.gubernos/bin'), { recursive: true }); fs.mkdirSync(cfg, { recursive: true });
   fs.writeFileSync(path.join(home, '.gubernos/bin/cloudflared'), '#!/bin/sh\necho "cloudflared version 2026.1.0"\n', { mode: 0o755 });
   fs.writeFileSync(path.join(cfg, 'config.json'), JSON.stringify({ vault: kitVault(path.join(d, 'vault')), port: 4799 }));
-  let asked = 0, body;
+  let asked = 0, body, deleted;
   const relay = http.createServer((req, res) => { let b = ''; req.on('data', (x) => { b += x; }).on('end', () => {
+    if (req.method === 'DELETE') { deleted = req.url; return res.writeHead(200, { 'content-type': 'application/json' }).end('{"ok":true}'); }
     asked++; body = JSON.parse(b);
     res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ id: 'tid', hostname: 'm-abc.gubernos.dev', token: 'TOKEN', key: 'K' }));
   }); }).listen(0, '127.0.0.1');
@@ -36,5 +37,10 @@ test('phone: a tunnel address from the relay, kept; pairing required', { timeout
     assert.match(fs.readFileSync(path.join(agents, plist), 'utf8'), new RegExp(`--token-file</string><string>${cfg.replace(/[.]/g, '\\.')}/tunnel\\.token`));
     await run(); // again: the same tunnel, the relay isn't asked twice
     assert.equal(asked, 1);
+    // leaving Cloudflare: the service file and the saved tunnel are gone, the relay is told to delete it
+    await promisify(execFile)('bash', [path.join(ROOT, 'scripts/setup.sh'), 'stop-tunnel'], { env: { ...process.env, HOME: home, GUBERNOS_NO_LAUNCHD: '1', GUBERNOS_LAUNCH_AGENTS: agents, GUBERNOS_TUNNEL_RELAY: `http://127.0.0.1:${relay.address().port}` } });
+    assert.equal(deleted, '/tunnel/tid?key=K');
+    assert.ok(!fs.existsSync(path.join(cfg, 'tunnel.json')) && !fs.existsSync(path.join(cfg, 'tunnel.token')));
+    assert.ok(!fs.readdirSync(agents).some((f) => f.endsWith('gubernos-tunnel.plist')));
   } finally { relay.close(); fs.rmSync(d, { recursive: true, force: true }); }
 });

@@ -126,6 +126,7 @@ route('POST', '/api/focus/why', (_, __, b) => why(String(b.taskId || ''), Array.
 // Calendar time-blocking, the Mac's calendars or Google's (lib/calendar.js; events only after the UI's confirm step).
 route('GET', '/api/ai', () => AI.providers()); // the model behind the app (Settings → Agents → Model): lib/llm.js
 route('GET', '/api/gcal/status', () => Cal.status());
+route('POST', '/api/gcal/disconnect', () => G.disconnect());
 route('POST', '/api/calendar/mac/access', async () => { const access = await Cal.requestMacAccess(); Plan.forgetFree(); return { access }; }); // the system dialog, on the Mac's screen
 route('GET', '/api/gcal/calendars', () => Cal.listCalendars());
 route('POST', '/api/gcal/slots', (_, __, b) => Cal.freeSlots({ minutes: Number(b.minutes) || 50, from: b.from || null }));

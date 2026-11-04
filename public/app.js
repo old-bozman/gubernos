@@ -4219,7 +4219,7 @@ function googleNote() {
   const local = ['127.0.0.1', 'localhost'].includes(location.hostname);
   const label = on.length ? 'Re-connect' : 'Sign in with Google';
   const link = local ? `<a href="/api/gcal/connect">${label}</a>` : `${label} on the Mac: 127.0.0.1:${location.port || 4747}/api/gcal/connect`;
-  return `${on.length ? `Connected: ${on.join(', ')}` : 'Not connected'} · ${link}${on.length ? '' : unverified}`;
+  return `${on.length ? `Connected: ${on.join(', ')}` : 'Not connected'} · ${link}${on.length ? ' · <button class="linkbtn" data-act="google-disconnect">Disconnect</button>' : unverified}`;
 }
 // Settings → Calendar: where Plan the day reads meetings and puts time blocks — the Mac's own calendars (Calendar.app:
 // whatever accounts are added there, one Allow) or Google's (its own sign-in, Settings → Google). lib/calendar.js
@@ -4270,6 +4270,7 @@ document.addEventListener('click', (e) => {
   if (b.dataset.act === 'set-theme') { applyTheme(v); return renderMain(); }
   if (b.dataset.act === 'set-palette') { applyPalette(v); return saveSetting({ palette: +v }); }
   if (b.dataset.act === 'set-calsrc') return saveSetting({ calendarSource: v }).then(refreshCalStatus);
+  if (b.dataset.act === 'google-disconnect') return api('POST', '/api/gcal/disconnect').then(() => { toast('Google disconnected'); return refreshCalStatus(); }, (err) => toast(err.message));
   if (b.dataset.act === 'set-maccal-allow') { toast('Look for the macOS dialog — Allow full access'); return api('POST', '/api/calendar/mac/access').then(refreshCalStatus, (err) => toast(err.message)); }
   if (b.dataset.act === 'set-notif') { if ((v === 'on') !== !!S.push.on) toggleNotifications(); return; }
   if (b.dataset.act === 'set-digest-off') return saveSetting({ digestAt: v === 'on' ? '08:30' : '' });

@@ -13,6 +13,7 @@
 #   scripts/setup.sh phone --tailscale           …through Tailscale Funnel instead (TLS ends on this Mac; a Tailscale account)
 #   scripts/setup.sh phone --private             …Tailscale Serve: only your tailnet, so the phone needs Tailscale too
 #   scripts/setup.sh get-cloudflared             only that: Cloudflare's signed cloudflared into ~/.gubernos/bin
+#   scripts/setup.sh stop-tunnel                 stop the Cloudflare address and delete it (--tailscale / --private do this too)
 #   scripts/setup.sh get-tailscale               only that: download Tailscale's installer, check its signature, open it, wait for the login
 #   scripts/setup.sh voice                       Whisper (MLX, Apple Silicon): Russian, mixed languages, accents. Without it the
 #                                                Mac's own speech models hear one language each (macOS 26+, nothing to install)
@@ -210,6 +211,7 @@ get-cloudflared() {
 cloudflare-tunnel() {
   local tf="$CFG_DIR/tunnel.json" tok="$CFG_DIR/tunnel.token" pp; pp=$(proxy_port)
   if [[ ! -s "$tok" ]] || [[ "$(node -p 'try{require(process.argv[1]).port}catch{0}' "$tf")" != "$pp" ]]; then
+    stop-tunnel >&2 # the port changed: the old one goes
     local out; out=$(curl -fsS -X POST "$TUNNEL_RELAY/tunnel" -H 'content-type: application/json' -d "{\"port\":$pp}") || die "the relay couldn't make an address for this Mac (try again in a minute)"
     mkdir -p "$CFG_DIR"; ( umask 077
       node -e 'const j=JSON.parse(process.argv[1]);require("fs").writeFileSync(process.argv[2],JSON.stringify({id:j.id,hostname:j.hostname,key:j.key,port:+process.argv[4]},null,1)+"\n");require("fs").writeFileSync(process.argv[3],j.token)' "$out" "$tf" "$tok" "$pp" )
@@ -220,11 +222,27 @@ cloudflare-tunnel() {
   node -p 'require(process.argv[1]).hostname' "$tf"
 }
 
+# Leaving the Cloudflare address: the service stopped and the tunnel with its DNS name deleted at the relay, so the old
+# address stops working (someone who chose Tailscale to end HTTPS on this Mac shouldn't keep a way in through Cloudflare).
+stop-tunnel() {
+  local tf="$CFG_DIR/tunnel.json" plist="$AGENTS_DIR/$TUNNEL_LABEL.plist"
+  if [[ -f "$plist" ]]; then
+    [[ -n "${GUBERNOS_NO_LAUNCHD:-}" ]] || launchctl bootout "gui/$(id -u)/$TUNNEL_LABEL" 2>/dev/null || true
+    rm -f "$plist"
+  fi
+  [[ -f "$tf" ]] || return 0
+  local q; q=$(node -p 'const t=require(process.argv[1]);`${t.id}?key=${encodeURIComponent(t.key)}`' "$tf")
+  if curl -fsS -m 30 -X DELETE "$TUNNEL_RELAY/tunnel/$q" >/dev/null; then ok "the Cloudflare address is gone"
+  else no "couldn't delete the old address at the relay; it answers nothing now that this Mac's tunnel is stopped"; fi
+  rm -f "$tf" "$CFG_DIR/tunnel.token"
+}
+
 phone() {
   # The iPhone app reaches this Mac over HTTPS; the phone needs nothing but the app and the pairing code (lib/pair.js:
   # unpaired requests get nothing, repeated wrong codes are turned away). Three ways:
   #   (default)   Cloudflare Tunnel: https://m-<random>.gubernos.dev, made by the relay; cloudflared runs here. TLS ends at
-  #               Cloudflare (it could see the traffic; nothing is logged). Nothing for the person to sign in to.
+  #               Cloudflare, on the developer's account (it could see the traffic; we don't store it, Cloudflare keeps its own
+  #               request data). Nothing for the person to sign in to.
   #   --tailscale Tailscale Funnel: https://<mac>.<tailnet>.ts.net; TLS ends on this Mac. A Tailscale account and its installer.
   #   --private   Tailscale Serve: only the tailnet, so the phone needs Tailscale too (logged in, VPN On Demand)
   local mode=cloudflare host
@@ -238,12 +256,14 @@ phone() {
     # The first time Tailscale prints login.tailscale.com links (turn on HTTPS, and for Funnel allow it): open, approve, it goes on.
     echo "  If a login.tailscale.com link appears below, open it and approve (HTTPS certificates, Funnel); the command then continues."
     if [[ $mode == funnel ]]; then ts funnel --bg "$(proxy_port)"; else ts serve --bg "$(proxy_port)"; fi
+    stop-tunnel
     host=$(ts status --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).Self.DNSName.replace(/\.$/,"")))')
   fi
   $KIT config --public-url "https://$host" >/dev/null
   restart >/dev/null
   case $mode in
-    cloudflare) ok "phone URL: https://$host — reachable from anywhere through Cloudflare, only paired devices get in";;
+    cloudflare) ok "phone URL: https://$host — reachable from anywhere through Cloudflare, only paired devices get in"
+      if command -v tailscale >/dev/null && tailscale serve status 2>/dev/null | grep -q "127.0.0.1:"; then echo "  Tailscale still serves this Mac too; to close that way in: tailscale serve reset"; fi;;
     funnel) ok "phone URL: https://$host — reachable from anywhere, only paired devices get in (no Tailscale needed on the phone)";;
     serve) ok "phone URL: https://$host — only your Tailscale devices reach it (the phone needs Tailscale, logged in, VPN On Demand on)";;
   esac
@@ -311,4 +331,4 @@ restart() { [[ -n "${GUBERNOS_NO_LAUNCHD:-}" ]] && return 0; launchctl kickstart
 status() { launchctl print "gui/$(id -u)/$LABEL" 2>/dev/null | grep -E "state|pid" | head -2; curl -sf "http://127.0.0.1:$(port)/api/state" >/dev/null && ok "answering on $(port)" || no "not answering on $(port)"; }
 
 cmd="${1:-check}"; shift || true
-case "$cmd" in check|install|model|voice-language|get-tailscale|get-cloudflared|phone|voice|obsidian|awake|calendar|restart|status) "$cmd" "$@";; *) die "unknown command $cmd";; esac
+case "$cmd" in check|install|model|voice-language|get-tailscale|get-cloudflared|stop-tunnel|phone|voice|obsidian|awake|calendar|restart|status) "$cmd" "$@";; *) die "unknown command $cmd";; esac

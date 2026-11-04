@@ -9,18 +9,19 @@ import os from 'node:os';
 import path from 'node:path';
 import { startServer } from './helpers.js';
 
-let s, stub, got;
+let s, stub, got, revoked;
 const shared = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'gg-')), 'google-client.json');
 before(async () => {
   fs.writeFileSync(shared, JSON.stringify({ installed: { client_id: 'shared-id.apps.googleusercontent.com', client_secret: 'shared-secret' } }));
   stub = http.createServer((req, res) => {
     let b = ''; req.on('data', (d) => { b += d; }).on('end', () => {
+      if (req.url === '/revoke') { revoked = Object.fromEntries(new URLSearchParams(b)); return res.writeHead(200).end(); }
       got = Object.fromEntries(new URLSearchParams(b));
       res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ access_token: 'a', refresh_token: 'r', expires_in: 3600, scope: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.freebusy' }));
     });
   }).listen(0, '127.0.0.1');
   await new Promise((r) => stub.once('listening', r));
-  s = await startServer({ GUBERNOS_GOOGLE_SHARED_CLIENT: shared, GUBERNOS_GOOGLE_TOKEN_URL: `http://127.0.0.1:${stub.address().port}/token` });
+  s = await startServer({ GUBERNOS_GOOGLE_SHARED_CLIENT: shared, GUBERNOS_GOOGLE_TOKEN_URL: `http://127.0.0.1:${stub.address().port}/token`, GUBERNOS_GOOGLE_REVOKE_URL: `http://127.0.0.1:${stub.address().port}/revoke` });
 });
 after(async () => { await s?.stop(); stub?.close(); });
 
@@ -38,7 +39,14 @@ test('no own client: the shared one signs in, with PKCE', async () => {
   assert.equal(cb.status, 200, await cb.text());
   assert.equal(got.code, 'c1');
   assert.equal(crypto.createHash('sha256').update(got.code_verifier).digest('base64url'), u.searchParams.get('code_challenge'));
-  assert.equal((await s.get('/api/gcal/status')).body.connected, true);
+  assert.equal((await s.get('/api/gcal/status')).body.googleCalendar, true);
+});
+
+test('disconnect revokes at Google and forgets the token', async () => {
+  assert.equal((await s.get('/api/gcal/status')).body.googleCalendar, true);
+  assert.equal((await s.post('/api/gcal/disconnect', {})).status, 200);
+  assert.equal(revoked.token, 'r');
+  assert.equal((await s.get('/api/gcal/status')).body.googleCalendar, false);
 });
 
 test('a wrong state is refused', async () => {

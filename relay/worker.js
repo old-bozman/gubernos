@@ -10,13 +10,13 @@
 //     → {results: [{device, status, reason}]}: Apple Push for the iPhone app on someone else's install. APNs takes only
 //     the app owner's key, so their Mac (lib/apns.js, no apns.p8 of its own) hands the push here; the key never leaves.
 //     The topic is fixed (APNS_TOPIC), so it pushes to Gubernos devices only. No auth beyond that: whoever holds a device
-//     token (only that phone's own Mac has it) could send that phone an alert. Nothing is logged or stored (no console.log;
+//     token (only that phone's own Mac has it) could send that phone an alert. We log and store nothing here (no console.log;
 //     observability off in wrangler.toml).
 //   POST /tunnel  {port}                                 → {id, hostname, token, key}: an HTTPS address for someone's Mac
 //     (scripts/setup.sh phone): a remotely managed Cloudflare Tunnel delivering https://m-<random>.<TUNNEL_DOMAIN> to
 //     http://localhost:<port> on that Mac (its proxy port, where only paired devices get in: lib/pair.js), and the DNS name.
 //     One level under the domain, so Universal SSL covers it. The Mac runs cloudflared with the token. The tunnel ends TLS
-//     at Cloudflare; nothing is logged here.
+//     at Cloudflare; we don't store the traffic, Cloudflare keeps its own request data.
 //   DELETE /tunnel/<id>?key=…                            → the tunnel and its DNS name gone (a reinstall, or leaving)
 // key = HMAC(tunnel id): only the Mac that made a tunnel can delete it.
 // Secrets: GITHUB_TOKEN, KEY_SECRET, APNS_KEY (the .p8 text), CF_API_TOKEN (Account: Cloudflare Tunnel Edit; Zone
