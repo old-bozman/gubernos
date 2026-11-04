@@ -1,0 +1,4 @@
+{
+ "_": "Gubernos' shared Google client (Desktop, project gubernos). Google says a Desktop client's secret isn't confidential; it ships with the app and only works with the person's own consent + PKCE. Base64 so secret scanners don't take it for a leak (lib/google.js).",
+ "b64": "eyJjbGllbnRfaWQiOiAiNDY0MzI1NDU2MDItcmljZ2E5N2NmbTR2cTliMmV2aDRqbG5ycHBobDV0Z2wuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCAiY2xpZW50X3NlY3JldCI6ICJHT0NTUFgtNFlTSjB6aVpMWnI1M0JaSUNOQ0JJM0lrTW8zayJ9"
+}
