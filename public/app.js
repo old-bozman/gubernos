@@ -4213,11 +4213,13 @@ function googleNote() {
   const g = S.gstatus;
   if (!g) return '…';
   if (!g.configured) return 'Not set up — see <code>docs/google.md</code> in the app folder';
+  const unverified = g.shared ? ' <small>Google warns that it hasn’t verified Gubernos (it’s in beta): Advanced → Go to Gubernos.</small>' : '';
   if (g.expired) return `<span class="d-over">Expired</span> — reconnect: ${['127.0.0.1', 'localhost'].includes(location.hostname) ? '<a href="/api/gcal/connect">Connect</a>' : `on the Mac, 127.0.0.1:${location.port || 4747}/api/gcal/connect`}`;
   const on = [['Calendar', g.googleCalendar], ['Gmail', g.gmail], ['Contacts', g.contacts], ['Drive', g.drive]].filter(([, v]) => v).map(([k]) => k);
   const local = ['127.0.0.1', 'localhost'].includes(location.hostname);
-  const link = local ? `<a href="/api/gcal/connect">${on.length ? 'Re-connect' : 'Connect'}</a>` : `${on.length ? 'Re-connect' : 'Connect'} on the Mac: 127.0.0.1:${location.port || 4747}/api/gcal/connect`;
-  return `${on.length ? `Connected: ${on.join(', ')}` : 'Not connected'} · ${link}`;
+  const label = on.length ? 'Re-connect' : 'Sign in with Google';
+  const link = local ? `<a href="/api/gcal/connect">${label}</a>` : `${label} on the Mac: 127.0.0.1:${location.port || 4747}/api/gcal/connect`;
+  return `${on.length ? `Connected: ${on.join(', ')}` : 'Not connected'} · ${link}${on.length ? '' : unverified}`;
 }
 // Settings → Calendar: where Plan the day reads meetings and puts time blocks — the Mac's own calendars (Calendar.app:
 // whatever accounts are added there, one Allow) or Google's (its own sign-in, Settings → Google). lib/calendar.js
@@ -5276,7 +5278,7 @@ async function timeblockModal(t, preset = {}) {
   if (!st.connected) {
     if (st.source === 'macos') return shell(`<p class="tb-setup">${MAC_CAL_NOTE[st.macAccess] || 'Your calendar isn’t reachable right now.'}</p><p class="tb-setup">Settings → Calendar.</p><div class="foot"><span class="sp"></span><button class="btn" data-act="qa-close">Close</button></div>`);
     return shell(`<p class="tb-setup">Google Calendar isn't connected yet.</p>
-      <ol class="tb-setup"><li>${st.configured ? '✓ OAuth client found.' : `Put the Google OAuth client JSON at <code>${esc(st.setupFile)}</code> (see README).`}</li>
+      <ol class="tb-setup">${st.configured ? '' : `<li>Put the Google OAuth client JSON at <code>${esc(st.setupFile)}</code> (see docs/google.md).</li>`}
       <li>On the Mac, open <code>http://127.0.0.1:4747/api/gcal/connect</code> and allow access.</li></ol>
       <div class="foot"><span class="sp"></span><button class="btn" data-act="qa-close">Close</button></div>`);
   }

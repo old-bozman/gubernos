@@ -274,7 +274,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/gcal/callback') {
       await G.callback(Object.fromEntries(url.searchParams));
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
-        .end('<meta name="viewport" content="width=device-width"><body style="font:16px system-ui;padding:40px">✓ Google connected (Calendar + Gmail). You can close this tab and go back to the app.</body>');
+        .end('<meta name="viewport" content="width=device-width"><body style="font:16px system-ui;padding:40px">✓ Google connected. You can close this tab and go back to the app.</body>');
       return;
     }
     const rs = url.pathname.match(/^\/api\/runs\/([^/]+)\/stream$/);
