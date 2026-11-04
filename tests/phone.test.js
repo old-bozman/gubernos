@@ -19,18 +19,18 @@ test('phone: a tunnel address from the relay, kept; pairing required', { timeout
   let asked = 0, body;
   const relay = http.createServer((req, res) => { let b = ''; req.on('data', (x) => { b += x; }).on('end', () => {
     asked++; body = JSON.parse(b);
-    res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ id: 'tid', hostname: 'm-abc.gubernos.app', token: 'TOKEN', key: 'K' }));
+    res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ id: 'tid', hostname: 'm-abc.gubernos.dev', token: 'TOKEN', key: 'K' }));
   }); }).listen(0, '127.0.0.1');
   await new Promise((r) => relay.once('listening', r));
   const run = () => promisify(execFile)('bash', [path.join(ROOT, 'scripts/setup.sh'), 'phone'], { env: { ...process.env, HOME: home,
     GUBERNOS_NO_LAUNCHD: '1', GUBERNOS_LAUNCH_AGENTS: agents, GUBERNOS_TUNNEL_RELAY: `http://127.0.0.1:${relay.address().port}` } });
   try {
     const { stdout } = await run();
-    assert.match(stdout, /phone URL: https:\/\/m-abc\.gubernos\.app/);
+    assert.match(stdout, /phone URL: https:\/\/m-abc\.gubernos\.dev/);
     assert.equal(body.port, 4800); // the proxy port (port + 1), where only paired devices get in
     assert.equal(fs.readFileSync(path.join(cfg, 'tunnel.token'), 'utf8'), 'TOKEN');
     assert.equal(fs.statSync(path.join(cfg, 'tunnel.token')).mode & 0o777, 0o600);
-    assert.equal(JSON.parse(fs.readFileSync(path.join(cfg, 'config.json'), 'utf8')).publicUrl, 'https://m-abc.gubernos.app');
+    assert.equal(JSON.parse(fs.readFileSync(path.join(cfg, 'config.json'), 'utf8')).publicUrl, 'https://m-abc.gubernos.dev');
     assert.equal(JSON.parse(fs.readFileSync(path.join(cfg, 'pair.json'), 'utf8')).required, true);
     const plist = fs.readdirSync(agents).find((f) => f.endsWith('gubernos-tunnel.plist'));
     assert.match(fs.readFileSync(path.join(agents, plist), 'utf8'), new RegExp(`--token-file</string><string>${cfg.replace(/[.]/g, '\\.')}/tunnel\\.token`));

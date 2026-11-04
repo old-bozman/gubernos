@@ -15,9 +15,10 @@ FEEDBACK_REPO = "old-bozman/gubernos-feedback"
 APNS_KEY_ID = "9G4AAJ4UYJ"
 APNS_TEAM_ID = "JGXLFTDAZ2"
 APNS_TOPIC = "app.gubernos"
-TUNNEL_DOMAIN = "gubernos.app"
+# a separate domain for the Macs' addresses: anyone can get a tunnel, so a bad page there can't hurt gubernos.app
+TUNNEL_DOMAIN = "gubernos.dev"
 CF_ACCOUNT_ID = "d783ff8d4774b998bfccd91f53ded87b"
-# CF_ZONE_ID: the zone of TUNNEL_DOMAIN (set before the first tunnel)
+CF_ZONE_ID = "756eae3e950f8092ec7bf7e9051abfee"
 
 # 5 reports a minute per IP
 [[ratelimits]]

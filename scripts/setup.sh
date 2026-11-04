@@ -8,7 +8,7 @@
 #                            [--model claude|codex|gemini] [--voice-language en-US|ru-RU|…|mixed]
 #   scripts/setup.sh model claude|codex|gemini   the model behind the app (lib/llm.js; Settings → Agents → Model)
 #   scripts/setup.sh voice-language LOCALE|mixed the language spoken to the app (Settings → Voice; lib/voice.js)
-#   scripts/setup.sh phone                       HTTPS for the phone: an https://m-….gubernos.app address through Cloudflare Tunnel
+#   scripts/setup.sh phone                       HTTPS for the phone: an https://m-….gubernos.dev address through Cloudflare Tunnel
 #                                                (the relay makes it; cloudflared runs here as a background service). Nothing to sign in to
 #   scripts/setup.sh phone --tailscale           …through Tailscale Funnel instead (TLS ends on this Mac; a Tailscale account)
 #   scripts/setup.sh phone --private             …Tailscale Serve: only your tailnet, so the phone needs Tailscale too
@@ -223,7 +223,7 @@ cloudflare-tunnel() {
 phone() {
   # The iPhone app reaches this Mac over HTTPS; the phone needs nothing but the app and the pairing code (lib/pair.js:
   # unpaired requests get nothing, repeated wrong codes are turned away). Three ways:
-  #   (default)   Cloudflare Tunnel: https://m-<random>.gubernos.app, made by the relay; cloudflared runs here. TLS ends at
+  #   (default)   Cloudflare Tunnel: https://m-<random>.gubernos.dev, made by the relay; cloudflared runs here. TLS ends at
   #               Cloudflare (it could see the traffic; nothing is logged). Nothing for the person to sign in to.
   #   --tailscale Tailscale Funnel: https://<mac>.<tailnet>.ts.net; TLS ends on this Mac. A Tailscale account and its installer.
   #   --private   Tailscale Serve: only the tailnet, so the phone needs Tailscale too (logged in, VPN On Demand)

@@ -231,7 +231,7 @@ Whisper models download to `~/.cache/huggingface` on first use.
 - `deploy/gubernos.plist.template` → `~/Library/LaunchAgents/com.<user>.gubernos.plist` (setup.sh renders it): the server,
   started at login, restarted on crash. After server changes: `scripts/setup.sh restart` (UI-only changes: reload the page).
 - `deploy/gubernos-awake.plist.template` (`--awake`, or later `scripts/setup.sh awake on|off|status`): `caffeinate -s` — no system sleep on AC power (closing the lid still sleeps).
-- Phone: `scripts/setup.sh phone` = a Cloudflare Tunnel made by the relay (`https://m-….gubernos.app` → the proxy port; `cloudflared` as launchd `com.<user>.gubernos-tunnel`; only paired devices get in, lib/pair.js) + the URL saved as `publicUrl`; `--tailscale` = `tailscale funnel`; `--private` = `tailscale serve` (tailnet only, Tailscale on the phone too). The mic needs HTTPS. On the Mac, `#/phone` walks through getting the app and pairing.
+- Phone: `scripts/setup.sh phone` = a Cloudflare Tunnel made by the relay (`https://m-….gubernos.dev` → the proxy port; `cloudflared` as launchd `com.<user>.gubernos-tunnel`; only paired devices get in, lib/pair.js) + the URL saved as `publicUrl`; `--tailscale` = `tailscale funnel`; `--private` = `tailscale serve` (tailnet only, Tailscale on the phone too). The mic needs HTTPS. On the Mac, `#/phone` walks through getting the app and pairing.
   iPhone: open it in Safari → Share → Add to Home Screen.
 - Desktop: open the same URL in Safari → File → Add to Dock — a separate app window with its own Dock icon, so it looks native (macOS 14+).
 - Logs: `server.log`; voice events from the phone are the `[voice]` lines.
