@@ -5,6 +5,7 @@
 # none) and the app (~/gubernos, a download of the GitHub repo; no git) — then hands over to your AI agent for the rest
 # (SETUP.md: the folder, the background service, the interview). Safe to run again: it updates what's there.
 # --update: only the app and its dependencies, quietly (scripts/update.sh runs it).
+# --wizard: then the setup page in the browser instead of the agent (Gubernos.app runs this).
 set -euo pipefail
 
 DIR="${GUBERNOS_DIR:-$HOME/gubernos}"
@@ -14,6 +15,7 @@ REPO="${GUBERNOS_REPO:-$( [[ -f "$VERSION_FILE" ]] && cut -d' ' -f1 "$VERSION_FI
 REPO="${REPO:-old-bozman/gubernos}"; REPO="${REPO#https://github.com/}"; REPO="${REPO%.git}"
 BRANCH="${GUBERNOS_BRANCH:-main}"
 UPDATE=0; [[ "${1:-}" == --update ]] && UPDATE=1
+WIZARD=0; [[ "${1:-}" == --wizard ]] && WIZARD=1 # Gubernos.app: the rest in the browser
 NODE_DIR="$HOME/.gubernos/node"
 NODE_MAJOR=22
 
@@ -90,6 +92,8 @@ fi
 (cd "$DIR" && npm ci --silent --no-audit --no-fund) || die "npm couldn't install the dependencies"
 ok "dependencies"
 [[ $UPDATE == 1 ]] && exit 0
+# --wizard (Gubernos.app): the rest in the browser instead of a conversation with an agent; it exits when the app takes over
+if [[ $WIZARD == 1 ]]; then exec node "$DIR/scripts/first-run.mjs"; fi
 
 # 3. the rest is a conversation with your AI agent
 echo

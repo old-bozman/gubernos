@@ -32,6 +32,9 @@ Single developer + agents; other people install it from `SETUP.md`, so keep pers
 | `lib/contacts.js`, `lib/drive.js` | Google Contacts (People API) search; Drive search + read as text. Read-only, for gubernos-tools |
 | `lib/gmail.js` | Gmail: search, thread as plain text; draft/send (app only, after the confirmation card) |
 | `lib/mirror.js` | `GET /api/mirror?since=`: the iPhone's offline copy of the vault (every .md outside dot folders and `80_archive/`) for a vault outside iCloud; the phone (gubernos-ios `Mirror.swift`) never writes it, offline changes wait in the outbox |
+| `scripts/first-run.mjs`, `public/first-run.html` | The Mac part of the setup in the browser (name, language, folder, model, then `setup.sh install`), for Gubernos.app and `install.sh --wizard`. Runs installers: only 127.0.0.1 plus a random code |
+| `lib/onboarding.js` | `#/onboard`: the onboarding skill as an interview in the app. This one agent may write, in the vault only, no shell or web (`chatTurn` write) |
+| `deploy/mac-app/`, `scripts/build-mac-app.sh` | Gubernos.app: a small launcher with `install.sh` inside, signed and notarized into `dist/Gubernos.dmg` |
 | `lib/backup.js` | A daily copy of the vault's .md files into `~/.gubernos/backups/YYYY-MM-DD/` (14 days + 8 weeks kept), no git or tar needed |
 | `tools/gubernos-tools.js` | Stdio MCP server (no SDK) with READ-ONLY integration tools for agents: `gmail_search`, `gmail_thread`, `calendar_events`, `contacts_search`, `drive_search`, `drive_read`. Plugged into Ask/task chat and Run with Claude via `mcpArgs()` |
 | `tools/calendar/` | The Mac calendar helper (EventKit, Swift) behind `lib/maccal.js`. Ships built: `gubernos-calendar` (universal, ad-hoc signed) + `.src` stamp, so users need no compiler. After changing `main.swift` or `Info.plist` run `scripts/build-helpers.sh calendar` and commit the binary and stamp |
