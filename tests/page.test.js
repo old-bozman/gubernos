@@ -9,11 +9,12 @@ const SCREENS = ['today', 'inbox', 'upcoming', 'agent', 'waiting', 'someday', 'd
 let s, page;
 before(async () => {
   s = await startServer();
-  await s.post('/api/tasks', { title: 'Buy milk', priority: 'planned', due: new Date().toISOString().slice(0, 10) });
+  const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  await s.post('/api/tasks', { title: 'Buy milk', priority: 'planned', due: today });
   await s.post('/api/items', { text: 'call the plumber' });
   page = await openPage();
-});
-after(async () => { await page?.close(); await s?.stop(); });
+}, { timeout: 40000 });
+after(async () => { try { await page?.close(); } finally { await s?.stop(); } });
 
 const mainText = 'document.querySelector("#main")?.innerText.trim() || ""';
 
@@ -23,7 +24,8 @@ for (const [label, w, h, mobile] of [['desktop', 1280, 800, false], ['phone', 39
     page.errors.length = 0;
     await page.goto(`${s.url}/`);
     assert.ok(await page.waitFor(`(${mainText}).length > 0`), `the app stayed blank: ${page.errors.join(' | ')}`);
-    assert.match(await page.eval(mainText), /Buy milk/);
+    // the first paint comes before the data
+    assert.ok(await page.waitFor(`(${mainText}).includes("Buy milk")`), `today's task never showed: ${await page.eval(mainText)} | ${page.errors.join(' | ')}`);
     const failed = [];
     for (const screen of SCREENS) {
       await page.eval(`location.hash = "#/${screen}"`);

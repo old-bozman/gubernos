@@ -12,15 +12,20 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export async function openPage() {
   if (!fs.existsSync(CHROME)) throw new Error(`no Chrome at ${CHROME} (set GUBERNOS_CHROME)`);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gubernos-chrome-'));
-  const proc = spawn(CHROME, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${dir}`, '--no-first-run', '--no-default-browser-check', '--disable-extensions', 'about:blank'], { stdio: 'ignore' });
+  const proc = spawn(CHROME, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${dir}`, '--no-first-run', '--no-default-browser-check', '--disable-extensions', 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
+  let chromeLog = '', gone = null;
+  proc.stderr.on('data', (d) => { chromeLog = (chromeLog + d).slice(-2000); });
+  proc.once('exit', (code, signal) => { gone = `Chrome exited (${code ?? signal}): ${chromeLog.slice(-500)}`; for (const w of waiting.values()) w.reject(new Error(gone)); waiting.clear(); });
+  const waiting = new Map(), errors = [];
   const portFile = path.join(dir, 'DevToolsActivePort');
-  for (let i = 0; i < 100 && !fs.existsSync(portFile); i++) await sleep(100);
+  for (let i = 0; i < 150 && !fs.existsSync(portFile) && !gone; i++) await sleep(100);
+  if (!fs.existsSync(portFile)) { proc.kill(); throw new Error(gone || `Chrome didn't start in 15 s: ${chromeLog.slice(-500)}`); }
   const port = fs.readFileSync(portFile, 'utf8').split('\n')[0];
   const targets = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
   const ws = new WebSocket(targets.find((t) => t.type === 'page').webSocketDebuggerUrl);
-  await new Promise((resolve, reject) => { ws.onopen = resolve; ws.onerror = reject; });
+  await new Promise((resolve, reject) => { ws.onopen = resolve; ws.onerror = reject; setTimeout(() => reject(new Error('no answer from Chrome in 10 s')), 10000); });
+  process.once('exit', () => proc.kill('SIGKILL'));
   let id = 0;
-  const waiting = new Map(), errors = [];
   ws.onmessage = ({ data }) => {
     const m = JSON.parse(data);
     if (m.id) { const w = waiting.get(m.id); waiting.delete(m.id); return m.error ? w.reject(new Error(m.error.message)) : w.resolve(m.result); }
@@ -28,7 +33,14 @@ export async function openPage() {
     if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') errors.push(`console.error: ${m.params.args.map((a) => a.value ?? a.description).join(' ')}`);
     if (m.method === 'Log.entryAdded' && m.params.entry.level === 'error') errors.push(`log: ${m.params.entry.text} ${m.params.entry.url || ''}`);
   };
-  const send = (method, params = {}) => new Promise((resolve, reject) => { const n = ++id; waiting.set(n, { resolve, reject }); ws.send(JSON.stringify({ id: n, method, params })); });
+  // never wait forever: a dead or stuck browser fails the test instead of hanging the release
+  const send = (method, params = {}) => new Promise((resolve, reject) => {
+    if (gone) return reject(new Error(gone));
+    const n = ++id;
+    const t = setTimeout(() => { waiting.delete(n); reject(new Error(`Chrome didn't answer ${method} in 15 s`)); }, 15000);
+    waiting.set(n, { resolve: (x) => { clearTimeout(t); resolve(x); }, reject: (e) => { clearTimeout(t); reject(e); } });
+    ws.send(JSON.stringify({ id: n, method, params }));
+  });
   await send('Runtime.enable'); await send('Log.enable'); await send('Page.enable');
   const evaluate = async (expression) => {
     const r = await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
@@ -40,6 +52,11 @@ export async function openPage() {
     goto: (url) => send('Page.navigate', { url }),
     resize: (width, height, mobile = false) => send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile }),
     waitFor: async (expression, ms = 8000) => { for (let t = 0; t < ms; t += 100) { if (await evaluate(expression).catch(() => false)) return true; await sleep(100); } return false; },
-    close: async () => { ws.close(); proc.kill(); await new Promise((r) => { proc.once('exit', r); setTimeout(r, 2000); }); fs.rmSync(dir, { recursive: true, force: true }); },
+    close: async () => {
+      ws.close();
+      if (!gone) { proc.kill(); await new Promise((r) => { proc.once('exit', r); setTimeout(() => { proc.kill('SIGKILL'); r(); }, 2000); }); }
+      // Chrome's helpers can still be writing here for a moment: leftovers in the temp dir must not fail the test
+      try { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); } catch { /* the OS cleans its temp dir */ }
+    },
   };
 }
