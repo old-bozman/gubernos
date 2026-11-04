@@ -1,21 +1,13 @@
 # Getting started with Gubernos
 
-**Gubernos** (Gubern OS, from Latin *gubernare*, to steer) is a personal operating system: tasks, projects, goals, habits and your day, with agents that take part of the work off your hands. Everything stays yours: plain Markdown files in your iCloud, your Mac as the "server", agents on your own Claude subscription. No third-party server, no one else's database.
+**Gubernos** (Gubern OS, from Latin *gubernare*, to steer) is a personal operating system: tasks, projects, goals, habits and your day, with agents that take part of the work off your hands. Everything stays yours: plain Markdown files on your Mac (or in your iCloud, if you like), your Mac as the "server", agents on your own Claude subscription. No third-party server, no one else's database.
 
-Two steps. First the iPhone alone, 5 minutes. Then the Mac, when you want agents.
+Two steps: the Mac, then the iPhone.
 
 **Or skip the reading:** on the Mac, open your AI agent (Claude Code, Codex or Gemini CLI) and paste
 `Install Gubernos for me: read https://raw.githubusercontent.com/old-bozman/gubernos/main/SETUP.md and do the part "For the agent".` — it does the Mac part for you and tells you when to tap on the phone.
 
-## 1. iPhone (5 minutes)
-
-1. Install **TestFlight** from the App Store, open [testflight.apple.com/join/rBUGmgJG](https://testflight.apple.com/join/rBUGmgJG) on the iPhone and tap **Accept** → **Install**.
-2. Open Gubernos → **Start a new system** → in the file picker: iCloud Drive → New Folder, e.g. `Gubernos` → choose it. If you use Obsidian, you can create the folder inside Obsidian's iCloud folder, and the files show up in Obsidian too.
-3. Allow notifications (reminders and the morning plan come from the phone itself) and, if you want habits from Apple Health, Health access.
-
-This already works: tasks, Inbox, projects, habits and protocols, reminders, voice capture (recognised on the iPhone), widgets, the Apple Watch. Agents, the chat with an agent, the calendar in Plan the day and inbox triage need the Mac: that's step 2.
-
-## 2. Mac: agents, chat, voice, calendar (about 30 minutes)
+## 1. Mac (about 30 minutes, mostly your agent working)
 
 **You need:** a Mac (ideally one that is usually on) and **one** AI model on your own plan — whichever you already have:
 
@@ -38,7 +30,7 @@ That model reads your inbox and voice notes, answers in the app's chat and runs 
    ```
 3. **Say "run SETUP.md".** The agent takes it from there:
    - checks the Mac and installs what's missing (asking first);
-   - asks your name and language and **which folder to use: pick the one you created on the iPhone** ("an existing folder in iCloud"), so the phone and the Mac work on the same files;
+   - asks your name and language and **where your files live**: a folder on the Mac (`~/Gubernos`, the default), or in iCloud Drive / Obsidian if you want the files on other devices too. The app keeps a daily copy of them in `~/.gubernos/backups/` (the last 14 days and 8 weeks);
    - starts Gubernos on the Mac as a background service;
    - connects your calendar (the ones in the Calendar app: one **Allow** in a macOS dialog), and optionally voice (Whisper), Obsidian and Google for agents (Gmail, Drive; see [google.md](google.md));
    - ends with an interview: who you are, what matters, what's in progress. You can bring an export from Todoist, Things or Reminders.
@@ -47,9 +39,9 @@ On the Mac the app is at http://127.0.0.1:4747 (Safari → File → Add to Dock 
 
 **Agents** are ready right away, on your own plan. A task assigned to "agent" starts with ▶ Run on the task card; the result arrives as a push on the phone (your Mac sends it through relay.gubernos.app, which signs it for Apple; it carries the notification text only).
 
-## 3. Connect the iPhone to the Mac (5 minutes)
+## 2. iPhone (5 minutes)
 
-Your agent does this with you if you said you have an iPhone; you can also do it later: Gubernos on the Mac → ☰ → **Settings** → **Connections** → **Connect your iPhone**. That screen shows two codes and a ✓ when the phone is in.
+Install **TestFlight** from the App Store, open [testflight.apple.com/join/rBUGmgJG](https://testflight.apple.com/join/rBUGmgJG) on the iPhone and tap **Accept** → **Install**. Then connect it to the Mac. Your agent does this with you if you said you have an iPhone; you can also do it later: Gubernos on the Mac → ☰ → **Settings** → **Connections** → **Connect your iPhone**. That screen shows two codes and a ✓ when the phone is in.
 
 1. Tell your agent: **"connect my phone"** (that's `scripts/setup.sh phone`). It gets **Tailscale** for the Mac (nothing goes on the phone): its official installer opens, you click Install and type your Mac's password, allow its network extension, and sign in in the browser with any Google, Apple, Microsoft or GitHub account.
 2. The first time, Tailscale shows two login.tailscale.com links: open them and allow HTTPS and Funnel. Your Mac gets an HTTPS address the phone reaches from anywhere.
@@ -57,7 +49,9 @@ Your agent does this with you if you said you have an iPhone; you can also do it
 
 Only devices with the code get in: everyone else gets nothing, and an address that keeps trying wrong codes is turned away. Lost a phone? On the Mac, Settings → Connections → **New code**: every old device is unpaired. Rather not have the Mac on the internet at all? `scripts/setup.sh phone --private` keeps it inside your Tailscale network; then the iPhone needs Tailscale too (same account, VPN On Demand on).
 
-It works while the Mac is on and awake. Without the Mac the phone keeps working on its own and sends its changes once the Mac is back.
+The phone keeps a copy of your files from the Mac: when the Mac is asleep or away it still shows everything, and the changes you make go to the Mac once it's back. Agents, chat and the calendar need the Mac on.
+
+**No Mac?** The iPhone app also works on its own over a folder in iCloud Drive (first screen → Or use the phone on its own): tasks, habits, reminders, widgets, the watch, without agents, chat or the calendar.
 
 ## Keep the Mac awake
 

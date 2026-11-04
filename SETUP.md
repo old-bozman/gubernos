@@ -37,7 +37,7 @@ Then say: **"run SETUP.md"**. The agent walks you through the rest (about 20 min
 You (Claude Code, Codex or Gemini CLI) are installing Gubernos for the person in front of you and then onboarding them. Rules:
 - Talk in the language they write in. One step at a time; say what a step does before running it, and show its result in a line or two.
 - Questions they must answer (step 2, and any yes/no before installing software): if your agent has a tool for asking with choices to pick from (Claude Code: `AskUserQuestion`; use the equivalent in Codex or Gemini CLI if yours has one), ask through it, one question per item, the recommended choice first. Without such a tool, ask in one message: a numbered list, each with its choices as letters and the default marked, so they can answer "1 Sam, 2 C, 3 default". Say which questions are required and wait for those answers; don't guess them.
-- Run `scripts/setup.sh` steps; every step is safe to repeat. The vault always goes to iCloud (`--local` exists only for development and tests — never use it for a real install). Never overwrite or delete files in an existing vault (`kit.mjs` only adds missing files).
+- Run `scripts/setup.sh` steps; every step is safe to repeat. The vault goes where the person chose in step 2 (default `~/Gubernos`). Never overwrite or delete files in an existing vault (`kit.mjs` only adds missing files).
 - Ask before installing software (brew, Tailscale, Python packages). Never ask for or store passwords or API secrets; files with credentials stay in `~/.config/gubernos/`.
 - The repo's `AGENTS.md` describes the app's code; the vault's `CLAUDE.md` / `AGENTS.md` describe the system.
 
@@ -61,11 +61,11 @@ The "Model" lines show which AI CLIs are here and signed in: at least one must b
 ### 2. Ask the person (all six are required; ask them together)
 
 1. **Name** to use, and the **language** for task titles and documents (default: the language they write to you in).
-2. **Where the files live.** Always in iCloud — it is the backup, it brings the files to the iPhone (Obsidian) and to other Macs (an assistant running there). `setup.sh` refuses other places. Check that iCloud Drive is on (`check` shows it). The choices:
-   - **A. Obsidian, new vault** (they use or want Obsidian, incl. on the iPhone): `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Gubernos` → options `--obsidian-vault Gubernos`. Needs the Obsidian iCloud folder (`check` shows it); if missing, they open Obsidian on the iPhone or Mac once and create any vault in iCloud, or pick C.
-   - **B. Inside an Obsidian vault they already have**: `<that vault>/Gubernos` → `--obsidian-vault "<vault name>" --obsidian-path Gubernos`.
-   - **C. No Obsidian**: `~/Library/Mobile Documents/com~apple~CloudDocs/Gubernos` (iCloud Drive). They can add Obsidian later.
-   - **D. An existing vault** made from this kit, in iCloud: its path (nothing is overwritten).
+2. **Where the files live.** A folder of plain Markdown files. Recommend A unless they want the files on other devices themselves. The iPhone app doesn't need iCloud: it gets its copy from this Mac. The app keeps a daily copy of the files in `~/.gubernos/backups/` (14 days and 8 weeks).
+   - **A. On this Mac** (default): `~/Gubernos`.
+   - **B. In iCloud Drive**, to open the files on other devices too: `~/Library/Mobile Documents/com~apple~CloudDocs/Gubernos`.
+   - **C. In Obsidian**, new vault (they use or want Obsidian, incl. on the iPhone): `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Gubernos` → options `--obsidian-vault Gubernos` (needs the Obsidian iCloud folder: `check` shows it); inside a vault they already have: `<that vault>/Gubernos` → `--obsidian-vault "<vault name>" --obsidian-path Gubernos`.
+   - **D. An existing vault** made from this kit: its path (nothing is overwritten).
 3. **Which model** the app should use, when more than one is ✓ (default: the one running this setup). It reads their inbox and voice notes, answers in the app's chat and runs agents on tasks — on their own plan. They can switch later in Settings → Agents → Model.
 4. Is this Mac **always on** (a desktop, or a laptop that stays plugged in)? Then `--awake` keeps it from sleeping on power, so the phone app and notifications work all day. A laptop they carry around works too; the app is simply unavailable while it sleeps.
 5. **Voice**: which language will they speak to the app (the mic button)? Default: the language from question 1. One language that this Mac's own speech model knows (English, German, French, Spanish, Italian, Japanese, Korean, Chinese and more; `tools/voice/gubernos-voice locales` lists them; macOS 26+) works right away, nothing to install. **Russian**, **several languages mixed**, or a **strong accent** they want heard well: recommend Whisper (`scripts/setup.sh voice` in step 4, a ~1.6 GB download on first use, Apple Silicon); it is much better there. Pass `--voice-language <locale>` (`en-US`, `ru-RU`, …) or `mixed`.
@@ -80,13 +80,13 @@ scripts/setup.sh install --vault "<path>" --name "<Name>" --language "<Language>
 It installs dependencies, creates the vault from `kit/vault` (folders, `CLAUDE.md`, `AGENTS.md`, `profile.md`, templates, views, `40_reference/system/`), writes `~/.config/gubernos/config.json`, and starts the app in the background (launchd, restarts on crash and at login). Port 4747 is the default; `--port` if it's taken.
 
 Then tell them:
-- **Keep the folder downloaded**: Finder → iCloud Drive (or Obsidian) → right-click the system folder → **Keep Downloaded**. Otherwise macOS may offload files and the app can't read them.
+- Only for a folder in iCloud (B, C): **keep it downloaded**: Finder → iCloud Drive (or Obsidian) → right-click the system folder → **Keep Downloaded**. Otherwise macOS may offload files and the app can't read them.
 - **Open the app**: `open http://127.0.0.1:4747`. For a separate app window: Safari → File → **Add to Dock**.
 
 ### 3b. iPhone (when they have one)
 
 Lead them through it; don't stop at a link. Open the guide on the Mac: `open "http://127.0.0.1:<port>/#/phone"` — it shows both codes and turns to ✓ when the phone has connected.
-1. **The app**: they scan code 1 with the iPhone's Camera (TestFlight from the App Store if asked, then Accept → Install) and open Gubernos once (allow notifications). It already works on its own from here.
+1. **The app**: they scan code 1 with the iPhone's Camera (TestFlight from the App Store if asked, then Accept → Install) and open Gubernos once (allow notifications).
 2. **Tailscale on this Mac only** (the phone needs none). Say what happens and ask before installing: Tailscale gives this Mac a private HTTPS address the phone can use; the script downloads Tailscale's official installer and checks it is signed by Tailscale Inc.; macOS Installer opens (Continue → Install, their Mac password: it adds a network extension); then Tailscale asks to allow its extension and a VPN configuration, and they log in in the browser with any Google, Apple, Microsoft or GitHub account. After their yes, run `scripts/setup.sh phone`: it does that (`get-tailscale`) when Tailscale is missing, and waits for each step.
 3. `scripts/setup.sh phone` then turns on Tailscale Funnel, a public HTTPS address for this Mac that only paired devices can use (lib/pair.js; repeated wrong codes are turned away). The first time it may print login.tailscale.com links (turn on HTTPS certificates; allow Funnel): give each link, they approve, it continues. Someone who'd rather keep the Mac off the internet: `scripts/setup.sh phone --private` instead, and Tailscale goes on the iPhone too (same account, VPN On Demand on).
 4. **Connect**: the guide's code 2 appears; they scan it with the Camera → Open in Gubernos. Wait for ✓ on the guide (or `curl -s 127.0.0.1:<port>/api/pair` shows `seenAt`), then ask them to check that the phone shows their tasks.
@@ -127,7 +127,7 @@ For daily work in the files they can run their agent (`claude`, `codex` or `gemi
 ## Troubleshooting
 
 - **The app doesn't open**: `scripts/setup.sh status`; the log is `server.log` in this folder; restart with `scripts/setup.sh restart`.
-- **"Resource deadlock avoided" / errno -11 / files missing**: iCloud offloaded them — Keep Downloaded on the system folder (step 3).
+- **"Resource deadlock avoided" / errno -11 / files missing**: a folder in iCloud whose files iCloud offloaded — Keep Downloaded on the system folder (step 3).
 - **Agents don't run, the chat doesn't answer**: the model's CLI must be signed in — `scripts/setup.sh check` shows it under "Model" (`claude`, `codex login`, or for Gemini an API key in `~/.gemini/.env`). Which one the app uses: Settings → Agents → Model, or `scripts/setup.sh model <claude|codex|gemini>`.
 - **No notifications on the iPhone**: only from the home-screen app (iOS 16.4+), with Notifications on in the app's Settings, and the Mac awake.
 - **Port in use**: `scripts/setup.sh install … --port 4748` (same vault; nothing is overwritten).

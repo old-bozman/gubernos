@@ -3,7 +3,7 @@
 # is safe to repeat.
 #
 #   scripts/setup.sh check                       what's installed, what's missing
-#   scripts/setup.sh install --vault PATH --name NAME [--language LANG]     (PATH in iCloud; --local only for tests)
+#   scripts/setup.sh install --vault PATH --name NAME [--language LANG]     (PATH: ~/Gubernos, or a folder in iCloud / Dropbox)
 #                            [--obsidian-vault NAME --obsidian-path SUB] [--port 4747] [--no-launchd] [--awake]
 #                            [--model claude|codex|gemini] [--voice-language en-US|ru-RU|…|mixed]
 #   scripts/setup.sh model claude|codex|gemini   the model behind the app (lib/llm.js; Settings → Agents → Model)
@@ -44,7 +44,7 @@ check() {
   echo "Model (one is enough — on your own subscription or account)"
   models
   echo "Optional"
-  [[ -d "$HOME/Library/Mobile Documents/com~apple~CloudDocs" ]] && ok "iCloud Drive" || no "iCloud Drive (System Settings → Apple Account → iCloud → iCloud Drive)"
+  [[ -d "$HOME/Library/Mobile Documents/com~apple~CloudDocs" ]] && ok "iCloud Drive (only if you want the files in iCloud)" || no "iCloud Drive (optional: only to keep the files in iCloud)"
   [[ -d /Applications/Obsidian.app ]] && ok "Obsidian app" || no "Obsidian (optional, to read the files: https://obsidian.md)"
   [[ -d "$HOME/Library/Mobile Documents/iCloud~md~obsidian/Documents" ]] && ok "Obsidian iCloud folder" || no "Obsidian iCloud folder (appears once Obsidian on iPhone/Mac stores a vault in iCloud)"
   (command -v tailscale >/dev/null || [[ -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ]]) && ok "Tailscale" || no "Tailscale (optional, for the phone: https://tailscale.com/download)"
@@ -114,13 +114,11 @@ install() {
     --obsidian-vault) ovault="$2"; shift 2;; --obsidian-path) opath="$2"; shift 2;; --port) p="$2"; shift 2;;
     --no-launchd) launchd=0; shift;; --awake) awake=1; shift;; --local) local=1; shift;; --model) llm="$2"; shift 2;; --voice-language) vlang="$2"; shift 2;; *) die "unknown option $1";; esac; done
   [[ -n "$vault" ]] || die "--vault PATH is required"
-  # The vault lives in iCloud (backup, the phone, agents on other Macs): iCloud Drive or Obsidian's iCloud folder.
-  # --local only for development and tests.
+  # The vault is any folder: ~/Gubernos by default, or one in iCloud Drive / Obsidian's iCloud / Dropbox when the person
+  # wants the files on other devices too. The phone doesn't need iCloud (it gets a copy from the server: lib/mirror.js),
+  # and the server keeps daily copies itself (lib/backup.js). --local: accepted, no longer needed (older instructions).
   vault="${vault/#\~/$HOME}"
-  if [[ $local == 0 ]]; then
-    [[ -d "$HOME/Library/Mobile Documents/com~apple~CloudDocs" ]] || die "iCloud Drive is off: System Settings → Apple Account → iCloud → iCloud Drive"
-    [[ "$vault" == "$HOME/Library/Mobile Documents/"* ]] || die "the vault must be in iCloud: ~/Library/Mobile Documents/com~apple~CloudDocs/… (iCloud Drive) or ~/Library/Mobile Documents/iCloud~md~obsidian/Documents/… (Obsidian)"
-  fi
+  mkdir -p "$vault" || die "can't create $vault"
   command -v node >/dev/null || die "node is missing — run install.sh (see SETUP.md)"
   echo "1/4 dependencies"; (cd "$APP" && npm ci --silent --no-audit --no-fund)
   echo "2/4 vault"; $KIT vault --vault "$vault" ${name:+--name "$name"} ${language:+--language "$language"} ${opath:+--obsidian-path "$opath"}

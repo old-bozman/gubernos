@@ -8,7 +8,7 @@ Allen's Getting Things Done®, Gabriele Oettingen's WOOP and Brian Johnson's Her
 Gubernos is not affiliated with any of them.
 
 > **Beta.** Gubernos is in beta: the iPhone and Apple Watch app is on TestFlight, the Mac app installs from this
-> repository. Things change quickly, and your files stay yours whatever happens (plain Markdown in your own iCloud).
+> repository. Things change quickly, and your files stay yours whatever happens (plain Markdown on your own Mac).
 
 ### Install the beta
 
@@ -19,18 +19,18 @@ Gubernos is not affiliated with any of them.
 Install Gubernos for me: read https://raw.githubusercontent.com/old-bozman/gubernos/main/SETUP.md and do the part "For the agent".
 ```
 
-It checks the Mac, installs what's missing (asking first), creates your folder in iCloud, starts the app, sets up the
+It checks the Mac, installs what's missing (asking first), creates your folder (on the Mac, or in iCloud if you like), starts the app, sets up the
 phone connection and then interviews you to fill the system. It asks you for what only you can do: signing in (Tailscale,
 for the phone), a few Allow dialogs, and these taps on your iPhone:
 
 1. On your iPhone, install **TestFlight** from the App Store.
 2. On the iPhone, open **[testflight.apple.com/join/rBUGmgJG](https://testflight.apple.com/join/rBUGmgJG)** → **Accept** →
    **Install**.
-3. Open Gubernos → **Start a new system** → in the file picker choose or create a folder in iCloud Drive (inside
-   Obsidian's folder works too). The app works on its own from here: tasks, habits, reminders, widgets, the watch.
-4. For AI agents, the chat, voice and planning with your calendar: Gubernos for Mac — the agent prompt above, or by
-   hand `curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash` (details:
-   [docs/install.md](docs/install.md)).
+3. Open Gubernos and point the iPhone's Camera at the pairing code your agent shows on the Mac. The phone keeps a copy
+   of your files from the Mac, so it works when the Mac is away too.
+
+By hand instead of the agent: `curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash`
+(details: [docs/install.md](docs/install.md)).
 
 Feedback: in TestFlight take a screenshot → **Share Beta Feedback**, or open an issue here.
 
@@ -56,8 +56,8 @@ and feeds them; an agent proposes what each item is, you decide.
 ```mermaid
 flowchart LR
   subgraph yours["Yours: your devices, your files, your accounts"]
-    phone["iPhone and Watch"] <-- "iCloud Drive" --> files[("Your files<br/>plain Markdown")]
-    mac["Your Mac<br/>Gubernos for Mac"] <--> files
+    mac["Your Mac<br/>Gubernos for Mac"] <--> files[("Your files<br/>plain Markdown")]
+    phone["iPhone and Watch<br/>(a copy for offline)"]
     agents["Your agents<br/>Claude Code · Codex · Gemini"] <--> files
     phone <-. "your private network" .-> mac
   end

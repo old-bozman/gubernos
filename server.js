@@ -23,6 +23,8 @@ import * as Oura from './lib/oura.js';
 import * as Timers from './lib/timers.js';
 import { ask } from './lib/chat.js';
 import * as Triage from './lib/triage.js';
+import * as Backup from './lib/backup.js';
+import { mirror } from './lib/mirror.js';
 import { saveAttachment, attachmentFile, attachmentByName } from './lib/attachments.js';
 import { PORT, PROXY_PORT, PUBLIC_URL, APP_NAME, profile, clientConfig } from './lib/config.js';
 import { registerCore, routeParams } from './lib/core-routes.js';
@@ -184,6 +186,7 @@ route('POST', '/api/gmail/draft', async (_, __, b) => {
   return r;
 });
 // Notifications (Web Push to the home-screen app).
+route('GET', '/api/mirror', (_, q) => mirror(Number(q.since) || 0)); // the iPhone's offline copy of a vault outside iCloud (lib/mirror.js)
 route('GET', '/api/push/key', () => ({ key: Push.publicKey(), devices: Push.subscriptions().length }));
 route('POST', '/api/push/subscribe', (_, __, b) => Push.subscribe(b.subscription, b.ua));
 route('POST', '/api/push/apns', (_, __, b) => Apns.register(b)); // the iPhone app's device token (gubernos-ios Gubernos/Push.swift)
@@ -316,6 +319,7 @@ server.listen(PORT, HOST, () => {
   // push the owner's phone again and again (2026-10-10). So: no notifier there.
   const sharedData = process.env.GUBERNOS_VAULT && !process.env.GUBERNOS_DATA_DIR;
   if (!process.env.GUBERNOS_NO_NOTIFY && !sharedData) Notify.start();
+  if (!sharedData) Backup.start(); // a daily copy of the vault's .md files (lib/backup.js)
   Timers.boot(() => changed(true)); // running habit timers finish at their end, also after a restart
   feedbackSync(); // answers to bug reports sent through the relay (no-op on the developer's own install)
   feedbackInbox(); // the developer's install: reports from other installs → dev tasks (lib/feedback-inbox.js)

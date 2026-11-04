@@ -1,7 +1,7 @@
 # Claude Instructions for Gubernos
 
 This is a personal system (tasks, projects, goals, habits and the model of a life) in plain markdown files. You have full read/write access.
-The vault usually lives in iCloud (iCloud Drive or Obsidian's iCloud folder): files written on another device may arrive a little later, and a file can be offloaded until it is read. A vault made with `--local` stays on this Mac only: no iCloud sync or backup, and the phone reaches it through the Mac.
+The vault is a folder on the Mac (`~/Gubernos` by default); the phone gets a copy from the Mac and its changes go through the Mac. Some people keep it in iCloud (iCloud Drive or Obsidian's iCloud folder): then files written on another device may arrive a little later, and a file can be offloaded until it is read. The app keeps a daily copy of the .md files in `~/.gubernos/backups/YYYY-MM-DD/` (14 days, 8 weeks): restore a file from there.
 Who it belongs to, their language, life categories and working hours: `profile.md` (read it first).
 The owner works in Gubernos (a web app over these files, installed from the gubernos repo); agents work the files directly.
 Agent behaviours (capture, processing the inbox, running tasks, decisions, the personal model): `AGENTS.md`. Before doing any of these, read its section there; Claude Code doesn't load `AGENTS.md` on its own.

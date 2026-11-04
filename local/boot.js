@@ -4,7 +4,9 @@
 // answers "needs the Mac". Built into a bundle by scripts/build-local.mjs.
 //
 // Bridge (window.webkit.messageHandlers.gubernos, WKScriptMessageHandlerWithReply), messages → reply:
-//   {op: 'load'}                        → {vault: {relPath: {text, mtime}}, data: {relPath: text}, config, pending}
+//   {op: 'load'}                        → {vault: {relPath: {text, mtime}}, data: {relPath: text}, config, pending, mirror}
+//                                          mirror: the files are the Mac's copy (no iCloud folder): vault writes are refused,
+//                                          so every change waits in the outbox for the Mac (gubernos-ios Gubernos/Mirror.swift)
 //   {op: 'refresh', since: ms}          → {files: {relPath: {text, mtime}} changed since, paths: [every vault .md now]}
 //   {op: 'write', path, text, created}  → {ok: true}   path is /vault/… or /data/… (the shell maps them to disk)
 //   {op: 'move', from, to}              → {ok: true}   /vault paths (completing → 80_archive/)
@@ -113,7 +115,7 @@ document.documentElement.classList.add('local-mode');
 function badge() {
   if (!document.body) return addEventListener('DOMContentLoaded', badge, { once: true });
   const n = outbox.length;
-  document.body.setAttribute('data-offline', `Offline · ${n ? `${n} change${n === 1 ? '' : 's'} waiting for the Mac` : 'saved to iCloud'}${boot.pending ? ` · ${boot.pending} files coming` : ''}`);
+  document.body.setAttribute('data-offline', `Offline · ${n ? `${n} change${n === 1 ? '' : 's'} waiting for the Mac` : boot.mirror ? 'your copy from the Mac' : 'saved to iCloud'}${boot.pending ? ` · ${boot.pending} files coming` : ''}`);
 }
 badge();
 
