@@ -3272,7 +3272,7 @@ function voiceCapture({ ctx, input, notes, onReset }) {
   async function start({ free = true } = {}) {
     handsFree = free; pendingStop = false; t0 = Date.now();
     fetch('/api/voice/warm', { method: 'POST' }).catch(() => {}); // load models while the user talks
-    if (!navigator.mediaDevices?.getUserMedia) { closeModal(); return toast('Microphone needs HTTPS — open the app via its Tailscale https:// address'); }
+    if (!navigator.mediaDevices?.getUserMedia) { closeModal(); return toast('Microphone needs HTTPS — open the app via its https:// address'); }
     micGesture();
     try { stream = await micStream(); }
     catch (err) { clog(`getUserMedia failed: ${err.name} ${err.message}`); closeModal(); return toast(`No microphone access (${err.name}) — allow it for this site in Safari settings`, null, null, 8000); }
@@ -4089,13 +4089,13 @@ function pairHtml() {
   const p = S.pair;
   if (!p) { if (p !== false) { S.pair = false; api('GET', '/api/pair').then((x) => { S.pair = x; if (S.view === 'settings') renderMain(); }).catch(() => {}); } return ''; }
   const seg = (act, cur, opts, dis) => `<span class="seg">${opts.map(([v, l]) => `<button data-act="${act}" data-val="${v}" class="${String(cur) === String(v) ? 'on' : ''}"${dis ? ' disabled' : ''}>${l}</button>`).join('')}</span>`;
-  if (!p.publicUrl) return `<div class="set-row"><div class="set-l">Pair a device<small>phone access isn’t set up on this Mac yet: in the app’s folder run <code>scripts/setup.sh phone</code> (Tailscale)</small></div></div>`;
+  if (!p.publicUrl) return `<div class="set-row"><div class="set-l">Pair a device<small>phone access isn’t set up on this Mac yet: in the app’s folder run <code>scripts/setup.sh phone</code> (an https address through Cloudflare)</small></div></div>`;
   const code = S.pairShow ? `<div class="pair-box"><div class="pair-qr">${pairQr()}</div>
       <div class="set-note"><b>iPhone:</b> point the Camera at the code → Open in ${esc(APP_NAME)}.<br><b>Another browser</b> (an iPad, a second Mac): open this link there once —
       <button class="linkbtn" data-act="set-pair-copy">Copy link</button></div></div>` : '';
   return `<div class="set-row"><div class="set-l">Pair a device<small>a phone or another computer reaches this Mac through ${esc(p.publicUrl.replace(/^https?:\/\//, ''))} once it has the code</small>${code}</div>
       <button class="btn" data-act="set-pair-show">${S.pairShow ? 'Hide' : 'Show code'}</button></div>
-    <div class="set-row"><div class="set-l">Require pairing<small>${p.local ? 'on: only paired devices get in (the Mac itself always does) · off: anyone on your Tailscale network' : 'changed on the Mac itself'}</small>
+    <div class="set-row"><div class="set-l">Require pairing<small>${p.local ? 'on: only paired devices get in (the Mac itself always does) · off: anyone who reaches this Mac's address' : 'changed on the Mac itself'}</small>
       ${p.local ? '<div class="set-mf"><button class="linkbtn" data-act="set-pair-rotate">New code — unpairs every device</button></div>' : ''}</div>
       ${seg('set-pair-required', p.required ? 'on' : 'off', [['off', 'Off'], ['on', 'On']], !p.local)}</div>`;
 }
@@ -4130,7 +4130,7 @@ function phoneHtml() {
       <li><h3>Connect it to this Mac</h3>${p.publicUrl ? `<div class="ph-row"><div class="pair-qr">${qrSvg(p.appLink)}</div>
         <div class="ph-text"><p>Open ${esc(APP_NAME)} on the iPhone once and allow notifications. Then point the Camera at this code → <b>Open in ${esc(APP_NAME)}</b>.</p>
         <p class="muted">The phone reaches this Mac at ${esc(host)}, from anywhere, as long as the Mac is awake. Only devices with this code get in.</p></div></div>`
-    : `<p class="ph-text">This Mac isn’t reachable from the phone yet. Your agent sets it up: <code>scripts/setup.sh phone</code> (Tailscale, on this Mac only). The code appears here when it’s done.</p>`}</li>
+    : `<p class="ph-text">This Mac isn’t reachable from the phone yet. Your agent sets it up: <code>scripts/setup.sh phone</code> (an https address for this Mac, nothing on the phone). The code appears here when it’s done.</p>`}</li>
       <li class="${p.seenAt ? 'ph-ok' : ''}"><h3>${p.seenAt ? '✓ Connected' : 'Waiting for the iPhone…'}</h3>
         <p class="ph-text">${p.seenAt ? `A paired device reached this Mac ${ago}. That’s it: the app on the phone now shows your system.` : 'This turns into ✓ once the phone has connected.'}</p></li>
     </ol></div>`;
