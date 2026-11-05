@@ -17,19 +17,19 @@ before(async () => {
 after(async () => { try { await page?.close(); } finally { await s?.stop(); } });
 
 test('each screen explains itself once on a new install, and only there', { timeout: 40000 }, async () => {
-  const intro = 'document.querySelector(".scr-intro")?.innerText || ""';
+  const intro = 'document.querySelector(".scr-intro:not(.ob-remind)")?.innerText || ""';
   await page.goto(`${s.url}/#/today`);
   await page.waitFor('document.querySelector("#main")?.innerText.includes("Buy milk")');
   assert.equal(await page.eval(intro), '', 'an install already in use keeps its screens as they are');
   await s.patch('/api/settings', { screenIntros: true });
   await page.eval('location.reload()');
-  assert.ok(await page.waitFor('document.querySelector(".scr-intro")?.innerText.includes("Pick the one thing")'), 'no line on Today');
-  await page.eval('document.querySelector("[data-intro-ok]").click()');
-  assert.ok(await page.waitFor('!document.querySelector(".scr-intro")'));
+  assert.ok(await page.waitFor('document.querySelector(".scr-intro:not(.ob-remind)")?.innerText.includes("Pick the one thing")'), 'no line on Today');
+  await page.eval('document.querySelector(".scr-intro:not(.ob-remind) [data-intro-ok]").click()');
+  assert.ok(await page.waitFor('!document.querySelector(".scr-intro:not(.ob-remind)")'));
   assert.ok(await page.waitFor('document.querySelector("#main")?.innerText.includes("Buy milk")'), 'the screen itself stays');
   for (let i = 0; i < 50 && !(await (await fetch(`${s.url}/api/settings`)).json()).seenIntros?.includes('today'); i++) await page.sleep(100);
   await page.goto(`${s.url}/#/inbox`);
-  assert.ok(await page.waitFor('document.querySelector(".scr-intro")?.innerText.includes("capture")'), 'the next screen has its own line');
+  assert.ok(await page.waitFor('document.querySelector(".scr-intro:not(.ob-remind)")?.innerText.includes("capture")'), 'the next screen has its own line');
   await page.goto(`${s.url}/#/today`);
   await page.waitFor('document.querySelector("#main")?.innerText.includes("Buy milk")');
   assert.equal(await page.eval(intro), '', 'seen once');
@@ -57,7 +57,7 @@ for (const [label, w, h, mobile] of [['desktop', 1280, 800, false], ['phone', 39
     }
     assert.deepEqual(failed, []);
     await page.eval('location.hash = "#/onboard"');
-    assert.ok(await page.waitFor('document.querySelector(".onboard")?.innerText.includes("Connect a model first")'), 'no model: the interview should say so');
+    assert.ok(await page.waitFor('document.querySelector(".onboard")?.innerText.includes("connect the AI")'), 'no model: the interview should say so');
     assert.deepEqual(page.errors, []);
   });
 }

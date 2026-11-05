@@ -12,14 +12,14 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { MODEL_SETUP, setupPath, signInFailed, getFailed } from '../lib/model-setup.js';
 
 const APP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const HOME = os.homedir();
 const arg = (name) => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : null; };
 const PORT = Number(arg('--port')) || 4746;
 const CODE = crypto.randomBytes(18).toString('base64url');
-// a Mac that has never had these on PATH: the installers put them here
-process.env.PATH = [path.dirname(process.execPath), path.join(HOME, '.local/bin'), path.join(HOME, '.gubernos/node/bin'), process.env.PATH].join(':');
+process.env.PATH = setupPath(process.env.PATH);
 
 const has = (cmd) => spawnSync('/bin/sh', ['-c', `command -v ${cmd}`], { stdio: 'ignore' }).status === 0;
 const quiet = (cmd, args) => { const r = spawnSync(cmd, args, { encoding: 'utf8', timeout: 15000 }); return { ok: r.status === 0, out: `${r.stdout || ''}${r.stderr || ''}` }; };
@@ -27,10 +27,7 @@ const SIGNED_IN = {
   claude: () => { try { return JSON.parse(quiet('claude', ['auth', 'status', '--json']).out).loggedIn === true; } catch { return false; } },
   codex: () => quiet('codex', ['login', 'status']).ok,
 };
-const MODELS = [
-  { id: 'claude', name: 'Claude', plan: 'a Claude Pro or Max plan', install: ['/bin/sh', ['-c', 'curl -fsSL https://claude.ai/install.sh | bash']], login: ['claude', ['auth', 'login']] },
-  { id: 'codex', name: 'ChatGPT', plan: 'a ChatGPT Plus or Pro plan', install: ['npm', ['install', '-g', '@openai/codex']], login: ['codex', ['login']] },
-];
+const MODELS = Object.entries(MODEL_SETUP).map(([id, m]) => ({ id, ...m }));
 const modelState = () => MODELS.map((m) => { const installed = has(m.id); return { id: m.id, name: m.name, plan: m.plan, installed, signedIn: installed && SIGNED_IN[m.id]() }; });
 
 function folders() {
@@ -41,15 +38,15 @@ function folders() {
 }
 
 // one long job at a time; the page polls it
-const job = { name: null, lines: [], done: false, error: null, next: null };
-function start(name, cmd, args, then) {
-  Object.assign(job, { name, lines: [], done: false, error: null });
+const job = { name: null, lines: [], done: false, error: null, next: null, quiet: false };
+function start(name, cmd, args, then, { fail, quiet = false } = {}) { // fail: what to say instead of the tool's last line; quiet: its output isn't for people
+  Object.assign(job, { name, lines: [], done: false, error: null, quiet });
   const child = spawn(cmd, args, { cwd: APP, env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
   const take = (d) => { job.lines.push(...String(d).split('\n').filter((l) => l.trim())); job.lines = job.lines.slice(-30); };
   child.stdout.on('data', take); child.stderr.on('data', take);
-  child.on('error', (e) => { job.done = true; job.error = e.message; });
+  child.on('error', (e) => { job.done = true; job.error = fail || e.message; });
   child.on('close', (code) => {
-    if (code !== 0) { job.done = true; job.error = job.lines.at(-1) || `stopped (${code})`; return; }
+    if (code !== 0) { job.done = true; job.error = fail || job.lines.at(-1) || `stopped (${code})`; return; }
     if (then) then(); else job.done = true;
   });
 }
@@ -57,8 +54,8 @@ function start(name, cmd, args, then) {
 function setUpModel(id) {
   const m = MODELS.find((x) => x.id === id);
   if (!m) throw new Error('unknown model');
-  const login = () => start(`${m.name}: sign in, in the browser`, ...m.login);
-  if (has(m.id)) login(); else start(`Getting ${m.name}…`, ...m.install, login);
+  const login = () => start(`${m.name}: sign in, in the browser`, ...m.login, null, { fail: `${signInFailed(m)} Or skip it: you can sign in after this.`, quiet: true });
+  if (has(m.id)) login(); else start(`Getting ${m.name}…`, ...m.install, login, { fail: getFailed(m) });
 }
 
 function install({ name, language, folder, model, awake }) {

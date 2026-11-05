@@ -83,11 +83,10 @@ async function refresh() {
   paintModels(s.models);
 }
 async function follow(after) {
-  $('#log').hidden = false;
   for (;;) {
     const j = await call('GET', '/job');
     $('#status').className = ''; $('#status').textContent = j.name || '';
-    $('#log').textContent = j.lines.join('\n'); $('#log').scrollTop = 1e6;
+    $('#log').hidden = !!j.quiet; $('#log').textContent = j.lines.join('\n'); $('#log').scrollTop = 1e6;
     if (j.done) {
       if (j.error) { $('#status').className = 'err'; $('#status').textContent = `That didn’t work: ${j.error}`; busy(false); return; }
       $('#log').hidden = true; $('#status').textContent = '';

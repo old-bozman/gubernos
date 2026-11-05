@@ -58,6 +58,32 @@ test('filled in the browser, it sets everything up and hands over to the intervi
   assert.match(await page.eval('location.href'), /:4747\/#\/onboard$/);
 });
 
+test('giving up on signing in reads as words, not the model tool\'s output', { timeout: 60000 }, async () => {
+  const dd = fs.mkdtempSync(path.join(os.tmpdir(), 'gubernos-first-'));
+  const h = path.join(dd, 'home'), bin = path.join(dd, 'bin');
+  fs.mkdirSync(h); fs.mkdirSync(bin);
+  fs.writeFileSync(path.join(bin, 'claude'), `#!/bin/sh
+case "$*" in
+  "auth status --json") echo '{"loggedIn":false}'; exit 1;;
+  "auth login") echo "If the browser didn't open, visit: https://example.com/oauth"; echo "Paste code here if prompted >"; exit 1;;
+esac
+`, { mode: 0o755 });
+  const port = await freePort();
+  const c = spawn(process.execPath, [path.join(ROOT, 'scripts/first-run.mjs'), '--port', String(port), '--no-open'], { env: { ...process.env, HOME: h, PATH: `${bin}:/usr/bin:/bin` }, stdio: ['ignore', 'pipe', 'ignore'] });
+  const p = await openPage();
+  try {
+    const l = await new Promise((resolve, reject) => { let o = ''; c.stdout.on('data', (x) => { o += x; const m = o.match(/first run: (\S+)/); if (m) resolve(m[1]); }); c.once('exit', () => reject(new Error('it stopped'))); });
+    await p.goto(l);
+    assert.ok(await p.waitFor('document.querySelector("[data-model=claude]")', 20000));
+    await p.eval('document.querySelector("[data-model=claude]").click()');
+    assert.ok(await p.waitFor('document.querySelector("#status").className === "err"', 15000));
+    const seen = await p.eval('document.querySelector("#status").innerText + "|" + (document.querySelector("#log").hidden ? "" : document.querySelector("#log").innerText)');
+    assert.match(seen, /finish signing in/i);
+    assert.ok(!/Paste code|oauth/.test(seen), seen);
+    assert.ok(await p.eval('!document.querySelector("#go").disabled'), 'the page is stuck');
+  } finally { c.kill(); await p.close(); fs.rmSync(dd, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); }
+});
+
 test('a page left open after its setup stopped says what to do, not "Failed to fetch"', { timeout: 30000 }, async () => {
   const html = fs.readFileSync(path.join(ROOT, 'public/first-run.html'), 'utf8').replace('__CODE__', 'x');
   const p = await openPage();

@@ -119,7 +119,7 @@ async function run() {
     throw new Error('no setup page');
   }
   check(true, `the setup page comes up in ${seconds(t1)}`);
-  await sleep(4000);
+  await sleep(15000);
   await screen('setup-in-safari');
 
   // the page itself, through a tunnel, in a browser this script can drive (the VM's Safari shows the same page, see the screenshots)
@@ -145,7 +145,8 @@ async function run() {
   ssh('pkill -f "claude auth login"');
   check(await page.waitFor('!document.querySelector("#go").disabled', 30000), 'giving up on signing in leaves the page usable', await page.eval('document.querySelector("#status").innerText'));
   await shot('model-gave-up');
-  say(`  after giving up it says: ${await page.eval('document.querySelector("#status").innerText')}`);
+  const gaveUp = await page.eval('document.querySelector("#status").innerText + "|" + (document.querySelector("#log").hidden ? "" : document.querySelector("#log").innerText)');
+  check(/finish signing in/i.test(gaveUp) && !/Paste code|oauth/.test(gaveUp), 'giving up on signing in reads as words', gaveUp);
 
   // set up, without a model: the page hands over to the app. This Mac's own Gubernos may answer on the app's port, so the hand-over goes to the tunnel
   await page.eval(`(() => {
@@ -167,7 +168,15 @@ async function run() {
   check(await page.waitFor('document.querySelector(".ob-intro")?.innerText.includes("15–20 minutes") || document.querySelector(".onboard")', 30000), 'the interview screen shows', page.errors.join(' | '));
   await sleep(1500);
   await shot('interview');
-  say(`  the interview screen without a model: ${(await page.eval('document.querySelector("#main").innerText')).replace(/\s+/g, ' ').slice(0, 300)}`);
+  // still not signed in: nobody talks for 15 minutes to nothing, and signing in is a button
+  check(await page.waitFor('document.querySelector("[data-act=onboard-connect][data-val=claude]")', 10000) && await page.eval('!document.querySelector("#ob-msg")'), 'not signed in, it says so before anyone talks', await page.eval('document.querySelector("#main").innerText'));
+  await page.eval('document.querySelector("[data-act=onboard-connect][data-val=claude]").click()');
+  check(!!await until(() => ssh('pgrep -f "claude auth login"').ok, 20000, 1000), 'Sign in, from the app itself, starts the sign-in');
+  await sleep(8000);
+  await screen('signin-from-the-app');
+  await shot('interview-signing-in');
+  ssh('pkill -f "claude auth login"');
+  check(await page.waitFor('/finish signing in/i.test(document.querySelector(".onboard").innerText) && !document.querySelector("[data-act=onboard-connect]").disabled', 15000), 'giving up there says so too and can be tried again', await page.eval('document.querySelector(".onboard").innerText'));
 
   // what's on the machine now
   check(await until(() => !ssh('pgrep -x Gubernos').ok, 30000, 2000) !== null, 'the launcher window closed by itself');
@@ -181,7 +190,8 @@ async function run() {
   check(await page.waitFor('document.querySelector("#main")?.innerText.trim().length > 0', 15000), 'Today opens');
   await sleep(1500);
   await shot('today');
-  check(await page.eval('!!document.querySelector(".scr-intro")'), 'Today explains itself the first time');
+  check(await page.waitFor('document.querySelector(".scr-intro:not(.ob-remind)")', 5000), 'Today explains itself the first time');
+  check(await page.waitFor('document.querySelector(".ob-remind a[href=\\"#/onboard\\"]")', 5000), 'Today has the way back to the interview');
   const errors = page.errors.filter((e) => !/favicon|127\.0\.0\.1:4746/.test(e));
   check(!errors.length, 'no errors in the pages', errors.join(' | '));
 

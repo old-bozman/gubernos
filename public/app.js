@@ -647,7 +647,7 @@ function paintMain(html) {
   const scroll = main.scrollTop;
   const hadFocus = document.activeElement?.id === 'search';
   main.innerHTML = html;
-  const intro = screenIntro();
+  const intro = setupReminder() + screenIntro();
   if (intro) (main.querySelector('.page-h') || { insertAdjacentHTML: (_, h) => main.insertAdjacentHTML('afterbegin', h) }).insertAdjacentHTML('afterend', intro);
   main.scrollTop = scroll;
   if (hadFocus) { const s = $('#search'); s.focus(); s.setSelectionRange(s.value.length, s.value.length); }
@@ -707,6 +707,14 @@ const INTROS = {
   reflect: 'A few lines at the end of the day: how it went, and what matters tomorrow.',
   weekly: 'Once a week: what happened, what carries over, and what matters next week.',
 };
+// left before the interview (closed the tab, came back later): the way back to it, on Today. New installs only.
+function setupReminder() {
+  const st = S.settings;
+  if (S.view !== 'today' || !st?.screenIntros || st.seenIntros?.includes('onboard')) return '';
+  if (S.onboard == null) { S.onboard = false; api('GET', '/api/onboard').then((x) => { S.onboard = x; if (S.view === 'today') renderMain(); }).catch(() => {}); return ''; }
+  if (!S.onboard || S.onboard.finished) return '';
+  return `<div class="scr-intro ob-remind"><p><a href="#/onboard">Load your system</a>: a 15–20 minute talk, and Today fills itself.</p><button class="linkbtn" data-intro-ok="onboard">Not now</button></div>`;
+}
 function screenIntro() {
   const st = S.settings, text = INTROS[S.view];
   if (!st?.screenIntros || !text || st.seenIntros?.includes(S.view)) return '';
@@ -3731,6 +3739,7 @@ document.addEventListener('click', async (e) => {
     case 'tour': return tourOpen(0);
     case 'phone-setup': S.phoneSetup = true; renderMain(); return api('POST', '/api/phone/setup').catch((err) => { S.phoneSetup = false; toast(err.message); renderMain(); });
     case 'onboard-send': return onboardSend();
+    case 'onboard-connect': return api('POST', '/api/onboard/connect', { id: a.dataset.val }).then((x) => { S.onboard = x; renderMain(); }).catch((err) => toast(err.message));
     case 'native-settings': return window.webkit?.messageHandlers?.gubernos?.postMessage({ op: 'settings' });
     case 'plan-run': if (S.plan) { S.plan.run[a.dataset.id] = !S.plan.run[a.dataset.id]; renderMain(); } return;
     case 'win-up': case 'win-down': {
@@ -4170,7 +4179,11 @@ function onboardHtml() {
     <ul><li>Who you are, who’s in your life, what you do</li><li>What’s on your mind: projects, to-dos, dates you can’t miss</li><li>What you’re hoping for in the next year or so</li></ul></div>`;
   const bubbles = o.turns.map((t) => `<div class="ob-t ob-${t.from}">${t.from === 'agent' ? md(t.text) : esc(t.text)}</div>`).join('');
   const working = S.onboardBusy ? '<div class="ob-t ob-agent ob-working">Putting this into your system…</div>' : '';
-  const foot = !o.model ? '<p class="ph-text">Connect a model first: Settings → Agents → Model. Then come back here.</p>'
+  if (o.connecting?.running && !S.onboardPoll) S.onboardPoll = setTimeout(async () => { S.onboardPoll = null; try { S.onboard = await api('GET', '/api/onboard'); } catch { /* next time */ } if (S.view === 'onboard') renderMain(); }, 1500);
+  const connecting = o.connecting?.running;
+  const foot = !o.model ? `<div class="ob-connect"><p>First, connect the AI that will listen. It runs on your own plan.</p>
+      ${(o.models || []).map((m) => `<p><button class="btn" data-act="onboard-connect" data-val="${esc(m.id)}" ${connecting ? 'disabled' : ''}>${m.installed ? `Sign in to ${esc(m.name)}` : `Get ${esc(m.name)} and sign in`}</button> <span class="ph-text">${esc(m.plan)}</span></p>`).join('')}
+      ${connecting ? `<p class="ph-text">${esc(o.connecting.name)}: finish signing in in your browser, then come back here.</p>` : ''}${!connecting && o.connecting?.error ? `<p class="d-over">${esc(o.connecting.error)}</p>` : ''}</div>`
     : `<div class="ob-input"><span class="rf-in"><textarea id="ob-msg" rows="3" placeholder="${voice ? 'Press the mic and talk, or type' : 'Answer here'}" ${S.onboardBusy ? 'disabled' : ''}>${S.onboardBusy ? '' : esc(S.onboardDraft || '')}</textarea><button type="button" class="rf-mic" data-voice data-dictate="ob-msg" aria-label="Dictate">${MIC_SVG}</button></span><button class="btn primary" data-act="onboard-send" ${S.onboardBusy ? 'disabled' : ''}>Send</button></div>`;
   return `<div class="onboard">${intro}${bubbles}${working}${o.error ? `<p class="d-over">${esc(o.error)}</p>` : ''}${o.finished ? '<p class="ph-text"><b>That’s the setup.</b></p><p><a class="btn primary" href="#/today">Open Today</a> <a class="btn" href="#/phone">Connect your iPhone</a></p>' : foot}</div>`;
 }
