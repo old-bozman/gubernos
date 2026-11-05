@@ -110,15 +110,14 @@ if [[ $WIZARD == 1 ]]; then exec node "$DIR/scripts/first-run.mjs"; fi
 echo
 "$DIR/scripts/setup.sh" check | sed -n '/^Model/,/^Optional/p' | sed '$d'
 agent=""
-for a in claude codex gemini; do command -v "$a" >/dev/null && { agent="$a"; break; }; done
+for a in claude codex; do command -v "$a" >/dev/null && { agent="$a"; break; }; done
 echo
 if [[ -n "$agent" ]]; then
   say "Next: open your agent in the app's folder and say \"run SETUP.md\":"
   echo "  cd $DIR && $agent"
 else
-  say "Next: install one AI agent (any one), then open it in the app's folder and say \"run SETUP.md\":"
-  echo "  Claude (Pro or Max):  curl -fsSL https://claude.ai/install.sh | bash   then: cd $DIR && ~/.local/bin/claude"
-  echo "  ChatGPT (Plus/Pro):   npm install -g @openai/codex && codex login     then: cd $DIR && codex"
-  echo "  Gemini (API key):     npm install -g @google/gemini-cli               then: cd $DIR && gemini"
+  say "Next: install one AI agent, then open it in the app's folder and say \"run SETUP.md\". It needs a paid plan; free plans aren't supported:"
+  echo "  Claude (Pro or higher):  curl -fsSL https://claude.ai/install.sh | bash   then: cd $DIR && ~/.local/bin/claude"
+  echo "  ChatGPT (Plus or higher):  npm install -g @openai/codex && codex login     then: cd $DIR && codex"
 fi
 echo "It asks a few questions, connects the folder you made on your iPhone and starts Gubernos in the background."

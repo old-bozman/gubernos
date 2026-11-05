@@ -3,7 +3,7 @@
 //   dates: today tomorrow tmr mon..sun "next week" weekend "in 3 days" +3d +2w 2026-10-01 "24 sep" "sep 24" 24/9
 //   ru: сегодня завтра послезавтра "в пятницу" пт "через 3 дня" "через неделю" "на выходных" "на следующей неделе" "25 сентября"
 //   times → a reminder on the due date (today, or tomorrow if that time has passed): 10:00 · at 10 · 10am · 3:30pm · в 10 · в 10:30 · в 9 утра · в 7 вечера
-//   p1 → urgent, p2/p3 → planned, p4 → someday · #project · @agent/@me/@someone, @claude/@codex/@gemini or @<assistant> (a specific agent; assistant = profile.md's, e.g. @cosy), other @x → label · {date} → deadline
+//   p1 → urgent, p2/p3 → planned, p4 → someday · #project · @agent/@me/@someone, @claude/@codex or @<assistant> (a specific agent; assistant = profile.md's, e.g. @cosy), other @x → label · {date} → deadline
 
 import { parseRepeat } from './recur.js';
 
@@ -122,7 +122,7 @@ export function parseQuick(raw, { projects = [], today, now = new Date(), assist
     m = new RegExp(`${B}@([\\w-]+)${E}`).exec(text);
     if (!m) break;
     const w = m[1].toLowerCase();
-    const named = ['claude', 'codex', 'gemini', ...(assistant ? [assistant] : [])];
+    const named = ['claude', 'codex', ...(assistant ? [assistant] : [])];
     if (['agent', 'ai', 'bot', ...named].includes(w)) { out.assigned = 'agent'; if (named.includes(w)) out.agent = w; }
     else if (['me', 'я'].includes(w)) out.assigned = 'me';
     else if (['someone', 'wait', 'waiting', 'delegate'].includes(w)) out.assigned = 'someone';

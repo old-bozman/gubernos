@@ -58,6 +58,31 @@ process.exit(1);
   } finally { await p.close(); await srv.stop(); fs.rmSync(d, { recursive: true, force: true }); }
 });
 
+test('in the app too, a lost sign-in page can be given up on, and the button works again', { timeout: 40000 }, async () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'gubernos-model-'));
+  const fake = path.join(d, 'claude');
+  fs.writeFileSync(fake, `#!/bin/sh
+case "$*" in
+  "auth status --json") echo '{"loggedIn":false}'; exit 1;;
+  "auth login") exec sleep 300;;
+esac
+`, { mode: 0o755 });
+  const srv = await startServer({ GUBERNOS_CLAUDE_BIN: fake });
+  const p = await openPage();
+  try {
+    await p.goto(`${srv.url}/#/onboard`);
+    assert.ok(await p.waitFor('document.querySelector("[data-act=onboard-connect][data-val=claude]")'));
+    assert.match(await p.eval('document.querySelector(".ob-connect").innerText'), /paid plan/);
+    assert.ok(!/Gemini/.test(await p.eval('document.querySelector(".onboard").innerText')));
+    await p.eval('document.querySelector("[data-act=onboard-connect][data-val=claude]").click()');
+    assert.ok(await p.waitFor('document.querySelector("[data-act=onboard-cancel]")', 10000), 'no way out of a lost sign-in');
+    assert.ok(await p.eval('document.querySelector("[data-act=onboard-connect][data-val=claude]").disabled'));
+    await p.eval('document.querySelector("[data-act=onboard-cancel]").click()');
+    assert.ok(await p.waitFor('/finish signing in/i.test(document.querySelector(".onboard").innerText) && !document.querySelector("[data-act=onboard-connect][data-val=claude]").disabled', 10000), await p.eval('document.querySelector(".onboard").innerText'));
+    assert.ok(await p.eval('!document.querySelector("[data-act=onboard-cancel]")'));
+  } finally { await p.close(); await srv.stop(); fs.rmSync(d, { recursive: true, force: true }); }
+});
+
 test('someone who left before the interview finds the way back on Today, until it is done or dismissed', { timeout: 40000 }, async () => {
   const srv = await startServer({ GUBERNOS_CLAUDE_BIN: path.join(dir, 'claude') });
   const p = await openPage();

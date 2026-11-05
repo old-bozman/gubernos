@@ -16,7 +16,7 @@ Single developer + agents; other people install it from `SETUP.md`, so keep pers
 | `lib/feedback.js`, `scripts/feedback-view.mjs` | Bug reports / ideas from the app → a task + `data/feedback.jsonl`; render a report's screen snapshot |
 | `lib/vault.js` | Read/write vault markdown (tasks, projects, goals, inbox items, checklist templates in `91_templates/checklists/`). All frontmatter edits go through here |
 | `lib/runner.js` | "▶ Run": starts the model's CLI on a task (`llm.agentRun`), streams events, finalizes `agent_state` |
-| `lib/llm.js` | The model behind the app, provider-neutral: Claude Code, Codex or Gemini CLI (settings `provider`, Settings → Agents → Model). `ask({system, prompt, schema})` one-shot structured, `chatTurn` read-only resumable chat, `agentRun` a task run; gubernos-tools plugged into each. Codex needs strict schemas (`strict()` / `unnull()`); Gemini gets the schema in the prompt |
+| `lib/llm.js` | The model behind the app, provider-neutral: Claude Code or Codex (settings `provider`, Settings → Agents → Model). `ask({system, prompt, schema})` one-shot structured, `chatTurn` read-only resumable chat, `agentRun` a task run; gubernos-tools plugged into each. Codex needs strict schemas (`strict()` / `unnull()`) |
 | `lib/voice.js` | Whisper workers (quick/full processes), `interpret()` = utterance → task drafts or a command |
 | `lib/stt.py` | Whisper worker (MLX), one process per model, JSON lines over stdin/stdout |
 | `lib/dates.js` | Date spec → local date. The model never computes dates |
@@ -50,7 +50,7 @@ Single developer + agents; other people install it from `SETUP.md`, so keep pers
 | `public/parse.js` | Quick-add syntax parser (also used by the UI only) |
 | `public/app.css` | Styles; light/dark via CSS variables; mobile rules in `@media (max-width: 800px)` |
 | `kit/vault/` | The starter vault for new owners (CLAUDE.md, AGENTS.md, profile.md, templates, views, `40_reference/system/`, skills `onboarding` and `process-inbox`). `VAULT_ROOT/` in it = the system folder inside its Obsidian vault, filled in at install |
-| `scripts/setup.sh`, `scripts/kit.mjs`, `scripts/update.sh`, `SETUP.md` | Install from scratch (driven by the owner's agent: Claude Code, Codex or Gemini CLI; `setup.sh model` picks the app's model), update; `deploy/*.template` = launchd plists |
+| `scripts/setup.sh`, `scripts/kit.mjs`, `scripts/update.sh`, `SETUP.md` | Install from scratch (driven by the owner's agent: Claude Code or Codex; `setup.sh model` picks the app's model), update; `deploy/*.template` = launchd plists |
 
 Canon rules live in the **vault**: `CLAUDE.md` (schemas), `AGENTS.md` (agent protocol). If you change what the app
 writes into task files, update those two as well.

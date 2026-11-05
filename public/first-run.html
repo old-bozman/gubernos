@@ -26,6 +26,8 @@
   button { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: inherit; cursor: pointer; white-space: nowrap; }
   button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; width: 100%; padding: 12px; }
   button:disabled { opacity: .5; cursor: default; }
+  .need { background: var(--card); border: 1px solid var(--accent); border-radius: 14px; padding: 14px 18px; margin: 0 0 14px; font-size: 15px; }
+  .need a { color: inherit; }
   .note { font-size: 14px; color: var(--ink-2); margin: 8px 0 0; }
   #status { margin-top: 14px; font-size: 14px; color: var(--ink-2); min-height: 20px; }
   #status.err { color: var(--accent); }
@@ -36,6 +38,7 @@
 <main>
   <h1>Set up Gubernos</h1>
   <p class="lead">A few answers, about a minute. Everything stays on this Mac.</p>
+  <p class="need" id="need"><b>You need a paid AI subscription:</b> Claude Pro or higher, or ChatGPT Plus or higher. Free plans aren’t supported. Don’t have one? <a href="https://claude.com/pricing" target="_blank" rel="noopener">Claude plans</a> · <a href="https://chatgpt.com/pricing" target="_blank" rel="noopener">ChatGPT plans</a></p>
   <section>
     <h2>About you</h2>
     <label class="f">Your name <input type="text" id="name" autocomplete="name"></label>
@@ -48,13 +51,14 @@
   <section>
     <h2>Your AI model</h2>
     <div id="models"></div>
-    <p class="note">It reads your inbox, answers in the chat and does tasks, on your own plan. You can add one later: Settings → Agents.</p>
+    <p class="note">It reads your inbox, answers in the chat and does tasks, on your own paid plan. You can also connect one later, in the app.</p>
   </section>
   <section>
     <label class="opt"><input type="checkbox" id="awake"><span>Keep this Mac awake while it’s plugged in<small>So your phone reaches it all day. The screen still turns off.</small></span></label>
   </section>
   <button class="primary" id="go">Set up Gubernos</button>
   <div id="status"></div>
+  <p class="note" id="lost" hidden>Can’t find the sign-in page? <button id="cancel">Start again</button></p>
   <pre id="log" hidden></pre>
 </main>
 <script>
@@ -86,6 +90,7 @@ async function follow(after) {
   for (;;) {
     const j = await call('GET', '/job');
     $('#status').className = ''; $('#status').textContent = j.name || '';
+    $('#lost').hidden = !j.quiet || j.done;
     $('#log').hidden = !!j.quiet; $('#log').textContent = j.lines.join('\n'); $('#log').scrollTop = 1e6;
     if (j.done) {
       if (j.error) { $('#status').className = 'err'; $('#status').textContent = `That didn’t work: ${j.error}`; busy(false); return; }
@@ -95,9 +100,10 @@ async function follow(after) {
     await new Promise((r) => setTimeout(r, 700));
   }
 }
-const busy = (on) => { document.querySelectorAll('button').forEach((b) => { b.disabled = on; }); };
+const busy = (on) => { document.querySelectorAll('button:not(#cancel)').forEach((b) => { b.disabled = on; }); };
 document.addEventListener('change', (e) => { if (e.target.name === 'model') chosen = e.target.value; });
 document.addEventListener('click', async (e) => {
+  if (e.target.id === 'cancel') return call('POST', '/cancel').catch(() => {});
   const id = e.target.dataset?.model;
   if (id) {
     busy(true);

@@ -192,6 +192,7 @@ route('POST', '/api/gmail/draft', async (_, __, b) => {
 route('GET', '/api/onboard', () => Onboarding.state());
 route('POST', '/api/onboard', (_, __, b) => Onboarding.turn(b.message));
 route('POST', '/api/onboard/connect', (_, __, b) => Onboarding.connect(b.id));
+route('POST', '/api/onboard/connect/cancel', () => Onboarding.cancelConnect());
 route('GET', '/api/mirror', (_, q) => mirror(Number(q.since) || 0)); // the iPhone's offline copy of a vault outside iCloud (lib/mirror.js)
 route('GET', '/api/push/key', () => ({ key: Push.publicKey(), devices: Push.subscriptions().length }));
 route('POST', '/api/push/subscribe', (_, __, b) => Push.subscribe(b.subscription, b.ua));

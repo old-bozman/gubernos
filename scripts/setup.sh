@@ -1,12 +1,12 @@
 #!/bin/bash
-# Installs Gubernos on this Mac. An agent (Claude Code, Codex or Gemini CLI) runs it step by step from SETUP.md; each step
+# Installs Gubernos on this Mac. An agent (Claude Code or Codex) runs it step by step from SETUP.md; each step
 # is safe to repeat.
 #
 #   scripts/setup.sh check                       what's installed, what's missing
 #   scripts/setup.sh install --vault PATH --name NAME [--language LANG]     (PATH: ~/Gubernos, or a folder in iCloud / Dropbox)
 #                            [--obsidian-vault NAME --obsidian-path SUB] [--port 4747] [--no-launchd] [--awake]
-#                            [--model claude|codex|gemini] [--voice-language en-US|ru-RU|…|mixed]
-#   scripts/setup.sh model claude|codex|gemini   the model behind the app (lib/llm.js; Settings → Agents → Model)
+#                            [--model claude|codex] [--voice-language en-US|ru-RU|…|mixed]
+#   scripts/setup.sh model claude|codex   the model behind the app (lib/llm.js; Settings → Agents → Model)
 #   scripts/setup.sh voice-language LOCALE|mixed the language spoken to the app (Settings → Voice; lib/voice.js)
 #   scripts/setup.sh phone                       HTTPS for the phone: an https://m-….gubernos.dev address through Cloudflare Tunnel
 #                                                (the relay makes it; cloudflared runs here as a background service). Nothing to sign in to
@@ -63,16 +63,11 @@ check() {
 
 # the model CLIs here, and whether each is signed in (as far as it can be told without calling the model)
 models() {
-  if command -v claude >/dev/null; then ok "Claude Code $(claude --version 2>/dev/null | head -1) — a Claude Pro or Max plan"
+  if command -v claude >/dev/null; then ok "Claude Code $(claude --version 2>/dev/null | head -1) — a Claude plan, Pro or higher"
   else no "Claude Code — curl -fsSL https://claude.ai/install.sh | bash, then: ~/.local/bin/claude (sign in)"; fi
   if command -v codex >/dev/null; then
     codex login status >/dev/null 2>&1 && ok "Codex (ChatGPT) — signed in" || no "Codex is installed, not signed in: codex login"
-  else no "Codex (ChatGPT Plus or Pro) — npm install -g @openai/codex, then: codex login"; fi
-  if command -v gemini >/dev/null; then
-    # Login with Google no longer works for Gemini CLI ("no longer supported for Gemini Code Assist for individuals"): an API key
-    if [[ -n "${GEMINI_API_KEY:-}" ]] || grep -qs '^GEMINI_API_KEY=.' "$HOME/.gemini/.env"; then ok "Gemini CLI — API key set"
-    else no "Gemini CLI is installed, no API key: get one at https://aistudio.google.com/apikey, put GEMINI_API_KEY=… in ~/.gemini/.env"; fi
-  else no "Gemini CLI (a Gemini API key, free tier) — npm install -g @google/gemini-cli, then GEMINI_API_KEY=… in ~/.gemini/.env (key: https://aistudio.google.com/apikey)"; fi
+  else no "Codex (ChatGPT Plus or higher) — npm install -g @openai/codex, then: codex login"; fi
   local cur; cur=$(cd "$APP" && node -e "import('./lib/llm.js').then((m) => console.log(m.providers().chosen || ''))" 2>/dev/null || true)
   [[ -n "$cur" ]] && ok "the app uses: $cur" || true
 }
@@ -94,7 +89,7 @@ voice-language() {
 }
 
 model() {
-  [[ "${1:-}" =~ ^(claude|codex|gemini)$ ]] || die "model claude|codex|gemini"
+  [[ "${1:-}" =~ ^(claude|codex)$ ]] || die "model claude|codex"
   (cd "$APP" && node -e "import('./lib/settings.js').then((m) => m.update({ provider: process.argv[1] }))" "$1") && ok "the app's model: $1 (Settings → Agents → Model)"
 }
 

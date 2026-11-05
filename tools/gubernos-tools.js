@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // gubernos-tools: a tiny stdio MCP server with READ-ONLY integrations for agents (task chat, Ask, ▶ Run — Claude Code, Codex or
-// Gemini CLI, see lib/llm.js — or any agent session). Sending mail / creating events is never here — the app proposes those
+// see lib/llm.js — or any agent session). Sending mail / creating events is never here — the app proposes those
 // and the owner confirms.
 // Plug in: claude --mcp-config '{"mcpServers":{"gubernos-tools":{"command":"node","args":["<repo>/tools/gubernos-tools.js"]}}}'
 // AICODE-NOTE: newline-delimited JSON-RPC 2.0 (MCP stdio transport), no SDK; stdout is protocol only — log to stderr.

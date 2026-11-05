@@ -2,20 +2,21 @@
 
 **Gubernos** (Gubern OS, from Latin *gubernare*, to steer) is a personal operating system: tasks, projects, goals, habits and your day, with agents that take part of the work off your hands. Everything stays yours: plain Markdown files on your Mac (or in your iCloud, if you like), your Mac as the "server", agents on your own Claude subscription. No third-party server, no one else's database.
 
+**Before you install: you need a paid AI subscription.** Gubernos runs on your own plan: Claude (Pro or higher) or ChatGPT (Plus or higher). The first interview, the chat and the agents all need it, and free plans aren't supported. Don't have one? Get it first: [Claude plans](https://claude.com/pricing) · [ChatGPT plans](https://chatgpt.com/pricing).
+
 Two steps: the Mac, then the iPhone.
 
-**Or skip the reading:** on the Mac, open your AI agent (Claude Code, Codex or Gemini CLI) and paste
+**Or skip the reading:** on the Mac, open your AI agent (Claude Code or Codex) and paste
 `Install Gubernos for me: read https://raw.githubusercontent.com/old-bozman/gubernos/main/SETUP.md and do the part "For the agent".` — it does the Mac part for you and tells you when to tap on the phone.
 
 ## 1. Mac (about 30 minutes, mostly your agent working)
 
-**You need:** a Mac (ideally one that is usually on) and **one** AI model on your own plan — whichever you already have:
+**You need:** a Mac (ideally one that is usually on) and a **paid AI plan** — whichever you already have:
 
 | You have | Its agent for the Terminal | Install | Sign in |
 |---|---|---|---|
-| **Claude** Pro or Max | Claude Code | `curl -fsSL https://claude.ai/install.sh \| bash` | `~/.local/bin/claude` |
-| **ChatGPT** Plus or Pro | Codex | `npm install -g @openai/codex` | `codex login` |
-| a **Google** account (free tier) | Gemini CLI | `npm install -g @google/gemini-cli` | an API key from [aistudio.google.com/apikey](https://aistudio.google.com/apikey) → put `GEMINI_API_KEY=<key>` in `~/.gemini/.env`, then `gemini` once → **Use Gemini API key** |
+| **Claude** Pro or higher | Claude Code | `curl -fsSL https://claude.ai/install.sh \| bash` | `~/.local/bin/claude` |
+| **ChatGPT** Plus or higher | Codex | `npm install -g @openai/codex` | `codex login` |
 
 That model reads your inbox and voice notes, answers in the app's chat and runs agents on tasks. You can switch later (Settings → Agents → Model), or install a second one as another agent.
 
@@ -26,7 +27,7 @@ That model reads your inbox and voice notes, answers in the app's chat and runs 
    It gets what's needed without asking for your password (Node if the Mac has none) and puts the app in `~/.gubernos/app`. Nothing else to install from Apple.
 2. **Install your model's agent** from the table above (the Install command, then the Sign in one), then open it in the app's folder:
    ```
-   cd ~/.gubernos/app && claude        # or: codex · gemini
+   cd ~/.gubernos/app && claude        # or: codex
    ```
 3. **Say "run SETUP.md".** The agent takes it from there:
    - checks the Mac and installs what's missing (asking first);

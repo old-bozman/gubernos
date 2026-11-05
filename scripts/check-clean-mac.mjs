@@ -2,9 +2,10 @@
 // The whole no-Terminal setup on a truly clean Mac, with nobody at the keyboard: a new VM from Apple's vanilla image (tart), the
 // real Gubernos.dmg, the launcher, the setup page, the app, a second launch, an update and a restart. Screenshots of the VM's real
 // screen (dialogs included) and of the pages go to the printed folder. Exit 1 if a check failed.
-//   node scripts/check-clean-mac.mjs [--dmg dist/Gubernos.dmg] [--keep]     --keep leaves the VM running
-// It fetches the app from `main`, as people do: release first. Not covered: signing in to a model stops at the sign-in page (the
-// owner's account). Gatekeeper's assessments are off in this image, so its verdict on the signature and notarization is checked on
+//   node scripts/check-clean-mac.mjs [--dmg dist/Gubernos.dmg] [--keep] [--sign-in]     --keep leaves the VM running
+// It fetches the app from `main`, as people do: release first. Signing in to a model stops at the sign-in page (the owner's
+// account); with --sign-in it opens the VM's screen on this Mac, waits for the owner to sign in there, then goes on with a real
+// model: the interview must take an answer and reply. The VM goes when the run passes, and the sign-in with it. Gatekeeper's assessments are off in this image, so its verdict on the signature and notarization is checked on
 // this Mac; macOS's "downloaded from the Internet" question still appears in the VM, on its real screen, and gets answered there.
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -15,7 +16,7 @@ import { openPage } from '../tests/chrome.js';
 import { connect } from '../tests/vnc.js';
 
 const arg = (name) => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : null; };
-const KEEP = process.argv.includes('--keep');
+const KEEP = process.argv.includes('--keep'), SIGN_IN = process.argv.includes('--sign-in');
 const DMG = path.resolve(arg('--dmg') || path.join(ROOT, 'dist/Gubernos.dmg'));
 const TART = [path.join(os.homedir(), '.local/bin/tart'), '/opt/homebrew/bin/tart'].find((f) => fs.existsSync(f)) || 'tart';
 const VM = 'gubernos-check', BASE = 'ghcr.io/cirruslabs/macos-tahoe-vanilla:latest';
@@ -24,7 +25,7 @@ const OUT = fs.mkdtempSync(path.join(os.tmpdir(), 'gubernos-cleanmac-'));
 const LINK = '~/.gubernos/first-run-link';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const report = [];
-let failed = 0, n = 0, vm, vnc, tunnel, page;
+let failed = 0, n = 0, vm, vnc, vncUrl, tunnel, page;
 const say = (l) => { console.log(l); report.push(l); };
 const check = (ok, text, detail = '') => { if (!ok) failed++; say(`${ok ? '✓' : '✗'} ${text}${!ok && detail ? `\n  ${String(detail).slice(0, 800)}` : ''}`); return ok; };
 const tart = (...a) => spawnSync(TART, a, { encoding: 'utf8' });
@@ -49,6 +50,7 @@ async function bootVm() {
   if (!url) throw new Error('the VM gave no screen address');
   ip = tart('ip', VM, '--wait', '120').stdout.trim();
   if (!ip) throw new Error('the VM got no address');
+  vncUrl = url;
   vnc = await connect(url);
   // a key of this run only; the image's public default password is used once, to put it there
   execFileSync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-f', key]);
@@ -131,6 +133,7 @@ async function run() {
   check(await page.waitFor('document.querySelector("input[name=folder]")', 20000), 'the form shows', page.errors.join(' | '));
   await shot('setup');
   check(/Get it and sign in/.test(await page.eval('document.querySelector("#models").innerText')), 'it offers to get a model');
+  check(/paid AI subscription/.test(await page.eval('document.querySelector("#need").innerText')), 'it says a paid plan is needed, above the form');
 
   // getting a model: it installs, then stops at the sign-in page, which is the person's
   const t2 = Date.now();
@@ -142,11 +145,25 @@ async function run() {
   await sleep(8000);
   await screen('claude-signin-page');
   check(ssh('pgrep -f "claude auth login"').ok, 'the sign-in is waiting for the person');
-  ssh('pkill -f "claude auth login"');
-  check(await page.waitFor('!document.querySelector("#go").disabled', 30000), 'giving up on signing in leaves the page usable', await page.eval('document.querySelector("#status").innerText'));
-  await shot('model-gave-up');
-  const gaveUp = await page.eval('document.querySelector("#status").innerText + "|" + (document.querySelector("#log").hidden ? "" : document.querySelector("#log").innerText)');
-  check(/finish signing in/i.test(gaveUp) && !/Paste code|oauth/.test(gaveUp), 'giving up on signing in reads as words', gaveUp);
+  if (SIGN_IN) {
+    spawnSync('open', [`vnc://admin:admin@${ip}`]); // the VM's own Screen Sharing: with the VNC server tart starts, Apple's client got no keyboard
+    say('→ SIGN IN NOW, on the VM’s screen (it just opened in Screen Sharing). Waiting up to an hour.');
+    const t = Date.now();
+    // the page's word, not `claude auth status` over SSH: the sign-in is in the keychain, which an SSH session can't read
+    const how = await until(() => page.eval('document.querySelector("input[name=model][value=claude]") ? "in" : document.querySelector("#status").className === "err" ? "failed" : null'), 3600000, 5000);
+    await screen('after-sign-in');
+    check(how === 'in', `signed in to Claude in the browser, ${seconds(t)}`, how ? await page.eval('document.querySelector("#status").innerText') : 'nobody signed in within the hour');
+    if (how !== 'in') throw new Error('no sign-in');
+    check(await page.waitFor('document.querySelector("input[name=model][value=claude]")', 30000), 'the page sees it by itself: Claude ✓ Ready', await page.eval('document.querySelector("#models").innerText'));
+    await shot('model-ready');
+  } else {
+    // the sign-in page got lost: the page's own way out ends the real CLI's wait
+    await page.eval('document.querySelector("#cancel").click()');
+    check(await page.waitFor('!document.querySelector("#go").disabled', 30000), 'Start again ends a lost sign-in and leaves the page usable', await page.eval('document.querySelector("#status").innerText'));
+    await shot('model-gave-up');
+    const gaveUp = await page.eval('document.querySelector("#status").innerText + "|" + (document.querySelector("#log").hidden ? "" : document.querySelector("#log").innerText)');
+    check(/finish signing in/i.test(gaveUp) && !/Paste code|oauth/.test(gaveUp), 'giving up on signing in reads as words', gaveUp);
+  }
 
   // set up, without a model: the page hands over to the app. This Mac's own Gubernos may answer on the app's port, so the hand-over goes to the tunnel
   await page.eval(`(() => {
@@ -168,15 +185,24 @@ async function run() {
   check(await page.waitFor('document.querySelector(".ob-intro")?.innerText.includes("15–20 minutes") || document.querySelector(".onboard")', 30000), 'the interview screen shows', page.errors.join(' | '));
   await sleep(1500);
   await shot('interview');
-  // still not signed in: nobody talks for 15 minutes to nothing, and signing in is a button
-  check(await page.waitFor('document.querySelector("[data-act=onboard-connect][data-val=claude]")', 10000) && await page.eval('!document.querySelector("#ob-msg")'), 'not signed in, it says so before anyone talks', await page.eval('document.querySelector("#main").innerText'));
-  await page.eval('document.querySelector("[data-act=onboard-connect][data-val=claude]").click()');
-  check(!!await until(() => ssh('pgrep -f "claude auth login"').ok, 20000, 1000), 'Sign in, from the app itself, starts the sign-in');
-  await sleep(8000);
-  await screen('signin-from-the-app');
-  await shot('interview-signing-in');
-  ssh('pkill -f "claude auth login"');
-  check(await page.waitFor('/finish signing in/i.test(document.querySelector(".onboard").innerText) && !document.querySelector("[data-act=onboard-connect]").disabled', 15000), 'giving up there says so too and can be tried again', await page.eval('document.querySelector(".onboard").innerText'));
+  if (SIGN_IN) {
+    // signed in: the app, as a service, reaches the model the person signed in to
+    check(await page.waitFor('document.querySelector("#ob-msg")', 30000) && await page.eval('!document.querySelector("[data-act=onboard-connect]")'), 'signed in, the interview is ready to talk', await page.eval('document.querySelector("#main").innerText'));
+    await page.eval('document.querySelector("#ob-msg").value = "I am Sam, I run a small bakery and have two kids."; document.querySelector("#ob-msg").dispatchEvent(new Event("input", { bubbles: true })); document.querySelector("[data-act=onboard-send]").click()');
+    check(await page.waitFor('document.querySelector(".onboard .ob-agent:not(.ob-working)")', 240000), 'the real model replies in the interview', await page.eval('document.querySelector(".onboard").innerText'));
+    say(`  it said: ${(await page.eval('document.querySelector(".onboard .ob-agent:not(.ob-working)")?.innerText || ""')).slice(0, 300)}`);
+    await shot('interview-real-reply');
+  } else {
+    // still not signed in: nobody talks for 15 minutes to nothing, and signing in is a button
+    check(await page.waitFor('document.querySelector("[data-act=onboard-connect][data-val=claude]")', 10000) && await page.eval('!document.querySelector("#ob-msg")'), 'not signed in, it says so before anyone talks', await page.eval('document.querySelector("#main").innerText'));
+    await page.eval('document.querySelector("[data-act=onboard-connect][data-val=claude]").click()');
+    check(!!await until(() => ssh('pgrep -f "claude auth login"').ok, 20000, 1000), 'Sign in, from the app itself, starts the sign-in');
+    await sleep(8000);
+    await screen('signin-from-the-app');
+    await shot('interview-signing-in');
+    await page.eval('document.querySelector("[data-act=onboard-cancel]").click()');
+    check(await page.waitFor('/finish signing in/i.test(document.querySelector(".onboard").innerText) && !document.querySelector("[data-act=onboard-connect]").disabled', 15000), 'giving up there says so too and can be tried again', await page.eval('document.querySelector(".onboard").innerText'));
+  }
 
   // what's on the machine now
   check(await until(() => !ssh('pgrep -x Gubernos').ok, 30000, 2000) !== null, 'the launcher window closed by itself');

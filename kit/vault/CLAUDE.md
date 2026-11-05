@@ -65,7 +65,7 @@ labels: [work, plan, research, reference]
 source: manual | email | agent | decision | vault | import   # decision = the next action of a decision (body links [[the-decision]]); vault = pulled from another vault (scripts/vault_bridge.py); import = from a previous task app at onboarding
 vault_ref: "<vault-folder>#<id>" | null   # source: vault only
 agent_state: queued | running | review | blocked | null   # only when assigned: agent (see AGENTS.md)
-agent: claude | codex | gemini | <assistant> | null   # which agent takes it (assigned: agent); <assistant> = profile.md assistant in lowercase; null = any, the owner starts it (with the app's model)
+agent: claude | codex | <assistant> | null   # which agent takes it (assigned: agent); <assistant> = profile.md assistant in lowercase; null = any, the owner starts it (with the app's model)
 completed: ISO datetime | null       # set when status → done
 dropped: true | null                 # abandoned, not done (status is done so it archives)
 checklist: true | null               # a list to tick off (shopping, packing): the ## Subtasks are its items

@@ -11,4 +11,4 @@ The full license texts, with Gubernos' own, are in [`public/licenses.txt`](publi
 file under Settings → About → Licenses. Add a row there and here when a new dependency is bundled.
 
 Not bundled, installed on the user's Mac by `scripts/setup.sh` under their own licenses: Node.js, ffmpeg, whisper.cpp
-and its models, the GitHub CLI, Tailscale, and the AI model CLIs (Claude Code, Codex, Gemini CLI).
+and its models, the GitHub CLI, Tailscale, and the AI model CLIs (Claude Code, Codex).

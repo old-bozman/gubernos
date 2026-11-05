@@ -2654,22 +2654,22 @@ function propsHtml(t, done, seg) {
 // AICODE-NOTE: Ask, task chat and Run are one conversation now (option A, 2026-09-28): the agent's reports come from
 // ## Agent log into the same feed, and "▶ Do it" starts a run from the chat.
 // Agents come from Settings → Agents (lib/settings.js agentList): name, how it starts (run), shown in the picker (on).
-// run: claude / codex / gemini = started here with that CLI (▶ Run); queue = it takes its own queue (an assistant, a session
+// run: claude / codex = started here with that CLI (▶ Run); queue = it takes its own queue (an assistant, a session
 // elsewhere); dev = the app developer's Claude Code session in the app's code (only on the developer's own install).
 const agentList = () => S.settings?.agentList || [{ id: 'claude', name: 'Claude', run: 'claude', on: true },
-  ...(ME().assistant ? [{ id: ME().assistant.id, name: ME().assistant.name, run: 'queue', on: true }] : []), { id: 'codex', name: 'Codex', run: 'codex', on: true }, { id: 'gemini', name: 'Gemini', run: 'gemini', on: true }];
+  ...(ME().assistant ? [{ id: ME().assistant.id, name: ME().assistant.name, run: 'queue', on: true }] : []), { id: 'codex', name: 'Codex', run: 'codex', on: true }];
 const agentOf = (id) => agentList().find((a) => a.id === id);
 // a built-in model agent whose CLI isn't on this Mac (or not signed in) stays out of the task's picker
 const agentReady = (a) => !(MODEL_CLI[a.run] && S.data.agents?.[a.run] === false);
 const agentNames = () => Object.fromEntries(agentList().map((a) => [a.id, a.name]));
 const agentName = (id) => agentOf(id)?.name || (id ? id[0].toUpperCase() + id.slice(1) : 'agent');
 // the model the app uses (Settings → Agents → Model, lib/llm.js): a task with no agent runs with it
-const MODEL_CLI = { claude: 'Claude Code', codex: 'Codex', gemini: 'Gemini CLI' };
+const MODEL_CLI = { claude: 'Claude Code', codex: 'Codex' };
 const appModel = () => S.data.agents?.provider || 'claude';
 // started here (when that model's CLI is on this Mac) or not: then it takes its own queue
 const agentRun = (id) => { const r = agentOf(id)?.run || appModel(); return MODEL_CLI[r] && S.data.agents?.[r] === false ? 'queue' : r; };
 const isAssistant = (id) => !!id && ['queue', 'dev'].includes(agentRun(id)); // takes its own queue
-const RUN_HINT = { claude: 'Claude Code, run from this app', codex: 'Codex, run from this app', gemini: 'Gemini CLI, run from this app', queue: 'picks it up on their own', dev: 'the app’s developer session (Claude Code in the app’s code): fixes, tests, deploys' };
+const RUN_HINT = { claude: 'Claude Code, run from this app', codex: 'Codex, run from this app', queue: 'picks it up on their own', dev: 'the app’s developer session (Claude Code in the app’s code): fixes, tests, deploys' };
 const agentHint = (id) => (id === 'any' ? 'Any agent — you start it (▶ Run now) or one takes it' : `${agentName(id)}: ${RUN_HINT[agentRun(id)] || ''}`);
 function agentStrip(t) {
   if (t.status === 'done') return '';
@@ -3739,6 +3739,7 @@ document.addEventListener('click', async (e) => {
     case 'tour': return tourOpen(0);
     case 'phone-setup': S.phoneSetup = true; renderMain(); return api('POST', '/api/phone/setup').catch((err) => { S.phoneSetup = false; toast(err.message); renderMain(); });
     case 'onboard-send': return onboardSend();
+    case 'onboard-cancel': return api('POST', '/api/onboard/connect/cancel').then((x) => { S.onboard = x; renderMain(); }).catch((err) => toast(err.message));
     case 'onboard-connect': return api('POST', '/api/onboard/connect', { id: a.dataset.val }).then((x) => { S.onboard = x; renderMain(); }).catch((err) => toast(err.message));
     case 'native-settings': return window.webkit?.messageHandlers?.gubernos?.postMessage({ op: 'settings' });
     case 'plan-run': if (S.plan) { S.plan.run[a.dataset.id] = !S.plan.run[a.dataset.id]; renderMain(); } return;
@@ -4181,9 +4182,9 @@ function onboardHtml() {
   const working = S.onboardBusy ? '<div class="ob-t ob-agent ob-working">Putting this into your system…</div>' : '';
   if (o.connecting?.running && !S.onboardPoll) S.onboardPoll = setTimeout(async () => { S.onboardPoll = null; try { S.onboard = await api('GET', '/api/onboard'); } catch { /* next time */ } if (S.view === 'onboard') renderMain(); }, 1500);
   const connecting = o.connecting?.running;
-  const foot = !o.model ? `<div class="ob-connect"><p>First, connect the AI that will listen. It runs on your own plan.</p>
+  const foot = !o.model ? `<div class="ob-connect"><p>First, connect the AI that will listen. It runs on your own paid plan: free plans aren’t supported.</p>
       ${(o.models || []).map((m) => `<p><button class="btn" data-act="onboard-connect" data-val="${esc(m.id)}" ${connecting ? 'disabled' : ''}>${m.installed ? `Sign in to ${esc(m.name)}` : `Get ${esc(m.name)} and sign in`}</button> <span class="ph-text">${esc(m.plan)}</span></p>`).join('')}
-      ${connecting ? `<p class="ph-text">${esc(o.connecting.name)}: finish signing in in your browser, then come back here.</p>` : ''}${!connecting && o.connecting?.error ? `<p class="d-over">${esc(o.connecting.error)}</p>` : ''}</div>`
+      ${connecting ? `<p class="ph-text">${esc(o.connecting.name)}: finish signing in in your browser, then come back here.${o.connecting.signingIn ? ' <button class="linkbtn" data-act="onboard-cancel">Can’t find that page? Start again</button>' : ''}</p>` : ''}${!connecting && o.connecting?.error ? `<p class="d-over">${esc(o.connecting.error)}</p>` : ''}</div>`
     : `<div class="ob-input"><span class="rf-in"><textarea id="ob-msg" rows="3" placeholder="${voice ? 'Press the mic and talk, or type' : 'Answer here'}" ${S.onboardBusy ? 'disabled' : ''}>${S.onboardBusy ? '' : esc(S.onboardDraft || '')}</textarea><button type="button" class="rf-mic" data-voice data-dictate="ob-msg" aria-label="Dictate">${MIC_SVG}</button></span><button class="btn primary" data-act="onboard-send" ${S.onboardBusy ? 'disabled' : ''}>Send</button></div>`;
   return `<div class="onboard">${intro}${bubbles}${working}${o.error ? `<p class="d-over">${esc(o.error)}</p>` : ''}${o.finished ? '<p class="ph-text"><b>That’s the setup.</b></p><p><a class="btn primary" href="#/today">Open Today</a> <a class="btn" href="#/phone">Connect your iPhone</a></p>' : foot}</div>`;
 }
@@ -4270,14 +4271,14 @@ function offWorkHtml() {
 // Settings → Agents: who a task can go to — the name, how it starts, shown in the task's picker or not. Built-ins can be
 // renamed or hidden; your own ones added and removed (lib/settings.js agentList).
 function agentsSettingsHtml() {
-  const runs = [['claude', 'Claude Code, run here'], ['codex', 'Codex, run here'], ['gemini', 'Gemini CLI, run here'], ['queue', 'Takes its own queue']];
+  const runs = [['claude', 'Claude Code, run here'], ['codex', 'Codex, run here'], ['queue', 'Takes its own queue']];
   const rows = agentList().map((a) => `<div class="ag-row">
     <input class="ag-name" data-ag="${esc(a.id)}" value="${esc(a.name)}" aria-label="Name">
     ${a.run === 'dev' ? '<span class="set-note">Dev session · the app’s code</span>' : `<select class="ag-run" data-ag="${esc(a.id)}" aria-label="How it starts">${runs.map(([v, l]) => `<option value="${v}" ${a.run === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`}
     <span class="seg">${[['off', 'Hidden'], ['on', 'Shown']].map(([v, l]) => `<button data-act="set-ag-on" data-ag="${esc(a.id)}" data-val="${v}" class="${(a.on ? 'on' : 'off') === v ? 'on' : ''}">${l}</button>`).join('')}</span>
     ${agentReady(a) ? '' : `<span class="set-note">${esc(MODEL_CLI[a.run])} not set up on this Mac — not in the picker</span>`}
     ${a.builtin ? '' : `<button class="linkbtn" data-act="set-ag-del" data-ag="${esc(a.id)}">Remove</button>`}</div>`).join('');
-  return `<div class="set-row set-agents"><div class="set-l">Agents<small>who a task can go to: the name, how it starts (▶ Run), shown in the task’s picker. Run here = Claude Code / Codex / Gemini CLI on this Mac; own queue = an assistant or a session takes it</small></div>
+  return `<div class="set-row set-agents"><div class="set-l">Agents<small>who a task can go to: the name, how it starts (▶ Run), shown in the task’s picker. Run here = Claude Code / Codex on this Mac; own queue = an assistant or a session takes it</small></div>
     <div class="ag-list">${rows}<div class="ag-row"><input id="ag-new" placeholder="New agent’s name"><button class="btn" data-act="set-ag-add">+ Add</button></div></div></div>`;
 }
 // Settings → Agents → Model: the model behind triage, voice, chat and ▶ Run — one of the CLIs on this Mac (lib/llm.js)

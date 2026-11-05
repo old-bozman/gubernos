@@ -43,7 +43,7 @@ On the iPhone and Apple Watch:
 • Works without a network, from your iCloud folder
 
 With Gubernos for Mac (free, open source) you also get:
-• AI agents on your own Claude, ChatGPT or Gemini plan: research, drafts and follow-ups that come back for your review
+• AI agents on your own paid Claude or ChatGPT plan: research, drafts and follow-ups that come back for your review
 • An inbox agent that says what each capture is
 • Plan the day around your calendar, with the one thing that matters most first
 • A chat about your tasks, and a weekly review
@@ -65,7 +65,7 @@ from the Mac app, not the iOS app). TestFlight crash logs are Apple's and don't 
 **Beta App Description** (set through the API on 2026-11-01)
 Gubernos is a personal operating system: one working model of your life, steered day by day. The areas you are responsible for, your goals, promises and open decisions, the projects that move them, and today at the centre, run in daily, weekly and quarterly loops.
 
-Everything is plain Markdown files in your own iCloud: there is no account and no server of ours. The iPhone app works on its own; with Gubernos for Mac (free, open source: github.com/old-bozman/gubernos) you also get AI agents on your own Claude, ChatGPT or Gemini plan, an inbox agent, a chat and calendar planning. More → How it works in the app shows the whole idea.
+Everything is plain Markdown files in your own iCloud: there is no account and no server of ours. The iPhone app works on its own; with Gubernos for Mac (free, open source: github.com/old-bozman/gubernos) you also get AI agents on your own paid Claude or ChatGPT plan, an inbox agent, a chat and calendar planning. More → How it works in the app shows the whole idea.
 
 **Feedback email:** me@alexandersafonov.com (hello@gubernos.app once its forwarding exists)
 

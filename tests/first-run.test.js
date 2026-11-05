@@ -45,6 +45,10 @@ test('filled in the browser, it sets everything up and hands over to the intervi
   await page.goto(link);
   assert.ok(await page.waitFor('document.querySelector("input[name=folder]")'), `no form: ${page.errors.join(' | ')}`);
   assert.match(await page.eval('document.querySelector("#models").innerText'), /Get it and sign in/); // no model on this "Mac"
+  // nobody fills all this in to learn afterwards that a free plan won't do: it's above the form, and on screen
+  assert.match(await page.eval('document.querySelector("#need").innerText'), /paid AI subscription[\s\S]*Free plans aren’t supported/);
+  assert.ok(await page.eval('document.querySelector("#need").getBoundingClientRect().bottom <= innerHeight && document.querySelector("#need").getBoundingClientRect().top < document.querySelector("#name").getBoundingClientRect().top'), 'the requirement is below the form or off screen');
+  assert.ok(!/Gemini/.test(await page.eval('document.body.innerText')));
   assert.equal(await page.eval('document.querySelectorAll("input[name=folder]").length'), 1); // no iCloud here: only the Mac
   await page.eval('document.querySelector("#name").value = "Sam"; document.querySelector("#language").value = "Dutch"; document.querySelector("#go").click()');
   // the page moves to the app (not running in this test: --no-launchd), so look at what's on disk
@@ -81,6 +85,40 @@ esac
     assert.match(seen, /finish signing in/i);
     assert.ok(!/Paste code|oauth/.test(seen), seen);
     assert.ok(await p.eval('!document.querySelector("#go").disabled'), 'the page is stuck');
+  } finally { c.kill(); await p.close(); fs.rmSync(dd, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); }
+});
+
+test('the sign-in page got lost: nobody is stuck, they can start again', { timeout: 60000 }, async () => {
+  const dd = fs.mkdtempSync(path.join(os.tmpdir(), 'gubernos-first-'));
+  const h = path.join(dd, 'home'), bin = path.join(dd, 'bin'), logins = path.join(dd, 'logins');
+  fs.mkdirSync(h); fs.mkdirSync(bin);
+  // like the real one: it waits for the browser for ever
+  fs.writeFileSync(path.join(bin, 'claude'), `#!/bin/sh
+case "$*" in
+  "auth status --json") echo '{"loggedIn":false}'; exit 1;;
+  "auth login") echo x >> ${JSON.stringify(logins)}; exec sleep 300;;
+esac
+`, { mode: 0o755 });
+  const port = await freePort();
+  const c = spawn(process.execPath, [path.join(ROOT, 'scripts/first-run.mjs'), '--port', String(port), '--no-open'], { env: { ...process.env, HOME: h, PATH: `${bin}:/usr/bin:/bin` }, stdio: ['ignore', 'pipe', 'ignore'] });
+  const p = await openPage();
+  try {
+    const l = await new Promise((resolve, reject) => { let o = ''; c.stdout.on('data', (x) => { o += x; const m = o.match(/first run: (\S+)/); if (m) resolve(m[1]); }); c.once('exit', () => reject(new Error('it stopped'))); });
+    await p.goto(l);
+    assert.ok(await p.waitFor('document.querySelector("[data-model=claude]")', 20000));
+    assert.ok(await p.eval('document.querySelector("#lost").hidden'), 'offered before any sign-in');
+    await p.eval('document.querySelector("[data-model=claude]").click()');
+    assert.ok(await p.waitFor('!document.querySelector("#lost").hidden && !document.querySelector("#cancel").disabled', 10000), 'no way out of a lost sign-in');
+    assert.ok(await p.eval('document.querySelector("#go").disabled'));
+    await p.eval('document.querySelector("#cancel").click()');
+    assert.ok(await p.waitFor('document.querySelector("#status").className === "err" && !document.querySelector("#go").disabled && document.querySelector("#lost").hidden', 10000), await p.eval('document.querySelector("#status").innerText'));
+    assert.match(await p.eval('document.querySelector("#status").innerText'), /finish signing in/i);
+    // and again: a new sign-in starts
+    await p.eval('document.querySelector("[data-model=claude]").click()');
+    assert.ok(await p.waitFor('!document.querySelector("#lost").hidden', 10000));
+    for (let i = 0; i < 50 && fs.readFileSync(logins, 'utf8').trim().split('\n').length < 2; i++) await p.sleep(100);
+    assert.equal(fs.readFileSync(logins, 'utf8').trim().split('\n').length, 2);
+    await p.eval('document.querySelector("#cancel").click()');
   } finally { c.kill(); await p.close(); fs.rmSync(dd, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); }
 });
 

@@ -39,9 +39,11 @@ function folders() {
 
 // one long job at a time; the page polls it
 const job = { name: null, lines: [], done: false, error: null, next: null, quiet: false };
+let current = null; // the running process: a sign-in can be given up on (its browser page can get lost)
 function start(name, cmd, args, then, { fail, quiet = false } = {}) { // fail: what to say instead of the tool's last line; quiet: its output isn't for people
   Object.assign(job, { name, lines: [], done: false, error: null, quiet });
   const child = spawn(cmd, args, { cwd: APP, env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
+  current = child;
   const take = (d) => { job.lines.push(...String(d).split('\n').filter((l) => l.trim())); job.lines = job.lines.slice(-30); };
   child.stdout.on('data', take); child.stderr.on('data', take);
   child.on('error', (e) => { job.done = true; job.error = fail || e.message; });
@@ -84,6 +86,7 @@ const server = http.createServer((req, res) => {
   if (req.method === 'GET' && url.pathname === '/state') return json(res, 200, { name: quiet('id', ['-F']).out.trim(), folders: folders(), models: modelState(), job });
   if (req.method === 'GET' && url.pathname === '/job') return json(res, 200, job);
   if (req.method !== 'POST') return json(res, 404, { error: 'not found' });
+  if (url.pathname === '/cancel') { if (job.quiet && !job.done) current?.kill(); return json(res, 200, { ok: true }); } // sign-ins only, never the setup itself
   let body = '';
   req.on('data', (d) => { body += d; if (body.length > 10000) req.destroy(); }).on('end', () => {
     if (job.name && !job.done) return json(res, 409, { error: 'one thing at a time' });

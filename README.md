@@ -3,7 +3,7 @@
 **Gubernos** is a personal operating system: one working model of your life, steered day by day. What you are
 responsible for, what you have promised, what you want and what you still have to decide, wired to your projects, your
 tasks and today. It keeps that model in plain Markdown files you own and gives you, and your AI agents (Claude Code,
-Codex, Gemini CLI), one place to steer it. The name is Latin *gubernare*, to steer. The method is inspired by David
+Codex), one place to steer it. The name is Latin *gubernare*, to steer. The method is inspired by David
 Allen's Getting Things Done®, Gabriele Oettingen's WOOP and Brian Johnson's Heroic (Masterpiece Days, protocols);
 Gubernos is not affiliated with any of them.
 
@@ -12,7 +12,9 @@ Gubernos is not affiliated with any of them.
 
 ### Install the beta
 
-**You don't have to do the setup yourself: your AI agent does it.** On your Mac, open Claude Code, Codex or Gemini CLI
+**Before you install: you need a paid AI subscription.** Gubernos runs on your own plan: Claude (Pro or higher) or ChatGPT (Plus or higher). The first interview, the chat and the agents all need it, and free plans aren't supported. Don't have one? Get it first: [Claude plans](https://claude.com/pricing) · [ChatGPT plans](https://chatgpt.com/pricing).
+
+**You don't have to do the setup yourself: your AI agent does it.** On your Mac, open Claude Code or Codex
 (whichever your plan covers; the table in [SETUP.md](SETUP.md) shows how to get one) and paste:
 
 ```
@@ -58,7 +60,7 @@ flowchart LR
   subgraph yours["Yours: your devices, your files, your accounts"]
     mac["Your Mac<br/>Gubernos for Mac"] <--> files[("Your files<br/>plain Markdown")]
     phone["iPhone and Watch<br/>(a copy for offline)"]
-    agents["Your agents<br/>Claude Code · Codex · Gemini"] <--> files
+    agents["Your agents<br/>Claude Code · Codex"] <--> files
     phone <-. "HTTPS through Cloudflare, paired devices only" .-> mac
   end
   agents -. "the text a task needs, your account" .-> ai["Your AI provider"]
@@ -77,7 +79,7 @@ The app over the vault of Markdown files: the files are the only store, no datab
 the same files.
 
 Runs on a Mac; the iPhone app (or a home-screen web app) reaches it over HTTPS through a Cloudflare Tunnel to the Mac (`cloudflared`; nothing to install on the phone), or Tailscale if you prefer.
-**New here? [SETUP.md](SETUP.md)** (the short version, iPhone first: [docs/install.md](docs/install.md)) — clone, open your AI agent (Claude Code, Codex or Gemini CLI), say "run SETUP.md": it installs the app, creates the vault from
+**New here? [SETUP.md](SETUP.md)** (the short version, iPhone first: [docs/install.md](docs/install.md)) — clone, open your AI agent (Claude Code or Codex), say "run SETUP.md": it installs the app, creates the vault from
 `kit/vault/` and onboards you. Working on the code? Read [AGENTS.md](AGENTS.md).
 
 Who and where come from two files, both written by `scripts/setup.sh`: `~/.config/gubernos/config.json` (vault path, port,
@@ -142,13 +144,12 @@ phone URL, Obsidian vault) and the vault's `profile.md` (name, language, categor
 - **One-at-a-time modes** (full screen): **Focus** (the most important task + a 25/5 sprint timer, Why this one?,
   Break down; every finished sprint is logged to the vault's `50_reviews/pomodoros.csv`, "⚡ N today" in Focus and on Today), **Process inbox**, **Review agents** (Accept = back to you, Accept & close, Send back).
 - **The model** (Settings → Agents → Model; `scripts/setup.sh model …`): the app's model calls go through one CLI on the
-  Mac, on the owner's own plan — Claude Code (Claude Pro/Max), Codex (ChatGPT Plus/Pro) or Gemini CLI (a Gemini API key from Google AI Studio, free tier).
-  `lib/llm.js` has the three: one-shot structured answers (Codex: strict `--output-schema`; Gemini: the schema in the
-  prompt), the read-only resumable chat and agent runs, each with gubernos-tools plugged in. `GUBERNOS_CLAUDE_BIN`,
-  `GUBERNOS_CODEX_BIN`, `GUBERNOS_GEMINI_BIN` point at a CLI elsewhere.
-- **Which agent**: a task for agents can name one — `agent: claude | codex | gemini | <assistant>` (task card → Agent, or `@<assistant>` /
-  `@claude` / `@codex` / `@gemini` in quick add). Each model whose CLI is on the Mac runs from the app (Codex: `codex exec
-  --json`, workspace-write sandbox = writes only in the vault; Gemini: `--yolo --sandbox`), otherwise a Codex
+  Mac, on the owner's own plan — Claude Code (Claude Pro or higher) or Codex (ChatGPT Plus or higher). Free plans aren't supported.
+  `lib/llm.js` has the three kinds of call: one-shot structured answers (Codex: strict `--output-schema`), the read-only resumable chat and agent runs, each with gubernos-tools plugged in. `GUBERNOS_CLAUDE_BIN`,
+  `GUBERNOS_CODEX_BIN` point at a CLI elsewhere.
+- **Which agent**: a task for agents can name one — `agent: claude | codex | <assistant>` (task card → Agent, or `@<assistant>` /
+  `@claude` / `@codex` in quick add). Each model whose CLI is on the Mac runs from the app (Codex: `codex exec
+  --json`, workspace-write sandbox = writes only in the vault), otherwise a Codex
   session in the vault takes them; the assistant from `profile.md` (if any) picks up its own queue. Empty = any agent.
 - **Agents**: tasks with `assigned: agent` have `agent_state` queued → running → review. "▶ Run" spawns
   the model's CLI on the task in the vault and streams progress; the agent reports in `## Agent log`.
@@ -223,7 +224,7 @@ python3 -m venv .venv && .venv/bin/pip install mlx-whisper   # speech-to-text (A
 GUBERNOS_VAULT=~/path/to/vault npm start                          # → http://127.0.0.1:4747 (or a vault in ~/.config/gubernos/config.json)
 ```
 
-Needs one model CLI signed in — `claude`, `codex` or `gemini` (agent runs, chat, voice interpretation, Why / Break down / semantic search).
+Needs one model CLI signed in — `claude` or `codex` (agent runs, chat, voice interpretation, Why / Break down / semantic search).
 Whisper models download to `~/.cache/huggingface` on first use.
 
 ### As deployed on the Mac
