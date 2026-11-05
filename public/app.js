@@ -1846,7 +1846,7 @@ function dayHtml() {
   if (S.dayTab === 'week' && D.habits.length) return `<div class="day">${nav}${dayWeekHtml(D)}</div>`;
   // the protocols and habits only: the day's plan is on Today (its tasks) and Plan the day
   const parts = (D.summary || []).map((g) => protocolHtml(g, D));
-  // no habits yet: start with one (onboarding step 7 asks the same); protocols come once there are a few
+  // no habits yet: start with one (the first interview asks the same); protocols come once there are a few
   const none = !D.enabled ? '' : !D.habits.length ? `<div class="empty hb-first"><b>Start with one habit</b>
     <p>What’s one thing you could start doing today that would improve your life the most? Keep it small enough for a bad day: a 20-minute walk, water before coffee, the phone away after 22:00.</p>
     <button class="btn primary" data-act="hb-new" data-proto="">+ My first habit</button>
@@ -2703,15 +2703,27 @@ function inline(s) {
 
 function md(src, interactive) {
   const lines = src.replace(/<!--[\s\S]*?-->/g, (m) => (m.includes('\n') ? '\n'.repeat(m.split('\n').length - 1) : '')).split('\n');
-  let html = '', fence = null, list = false, para = [], ck = 0;
+  let html = '', fence = null, list = false, para = [], ck = 0, table = null;
+  const cells = (l) => l.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim());
+  const SEP = /^\s*\|[\s:|-]+\|\s*$/, ROW = /^\s*\|.*\|\s*$/;
+  const flushT = () => {
+    if (!table) return;
+    const [head, ...rows] = table;
+    html += `<div class="md-table"><table><thead><tr>${head.map((c) => `<th>${inline(c)}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${inline(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+    table = null;
+  };
   const flushP = () => { if (para.length) { html += `<p>${para.map(inline).join('<br>')}</p>`; para = []; } };
   const closeList = () => { if (list) { html += '</ul>'; list = false; } };
-  for (const line of lines) {
+  for (const [i, line] of lines.entries()) {
     if (/^\s*```/.test(line)) {
-      if (fence !== null) { html += `<pre>${esc(fence)}</pre>`; fence = null; } else { flushP(); closeList(); fence = ''; }
+      if (fence !== null) { html += `<pre>${esc(fence)}</pre>`; fence = null; } else { flushP(); closeList(); flushT(); fence = ''; }
       continue;
     }
     if (fence !== null) { fence += line + '\n'; continue; }
+    if (table) {
+      if (ROW.test(line)) { if (!(table.length === 1 && SEP.test(line))) table.push(cells(line)); continue; }
+      flushT();
+    } else if (ROW.test(line) && SEP.test(lines[i + 1] || '')) { flushP(); closeList(); table = [cells(line)]; continue; }
     let m;
     if ((m = line.match(/^\s*[-*+] \[([ xX])\]\s?(.*)$/))) {
       flushP(); closeList();
@@ -2737,7 +2749,7 @@ function md(src, interactive) {
       closeList(); para.push(line);
     }
   }
-  flushP(); closeList();
+  flushP(); closeList(); flushT();
   if (fence !== null) html += `<pre>${esc(fence)}</pre>`;
   return html;
 }
@@ -3273,6 +3285,7 @@ function voiceCapture({ ctx, input, notes, onReset }) {
     : 'Release to send');
   async function start({ free = true } = {}) {
     handsFree = free; pendingStop = false; t0 = Date.now();
+    const monologue = S.voiceTarget === 'field:ob-msg'; // the first interview: people talk for minutes and pause to think, so it stops only on Done
     fetch('/api/voice/warm', { method: 'POST' }).catch(() => {}); // load models while the user talks
     if (!navigator.mediaDevices?.getUserMedia) { closeModal(); return toast('Microphone needs HTTPS — open the app via its https:// address'); }
     micGesture();
@@ -3294,7 +3307,7 @@ function voiceCapture({ ctx, input, notes, onReset }) {
     tick = setInterval(() => {
       const s = Math.floor((Date.now() - started) / 1000);
       const el = $('#rec-t'); if (el) el.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-      if (s >= 180) stop();
+      if (s >= (monologue ? 1500 : 180)) stop();
     }, 250);
     try {
       audio = micContext();
@@ -3316,7 +3329,7 @@ function voiceCapture({ ctx, input, notes, onReset }) {
         // no signal for 3 s: the analyser itself may be dead (iOS, suspended context) while the recorder works — stop by hand
         if (rms === 0 && ++flat === 180) { ready(handsFree ? 'Tap Done when finished' : hint()); clog('analyser silent — manual stop'); }
         if (rms > 0 && !live) {
-          live = now; ready(hint());
+          live = now; ready(monologue ? 'Take your time: tap Done when you’ve finished' : hint());
           if (now - started > 300) clog(`mic live after ${now - started}ms (${stream.getAudioTracks()[0]?.label || '?'})`);
         }
         if (rms > 0) flat = -1e9;
@@ -3324,12 +3337,12 @@ function voiceCapture({ ctx, input, notes, onReset }) {
         if (live && now - live < 400) floor = Math.min(floor, rms);
         const thr = Math.min(0.06, Math.max(0.015, floor * 2.5));
         if (live && rms > thr) { if (!heard) speechStart = now; heard = true; lastVoice = now; }
-        if (handsFree && rec?.state === 'recording' && live && now - live > 400) {
+        if (handsFree && !monologue && rec?.state === 'recording' && live && now - live > 400) {
           // AICODE-NOTE: 2 s cut people off mid-thought while dictating a report or a note; 3 s once they've talked for a while
           const pause = S.focus ? 900 : now - speechStart > 5000 ? 3000 : 1500;
           if (heard && now - lastVoice > pause) { clog(`auto-stop after ${now - started}ms`); return stop(); }
         }
-        if (handsFree && rec?.state === 'recording' && !live && flat >= 0 && now - started > 8000) return stop(); // dead analyser: let Whisper decide
+        if (handsFree && !monologue && rec?.state === 'recording' && !live && flat >= 0 && now - started > 8000) return stop(); // dead analyser: let Whisper decide
         raf = requestAnimationFrame(loop);
       };
       loop();
@@ -4115,27 +4128,30 @@ function qrSvg(text) {
 }
 const pairQr = () => qrSvg(S.pair?.appLink);
 
-// #/onboard: the first interview with the owner's model, right here (lib/onboarding.js). It starts itself on the first visit.
+// #/onboard: the first interview with the owner's model, right here (lib/onboarding.js): they talk, it files what matters.
 function onboardHtml() {
   const o = S.onboard;
-  if (!o) { if (o !== false) { S.onboard = false; api('GET', '/api/onboard').then((x) => { S.onboard = x; if (S.view === 'onboard') { renderMain(); if (!x.turns.length && x.model) onboardSend(); } }).catch((e) => { S.onboard = { turns: [], error: e.message }; renderMain(); }); } return '<div class="empty">…</div>'; }
+  if (!o) { if (o !== false) { S.onboard = false; api('GET', '/api/onboard').then((x) => { S.onboard = x; if (S.view === 'onboard') renderMain(); }).catch((e) => { S.onboard = { turns: [], error: e.message }; renderMain(); }); } return '<div class="empty">…</div>'; }
   const voice = S.data?.voice !== false;
+  const intro = o.turns.length ? '' : `<div class="ob-intro"><h2>Let’s load your system</h2>
+    <p>Set aside <b>15–20 minutes</b> somewhere you can talk. ${voice ? 'Press the mic and tell me' : 'Tell me'} whatever comes to mind, in any order, as much as you like. I’ll pick out what matters and put it straight into your system. You can change anything later.</p>
+    <ul><li>Who you are, who’s in your life, what you do</li><li>What’s on your mind: projects, to-dos, dates you can’t miss</li><li>What you want this year, and choices you keep putting off</li><li>What would make this week a win</li></ul></div>`;
   const bubbles = o.turns.map((t) => `<div class="ob-t ob-${t.from}">${t.from === 'agent' ? md(t.text) : esc(t.text)}</div>`).join('');
+  const working = S.onboardBusy ? '<div class="ob-t ob-agent ob-working">Putting this into your system…</div>' : '';
   const foot = !o.model ? '<p class="ph-text">Connect a model first: Settings → Agents → Model. Then come back here.</p>'
-    : `<div class="ob-input"><span class="rf-in"><textarea id="ob-msg" rows="3" placeholder="${voice ? 'Press the mic and talk, or type' : 'Answer here'}" ${S.onboardBusy ? 'disabled' : ''}>${esc(S.onboardDraft || '')}</textarea><button type="button" class="rf-mic" data-voice data-dictate="ob-msg" aria-label="Dictate">${MIC_SVG}</button></span><button class="btn primary" data-act="onboard-send" ${S.onboardBusy ? 'disabled' : ''}>${S.onboardBusy ? 'Thinking…' : 'Send'}</button></div>`;
-  return `<div class="onboard"><p class="ph-lead">An interview: who you are, what you’re responsible for, what’s in progress. ${voice ? 'The easiest way is to talk: press the mic and say it all in one go, in any order. ' : ''}Nothing is created until you say yes. Stop any time and come back.</p>
-    ${bubbles}${o.error ? `<p class="d-over">${esc(o.error)}</p>` : ''}${o.finished ? '<p class="ph-text"><b>That’s the setup.</b> <a href="#/today">Go to Today</a> · <a href="#/phone">Connect your iPhone</a></p>' : foot}</div>`;
+    : `<div class="ob-input"><span class="rf-in"><textarea id="ob-msg" rows="3" placeholder="${voice ? 'Press the mic and talk, or type' : 'Answer here'}" ${S.onboardBusy ? 'disabled' : ''}>${S.onboardBusy ? '' : esc(S.onboardDraft || '')}</textarea><button type="button" class="rf-mic" data-voice data-dictate="ob-msg" aria-label="Dictate">${MIC_SVG}</button></span><button class="btn primary" data-act="onboard-send" ${S.onboardBusy ? 'disabled' : ''}>Send</button></div>`;
+  return `<div class="onboard">${intro}${bubbles}${working}${o.error ? `<p class="d-over">${esc(o.error)}</p>` : ''}${o.finished ? '<p class="ph-text"><b>That’s the setup.</b> <a href="#/today">Go to Today</a> · <a href="#/phone">Connect your iPhone</a></p>' : foot}</div>`;
 }
 async function onboardSend() {
   if (S.onboardBusy) return;
   const message = ($('#ob-msg')?.value || '').trim();
-  if (!message && S.onboard?.turns.length) return;
+  if (!message) return;
   S.onboardBusy = true;
-  if (message) S.onboard.turns.push({ from: 'you', text: message });
+  S.onboard.turns.push({ from: 'you', text: message });
   S.onboard.error = null;
   S.onboardDraft = message; // kept until the model has answered: a failed turn gives it back
   renderMain();
-  try { S.onboard = await api('POST', '/api/onboard', { message }); S.onboardDraft = ''; } catch (e) { S.onboard.error = e.message; if (message) S.onboard.turns.pop(); }
+  try { S.onboard = await api('POST', '/api/onboard', { message }); S.onboardDraft = ''; } catch (e) { S.onboard.error = e.message; S.onboard.turns.pop(); }
   S.onboardBusy = false;
   if (S.view === 'onboard') renderMain();
 }
