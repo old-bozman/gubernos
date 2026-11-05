@@ -128,6 +128,12 @@ install() {
   # wants the files on other devices too. The phone doesn't need iCloud (it gets a copy from the server: lib/mirror.js),
   # and the server keeps daily copies itself (lib/backup.js). --local: accepted, no longer needed (older instructions).
   vault="${vault/#\~/$HOME}"
+  # Never in the app's folder: an update replaces what's there. -ef, because ~/Gubernos and ~/gubernos are one folder on a Mac.
+  local up="$vault"
+  while [[ "$up" != / && "$up" != . ]]; do
+    [[ "$up" -ef "$APP" ]] && die "$vault is inside the app's folder ($APP): an update would delete your files there. Choose another folder."
+    up="$(dirname "$up")"
+  done
   mkdir -p "$vault" || die "can't create $vault"
   command -v node >/dev/null || die "node is missing — run install.sh (see SETUP.md)"
   echo "1/4 dependencies"; (cd "$APP" && npm ci --silent --no-audit --no-fund)

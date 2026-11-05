@@ -1,5 +1,5 @@
 // Gubernos.app: Gubernos for Mac without a Terminal. A small launcher, nothing runs inside it: the app lives where install.sh
-// puts it (~/gubernos, updated by scripts/update.sh) and runs as a launchd service. First time: it runs the bundled install.sh
+// puts it (~/.gubernos/app, updated by scripts/update.sh) and runs as a launchd service. First time: it runs the bundled install.sh
 // --wizard (Node, the app, then the setup page in the browser) and shows what's happening. After that: it opens the app.
 import AppKit
 

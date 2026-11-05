@@ -20,13 +20,13 @@ few macOS dialogs, scan the pairing code and tap on your phone when it asks.
 
 ```
 curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash
-cd ~/gubernos
+cd ~/.gubernos/app
 claude        # or: codex · gemini
 ```
 
-The first line gets Node (when the Mac has none) and the app into `~/gubernos`, without sudo, Homebrew or Apple's Command
+The first line gets Node (when the Mac has none) and the app into `~/.gubernos/app`, without sudo, Homebrew or Apple's Command
 Line Tools (the app comes as a download; `scripts/update.sh` updates it). A clone works too, for developers: `git clone
-https://github.com/old-bozman/gubernos.git ~/gubernos`.
+https://github.com/old-bozman/gubernos.git ~/.gubernos/app`.
 
 Then say: **"run SETUP.md"**. The agent walks you through the rest (about 20 minutes, plus onboarding).
 
@@ -43,11 +43,11 @@ You (Claude Code, Codex or Gemini CLI) are installing Gubernos for the person in
 
 ### 0. Get the app (when you came from the prompt, not from inside the repo)
 
-If you aren't in a Gubernos checkout (no `scripts/setup.sh` here): look for `~/gubernos`; if it's missing, tell the person
+If you aren't in a Gubernos checkout (no `scripts/setup.sh` here): look for `~/.gubernos/app` (`~/gubernos` on an older install); if it's missing, tell the person
 what it does and run `curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash` (Node
-when the Mac has none, the app into `~/gubernos`; no sudo, no Homebrew, no Command Line Tools). Run it right away: don't
+when the Mac has none, the app into `~/.gubernos/app`; no sudo, no Homebrew, no Command Line Tools). Run it right away: don't
 probe with `git`, `python3` or `make` first — on a clean Mac each is a stub that opens Apple's Command Line Tools dialog
-(which asks for ~19 GB free), and Gubernos doesn't need them. Then work in `~/gubernos` and read this
+(which asks for ~19 GB free), and Gubernos doesn't need them. Then work in `~/.gubernos/app` and read this
 file from there (it may be newer than the copy you fetched).
 
 The iPhone app comes from TestFlight; step 3b walks them through it.
@@ -122,6 +122,15 @@ For daily work in the files they can run their agent (`claude`, `codex` or `gemi
 - for each changed file under `kit/vault/`: if the vault's copy is unchanged from the old kit version (`git show <old>:kit/vault/<file>` in a git checkout; `.kit-previous/<file>` in an install without git), replace it with the new one (replace `VAULT_ROOT/` with the vault's Obsidian sub-path, or nothing);
 - if the person changed it, merge: keep their changes, add the kit's, and show the diff before writing;
 - set `kit_version` in `profile.md` to the version in `kit/vault/profile.md`.
+
+### When the update says the folder also holds the person's files
+
+Installs made while the app's folder was `~/gubernos` and the default vault `~/Gubernos` have both in one folder, because macOS ignores case in folder names. `install.sh` refuses to update these, since replacing the app's files there would delete the vault. Move the app out, in this order:
+
+1. `rm ~/gubernos/.gubernos-version`, then run `install.sh` again (the first line of this file's install command). The app lands in `~/.gubernos/app`.
+2. `mv ~/gubernos/data ~/.gubernos/app/data`, then from `~/.gubernos/app`: `scripts/setup.sh install --vault ~/Gubernos --name "<their name>"`. The service now runs from the new folder; the vault's files aren't touched.
+3. In `~/Gubernos`, replace `CLAUDE.md`, `AGENTS.md` and `README.md` with the ones in `~/.gubernos/app/kit/vault/`: the ones there now are the app's.
+4. Show the person what's left of the app in `~/Gubernos` (`lib`, `public`, `scripts`, `node_modules`, `deploy`, `docs`, `kit`, `local`, `relay`, `tests`, `tools`, `server.js`, `server.log`, `package.json`, `package-lock.json`, `install.sh`, `SETUP.md`, `LICENSE`, `THIRD_PARTY_NOTICES.md`) and remove it once they say yes.
 
 ## Troubleshooting
 

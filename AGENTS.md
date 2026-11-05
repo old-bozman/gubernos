@@ -69,6 +69,8 @@ People install and update from `main` (install.sh, update.sh, the SETUP.md link)
 (fast-forward). Never push to `main` by hand. The iPhone app: `scripts/build.sh testflight` (gubernos-ios) runs its
 `scripts/sim-test.sh` first and uploads nothing if it fails.
 
+People's installs live in `~/.gubernos/app`, older ones in `~/gubernos`; their files are in `~/Gubernos` by default. Never put the app at a path that differs from the vault only by case: macOS treats them as one folder, and an update deletes whatever in the app's folder isn't in the repo.
+
 The developer's own install runs from `~/gubernos-live` (a git worktree of `main`; launchd `WorkingDirectory`, `server.log`
 there; `data` and `.venv` are symlinks into this checkout), not from this folder, so a saved edit on `dev` reaches no one.
 `release.sh` updates and restarts it. To see a change before releasing: `scripts/test-server.sh start`.

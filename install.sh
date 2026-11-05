@@ -2,13 +2,18 @@
 # Gubernos for Mac in one line:
 #   curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash
 # Gets what the app needs without sudo, Homebrew or Apple's Command Line Tools — Node (into ~/.gubernos/node when there is
-# none) and the app (~/gubernos, a download of the GitHub repo; no git) — then hands over to your AI agent for the rest
+# none) and the app (~/.gubernos/app, a download of the GitHub repo; no git) — then hands over to your AI agent for the rest
 # (SETUP.md: the folder, the background service, the interview). Safe to run again: it updates what's there.
 # --update: only the app and its dependencies, quietly (scripts/update.sh runs it).
 # --wizard: then the setup page in the browser instead of the agent (Gubernos.app runs this).
 set -euo pipefail
 
-DIR="${GUBERNOS_DIR:-$HOME/gubernos}"
+# The app's folder. Not ~/gubernos for a new install: macOS ignores case in folder names, so that's the same folder as the
+# default vault (~/Gubernos). An install that's already in ~/gubernos stays there.
+DIR="${GUBERNOS_DIR:-}"
+if [[ -z "$DIR" ]]; then
+  if [[ -f "$HOME/gubernos/.gubernos-version" || -d "$HOME/gubernos/.git" ]]; then DIR="$HOME/gubernos"; else DIR="$HOME/.gubernos/app"; fi
+fi
 VERSION_FILE="$DIR/.gubernos-version"   # "owner/repo sha" of the download (an install without git)
 # the GitHub repo: GUBERNOS_REPO (owner/repo or its URL), else the one this install came from, else ours
 REPO="${GUBERNOS_REPO:-$( [[ -f "$VERSION_FILE" ]] && cut -d' ' -f1 "$VERSION_FILE" || true)}"
@@ -80,6 +85,11 @@ download() {
   rm -rf "$tmp"
   ok "Gubernos ${sha:0:7} in $DIR"
 }
+# AICODE-NOTE: the download replaces everything in $DIR that isn't in the repo. A vault in the same folder (an install from
+# when both were ~/gubernos and ~/Gubernos) would be deleted, so stop before touching anything.
+if [[ -f "$DIR/profile.md" ]]; then
+  die "$DIR holds your own files as well as the app, so updating it would delete them. Nothing was changed. How to move the app out: https://github.com/old-bozman/gubernos/blob/main/SETUP.md#when-the-update-says-the-folder-also-holds-the-persons-files"
+fi
 if [[ -d "$DIR/.git" ]]; then
   xcode-select -p >/dev/null 2>&1 || die "$DIR is a git checkout but git isn't installed (xcode-select --install)"
   git -C "$DIR" pull --ff-only --quiet || die "couldn't update $DIR (changed files there? git -C $DIR status)"

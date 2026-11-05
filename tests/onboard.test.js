@@ -26,11 +26,22 @@ after(async () => { try { await page?.close(); } finally { await s?.stop(); fs.r
 test('the interview starts itself, resumes, finishes', { timeout: 40000 }, async () => {
   await page.goto(`${s.url}/#/onboard`);
   assert.ok(await page.waitFor('document.querySelector(".ob-agent")?.innerText.includes("areas")'), `no first question: ${page.errors.join(' | ')}`);
+  // it offers the mic, and what's dictated lands in the answer box (the same [data-dictate] path as Daily reflection)
+  assert.equal(await page.eval('document.querySelector(".ob-input [data-voice][data-dictate=ob-msg]")?.dataset.dictate'), 'ob-msg');
+  assert.ok(await page.eval('!!document.getElementById(document.querySelector(".ob-input [data-dictate]").dataset.dictate)'));
+  assert.match(await page.eval('document.querySelector(".onboard .ph-lead").innerText + document.querySelector("#ob-msg").placeholder'), /press the mic/i);
+  // a half-written answer survives a redraw
+  await page.eval('const m = document.querySelector("#ob-msg"); m.value = "half an answer"; m.dispatchEvent(new Event("input", { bubbles: true })); location.hash = "#/today"');
+  assert.ok(await page.waitFor('!document.querySelector("#ob-msg")'));
+  await page.eval('location.hash = "#/onboard"');
+  assert.ok(await page.waitFor('document.querySelector("#ob-msg")?.value === "half an answer"'), 'the draft is gone');
+  await page.eval('const m2 = document.querySelector("#ob-msg"); m2.value = ""; m2.dispatchEvent(new Event("input", { bubbles: true }))');
   const first = calls()[0];
   const flag = (a, f) => a[a.indexOf(f) + 1];
   assert.match(flag(first, '--allowedTools'), /\bWrite\b/);
   assert.match(flag(first, '--disallowedTools'), /\bBash\b/);
   assert.match(flag(first, '--append-system-prompt'), /Onboarding/);
+  assert.match(flag(first, '--append-system-prompt'), /has a mic/);
   await page.eval('document.querySelector("#ob-msg").value = "Family and work"; document.querySelector("[data-act=onboard-send]").click()');
   assert.ok(await page.waitFor('document.querySelector(".onboard")?.innerText.includes("That’s the setup")'), `didn't finish: ${await page.eval('document.querySelector("#main").innerText')}`);
   const second = calls()[1];

@@ -1668,7 +1668,7 @@ button.dc-ev:hover, .dc-ev.cal-hl { box-shadow: 0 0 0 2px var(--accent); z-index
 .ob-agent { background: var(--bg-2, rgba(127,127,127,.1)); }
 .ob-you { margin-left: 15%; border: 1px solid var(--line); white-space: pre-wrap; }
 .ob-input { display: flex; gap: 8px; align-items: flex-end; margin-top: 12px; }
-.ob-input textarea { flex: 1; font: inherit; color: inherit; background: transparent; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; }
+.ob-input .rf-in { flex: 1; }
 .phone-setup .ph-lead { color: var(--ink-2); margin: 0 0 18px; max-width: 620px; }
 .ph-steps { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 22px; counter-reset: ph; }
 .ph-steps > li { counter-increment: ph; border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }

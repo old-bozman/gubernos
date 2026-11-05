@@ -4119,10 +4119,11 @@ const pairQr = () => qrSvg(S.pair?.appLink);
 function onboardHtml() {
   const o = S.onboard;
   if (!o) { if (o !== false) { S.onboard = false; api('GET', '/api/onboard').then((x) => { S.onboard = x; if (S.view === 'onboard') { renderMain(); if (!x.turns.length && x.model) onboardSend(); } }).catch((e) => { S.onboard = { turns: [], error: e.message }; renderMain(); }); } return '<div class="empty">…</div>'; }
+  const voice = S.data?.voice !== false;
   const bubbles = o.turns.map((t) => `<div class="ob-t ob-${t.from}">${t.from === 'agent' ? md(t.text) : esc(t.text)}</div>`).join('');
   const foot = !o.model ? '<p class="ph-text">Connect a model first: Settings → Agents → Model. Then come back here.</p>'
-    : `<div class="ob-input"><textarea id="ob-msg" rows="2" placeholder="Answer here" ${S.onboardBusy ? 'disabled' : ''}></textarea><button class="btn primary" data-act="onboard-send" ${S.onboardBusy ? 'disabled' : ''}>${S.onboardBusy ? 'Thinking…' : 'Send'}</button></div>`;
-  return `<div class="onboard"><p class="ph-lead">A short interview: who you are, what you’re responsible for, what’s in progress. Nothing is created until you say yes. Stop any time and come back.</p>
+    : `<div class="ob-input"><span class="rf-in"><textarea id="ob-msg" rows="3" placeholder="${voice ? 'Press the mic and talk, or type' : 'Answer here'}" ${S.onboardBusy ? 'disabled' : ''}>${esc(S.onboardDraft || '')}</textarea><button type="button" class="rf-mic" data-voice data-dictate="ob-msg" aria-label="Dictate">${MIC_SVG}</button></span><button class="btn primary" data-act="onboard-send" ${S.onboardBusy ? 'disabled' : ''}>${S.onboardBusy ? 'Thinking…' : 'Send'}</button></div>`;
+  return `<div class="onboard"><p class="ph-lead">An interview: who you are, what you’re responsible for, what’s in progress. ${voice ? 'The easiest way is to talk: press the mic and say it all in one go, in any order. ' : ''}Nothing is created until you say yes. Stop any time and come back.</p>
     ${bubbles}${o.error ? `<p class="d-over">${esc(o.error)}</p>` : ''}${o.finished ? '<p class="ph-text"><b>That’s the setup.</b> <a href="#/today">Go to Today</a> · <a href="#/phone">Connect your iPhone</a></p>' : foot}</div>`;
 }
 async function onboardSend() {
@@ -4132,11 +4133,14 @@ async function onboardSend() {
   S.onboardBusy = true;
   if (message) S.onboard.turns.push({ from: 'you', text: message });
   S.onboard.error = null;
+  S.onboardDraft = message; // kept until the model has answered: a failed turn gives it back
   renderMain();
-  try { S.onboard = await api('POST', '/api/onboard', { message }); } catch (e) { S.onboard.error = e.message; if (message) S.onboard.turns.pop(); }
+  try { S.onboard = await api('POST', '/api/onboard', { message }); S.onboardDraft = ''; } catch (e) { S.onboard.error = e.message; if (message) S.onboard.turns.pop(); }
   S.onboardBusy = false;
   if (S.view === 'onboard') renderMain();
 }
+// a long answer survives the page redrawing itself while the agent or anything else writes to the vault
+document.addEventListener('input', (e) => { if (e.target.id === 'ob-msg') S.onboardDraft = e.target.value; });
 // #/phone, on the Mac: get the iPhone app (TestFlight), connect it (the pairing code), ✓ when it has reached the Mac.
 // The setup agent opens it (SETUP.md → iPhone); Settings → Connections → Connect your iPhone.
 const TESTFLIGHT = 'https://testflight.apple.com/join/rBUGmgJG';
