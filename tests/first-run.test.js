@@ -109,6 +109,8 @@ esac
     assert.ok(await p.eval('document.querySelector("#lost").hidden'), 'offered before any sign-in');
     await p.eval('document.querySelector("[data-model=claude]").click()');
     assert.ok(await p.waitFor('!document.querySelector("#lost").hidden && !document.querySelector("#cancel").disabled', 10000), 'no way out of a lost sign-in');
+    await p.sleep(300);
+    assert.ok(await p.eval('(() => { const r = document.querySelector("#cancel").getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; })()'), 'the way out is below the screen');
     assert.ok(await p.eval('document.querySelector("#go").disabled'));
     await p.eval('document.querySelector("#cancel").click()');
     assert.ok(await p.waitFor('document.querySelector("#status").className === "err" && !document.querySelector("#go").disabled && document.querySelector("#lost").hidden', 10000), await p.eval('document.querySelector("#status").innerText'));
