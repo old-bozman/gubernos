@@ -91,7 +91,7 @@ async function follow(after) {
     const j = await call('GET', '/job');
     $('#status').className = ''; $('#status').textContent = j.name || '';
     const lost = j.quiet && !j.done; // a sign-in under way: its way out, on screen (the model buttons are higher up)
-    if (lost && $('#lost').hidden) { $('#lost').hidden = false; $('#lost').scrollIntoView({ block: 'nearest' }); } else if (!lost) $('#lost').hidden = true;
+    if (lost && $('#lost').hidden) { $('#lost').hidden = false; $('#lost').scrollIntoView({ block: 'center' }); } else if (!lost) $('#lost').hidden = true;
     $('#log').hidden = !!j.quiet; $('#log').textContent = j.lines.join('\n'); $('#log').scrollTop = 1e6;
     if (j.done) {
       if (j.error) { $('#status').className = 'err'; $('#status').textContent = `That didn’t work: ${j.error}`; busy(false); return; }
