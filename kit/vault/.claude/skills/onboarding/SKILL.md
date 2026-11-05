@@ -15,7 +15,7 @@ Before you start, read only: `profile.md`, `CLAUDE.md` (schemas), `40_reference/
 - **Nothing to confirm.** Never ask "shall I create…", never show a proposal, a table or a seeding sheet. What they said goes into the vault right after each answer. Say once that anything can be changed later.
 - **Don't interrogate.** One open question at a time, in a sentence or two, never a numbered list. Don't ask for details you can leave empty. If you can't tell what something is, make your best guess, mark it `provenance: inferred`, and move on. No follow-up about dates, outcomes or reasons: an empty field is fine.
 - **React like a person.** After each answer: one or two warm lines on what you heard, what stood out, in plain words, and how many things you added. No file names, no slugs, no schema words like "provenance" or "commitment". Then the next question.
-- **Three questions at most in the whole interview**, one per topic below. If they already covered a topic, don't ask it. If they say "enough" or "skip", go on or finish.
+- **Three questions at most about their life**, one per topic below, plus the last question about today. If they already covered a topic, don't ask it. If they say "enough" or "skip", go straight to the last question.
 - **Plain words only.** They don't know this system's vocabulary yet, and the app explains each screen the first time they open it. Never say area, responsibility, commitment, want, decision, win, focus, habit, protocol, goal, vault, inbox or provenance. Say "what you look after", "things you can't miss", "what you're hoping for", "choices", "this week".
 - **Never ask them to decide what goes where, or what to focus on.** That's your job, from what they said.
 - **Be quick.** Write the files in one go; don't re-read what you just wrote.
@@ -44,16 +44,22 @@ Everything they say goes where it belongs, whichever question it came after. Don
 3. **What you're hoping for.** "What would you like to happen in the next year or so, even if you haven't committed to it?"
    - A want (`05_model/wants/`, `latent` or `active`). A goal (`30_goals/`, `## Success condition`, `horizon`) only when they named a result and a date.
 
-## Your suggestion for this week
+## The last question: today
 
-They don't choose this; you suggest it from what they said. Pick what looks most important for the next few days: one thing, two, at most three, only what really stands out. Write it in `05_model/focus.md` as `## Week (YYYY-Www, D Mon – D Mon)`, `- [ ] result · [[link]]` (format in `CLAUDE.md`), the most important first. Add nothing for the quarter, and no habit: the app offers those on their own screens.
+Always ask this, even if they said everything in one go, and only after the topics: bring it all down to today. From what they said, name the one thing that looks most important today and ask in a single sentence: "Out of all that, it sounds like the most important thing today is X. Is that it, or is it something else?" After 20:00, ask about tomorrow instead and use tomorrow's date below.
+
+Whatever they answer (a plain "yes" means X), do all of this before you reply, so the app is ready when they open it:
+
+- **The #1.** The task for it, new or one you already made, with `due` that day. Then in `50_reviews/daily/YYYY-MM-DD.md` (create it if it's missing, keep what's there), under `## Plan`, the line `- #1: <the result, in their words> · [[task-file-name-without-.md]]`. New file: start with `# Daily · Thu, 5 Nov 2026`.
+- **The rest of today.** Up to three other single tasks that they said are for today or look just as immediate also get `due` that day, so Today isn't empty. Everything else stays on its list with no date, unless they gave one.
+- **This week.** They don't choose this; you suggest it from what they said: one thing, two, at most three, only what really stands out, the #1's result first if it fits. Write it in `05_model/focus.md` as `## Week (YYYY-Www, D Mon – D Mon)`, `- [ ] result · [[link]]` (format in `CLAUDE.md`). Add nothing for the quarter, and no habit: the app offers those on their own screens.
 
 ## The ending
 
-No more than five short lines, no lists inside lists:
-- what you took in, in plain words, with one or two things that stood out;
-- what you'd start with this week and why, in one sentence, and that it's only a suggestion they can change;
-- that the first thing to open is Today, and each screen explains itself the first time;
+Then finish, in no more than four short lines, with no lists:
+- what you took in, in plain words, with one thing that stood out;
+- that their most important thing today is waiting at the top of Today, with the rest of today's tasks under it, and everything else is on its list;
+- that each screen explains itself the first time, and anything can be changed;
 - if they mentioned another task app, that they can bring it in later by asking their agent to import their tasks.
 
 ## Importing tasks from another app (when asked, in a terminal; not during the interview)

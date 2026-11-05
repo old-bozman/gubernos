@@ -56,11 +56,13 @@ test('it says what it takes and waits; a talk in, the answer in the chat, to the
   const first = calls()[0];
   const flag = (a, f) => a[a.indexOf(f) + 1];
   assert.match(flag(first, '-p'), /- Family and work/);
+  assert.match(flag(first, '-p'), new RegExp(`^\\[Now: .*${new Date().getFullYear()}`), 'the model is told the date');
   assert.match(flag(first, '--allowedTools'), /\bWrite\b/);
   assert.match(flag(first, '--disallowedTools'), /\bBash\b/);
   assert.match(flag(first, '--append-system-prompt'), /Onboarding/);
   await send('Done for now');
   assert.ok(await page.waitFor('document.querySelector(".onboard")?.innerText.includes("That’s the setup")'), `didn't finish: ${await page.eval('document.querySelector("#main").innerText')}`);
+  assert.equal(await page.eval('document.querySelector(".onboard a.btn.primary")?.getAttribute("href")'), '#/today');
   const second = calls()[1];
   assert.equal(flag(second, '--resume'), 'sess-1');
   assert.ok(second.includes('--permission-mode'));
