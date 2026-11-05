@@ -95,6 +95,13 @@ there; `data` and `.venv` are symlinks into this checkout), not from this folder
 - Anything touching Google or the real vault is an outward action — ask the owner first.
 - Install: run `scripts/setup.sh install --vault <tmp> --no-launchd` with `HOME`/`GUBERNOS_CONFIG_DIR` pointed at a temp dir, then start a server on another port.
 
+### The setup, with nobody at the keyboard
+
+Run these instead of asking a person to click through, after changing the install, the first-run page, the interview or the launcher. Read the screenshots too: both have caught what the checks passed.
+- **`node scripts/check-interview.mjs`** (about 5 minutes; a little of the owner's model plan): a fresh vault, the real model without the owner's personal instructions, and a spoken talk through the real mic path into the Mac's speech model, then Today.
+- **`node scripts/check-clean-mac.mjs`** (about 3 minutes; needs tart, and `main` released first: it installs from there): a new VM from Apple's vanilla image, `dist/Gubernos.dmg` by a double-click on the VM's real screen, macOS's question, the setup page, Today, a second launch, an update, a restart. It stops at the model's sign-in page. A VM that failed is left running as `gubernos-check`.
+- Still a person's: finishing a model's sign-in, and a real voice.
+
 ## Feedback from the app (bug reports and ideas)
 
 The owner reports from any screen (menu → Report, ⌘K, voice "баг: …"). Each report = a task in project
