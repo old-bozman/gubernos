@@ -24,12 +24,18 @@ WIZARD=0; [[ "${1:-}" == --wizard ]] && WIZARD=1 # Gubernos.app: the rest in the
 NODE_DIR="$HOME/.gubernos/node"
 NODE_MAJOR=22
 
-say() { printf '\033[1m%s\033[0m\n' "$1"; }
+if [[ -t 1 ]]; then say() { printf '\033[1m%s\033[0m\n' "$1"; }; else say() { printf '%s\n' "$1"; }; fi # Gubernos.app shows this as plain text
 ok() { printf '  ✓ %s\n' "$1"; }
 die() { printf '\n✗ %s\n' "$1" >&2; exit 1; }
 
 [[ "$(uname)" == Darwin ]] || die "Gubernos for Mac needs macOS."
 [[ $UPDATE == 1 ]] || say "Gubernos for Mac"
+
+# AICODE-NOTE: the download replaces everything in $DIR that isn't in the repo. A vault in the same folder (an install from
+# when both were ~/gubernos and ~/Gubernos) would be deleted, so stop before touching anything.
+if [[ -f "$DIR/profile.md" ]]; then
+  die "$DIR holds your own files as well as the app, so updating it would delete them. Nothing was changed. How to move the app out: https://github.com/old-bozman/gubernos/blob/main/SETUP.md#when-the-update-says-the-folder-also-holds-the-persons-files"
+fi
 
 # 1. Node 20+: the one on this Mac, else our own copy in ~/.gubernos/node (official build, checksum verified)
 node_ok() { command -v node >/dev/null && [[ "$(node -p 'process.versions.node.split(".")[0]')" -ge 20 ]]; }
@@ -85,11 +91,6 @@ download() {
   rm -rf "$tmp"
   ok "Gubernos ${sha:0:7} in $DIR"
 }
-# AICODE-NOTE: the download replaces everything in $DIR that isn't in the repo. A vault in the same folder (an install from
-# when both were ~/gubernos and ~/Gubernos) would be deleted, so stop before touching anything.
-if [[ -f "$DIR/profile.md" ]]; then
-  die "$DIR holds your own files as well as the app, so updating it would delete them. Nothing was changed. How to move the app out: https://github.com/old-bozman/gubernos/blob/main/SETUP.md#when-the-update-says-the-folder-also-holds-the-persons-files"
-fi
 if [[ -d "$DIR/.git" ]]; then
   xcode-select -p >/dev/null 2>&1 || die "$DIR is a git checkout but git isn't installed (xcode-select --install)"
   git -C "$DIR" pull --ff-only --quiet || die "couldn't update $DIR (changed files there? git -C $DIR status)"

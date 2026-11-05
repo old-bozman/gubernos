@@ -28,6 +28,12 @@ before(async () => {
 }, { timeout: 60000 });
 after(async () => { child?.kill(); try { await page?.close(); } finally { fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); } });
 
+test('the page\'s link is kept for this user only, while it runs', () => {
+  const f = path.join(home, '.gubernos/first-run-link');
+  assert.equal(fs.readFileSync(f, 'utf8'), link);
+  assert.equal(fs.statSync(f).mode & 0o777, 0o600);
+});
+
 test('without its code, or under another host name, it refuses', async () => {
   assert.equal((await fetch(`${base}/`)).status, 403);
   assert.equal((await fetch(`${base}/install`, { method: 'POST', body: '{}' })).status, 403);

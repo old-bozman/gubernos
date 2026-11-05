@@ -54,6 +54,12 @@ test('a new install keeps the app apart from ~/Gubernos, and an update leaves th
   assert.equal(fs.readFileSync(path.join(home, 'Gubernos/10_tasks/mine.md'), 'utf8'), 'mine');
 });
 
+test('its output reads as plain text in the app\'s window: colour codes only on a terminal', () => {
+  const r = install(newHome('plain'), '--wizard-none');
+  assert.match(r.stdout, /Gubernos for Mac/);
+  assert.ok(!r.stdout.includes('\x1b'), JSON.stringify(r.stdout.slice(0, 80)));
+});
+
 test('an install already in ~/gubernos stays there', () => {
   const home = newHome('older');
   fs.mkdirSync(path.join(home, 'gubernos'));
@@ -78,6 +84,7 @@ test('an update refuses a folder that also holds the person\'s files, and delete
   assert.match(r.stderr, /would delete/);
   assert.equal(fs.readFileSync(path.join(dir, '10_tasks/mine.md'), 'utf8'), 'mine');
   assert.ok(!fs.existsSync(path.join(dir, 'server.js')), 'the app was not unpacked over it');
+  assert.ok(!fs.existsSync(path.join(home, '.zprofile')), 'it says nothing was changed: nothing was');
 });
 
 test('setup refuses a vault in the app\'s folder, whatever the case of the name', () => {

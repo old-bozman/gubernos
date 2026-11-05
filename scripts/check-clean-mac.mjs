@@ -4,7 +4,8 @@
 // screen (dialogs included) and of the pages go to the printed folder. Exit 1 if a check failed.
 //   node scripts/check-clean-mac.mjs [--dmg dist/Gubernos.dmg] [--keep]     --keep leaves the VM running
 // It fetches the app from `main`, as people do: release first. Not covered: signing in to a model stops at the sign-in page (the
-// owner's account), the VM has Gatekeeper off, so the signature and notarization are checked on this Mac instead.
+// owner's account). Gatekeeper's assessments are off in this image, so its verdict on the signature and notarization is checked on
+// this Mac; macOS's "downloaded from the Internet" question still appears in the VM, on its real screen, and gets answered there.
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -20,7 +21,7 @@ const TART = [path.join(os.homedir(), '.local/bin/tart'), '/opt/homebrew/bin/tar
 const VM = 'gubernos-check', BASE = 'ghcr.io/cirruslabs/macos-tahoe-vanilla:latest';
 const SETUP_PORT = 4746, APP_PORT = 4747, HOST_APP_PORT = 4947; // this Mac's own Gubernos may be on 4747
 const OUT = fs.mkdtempSync(path.join(os.tmpdir(), 'gubernos-cleanmac-'));
-const LINK = '/tmp/gubernos-first-run-link';
+const LINK = '~/.gubernos/first-run-link';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const report = [];
 let failed = 0, n = 0, vm, vnc, tunnel, page;
@@ -96,8 +97,19 @@ async function run() {
 
   // the launcher: what a double-click does
   const t1 = Date.now();
-  check(ssh(`open --env GUBERNOS_FIRST_RUN_LINK_FILE=${LINK} /Volumes/Gubernos/Gubernos.app`).ok, 'the app starts');
+  await vnc.doubleClick(Math.round(vnc.width * 0.143), Math.round(vnc.height * 0.208)); // the icon, in the window the DMG opens
+  check(!!await until(() => ssh('pgrep -x Gubernos').ok, 30000, 1000), 'a double-click on the icon starts it');
   await sleep(6000);
+  await screen('asks-downloaded-from-internet');
+  // macOS's own question, before any of our code runs: Open, in the middle of the screen
+  const running = () => ssh('pgrep -f "install.sh --wizard"').ok;
+  let answered = false;
+  for (let i = 0; i < 3 && !answered; i++) {
+    await vnc.click(Math.round(vnc.width * 0.5), Math.round(vnc.height * 0.5275));
+    answered = !!await until(running, 15000, 1000);
+  }
+  check(answered, 'after Open in macOS’s question the install starts');
+  await sleep(3000);
   await screen('launcher');
   const link = await until(() => { const r = ssh(`cat ${LINK} 2>/dev/null`); return r.ok && r.out.startsWith('http') ? r.out : null; }, 420000, 3000);
   if (!link) {

@@ -121,6 +121,9 @@ try {
   check(!!one?.[2] && dueToday.some((t) => t.id === one[2]), 'the #1 is a task due today', `${one?.[2]} of ${tasks.map((t) => `${t.id}:${t.due}`).join(', ')}`);
   check(dueToday.length >= 2, 'more of what was said is due today', dueToday.map((t) => t.title).join(', '));
   check(tasks.length >= 4, `what was said became tasks (${tasks.length})`, tasks.map((t) => t.title).join(', '));
+  const notes = fs.readdirSync(path.join(s.vault, '10_tasks')).map((f) => fs.readFileSync(path.join(s.vault, '10_tasks', f), 'utf8').split(/^---$/m).pop());
+  const stiff = notes.find((b) => /\bRelated:|\bSam (keeps|has|wants|needs|is)\b/.test(b));
+  check(!stiff, 'task notes speak to the person', stiff);
   const count = (d) => { const p = path.join(s.vault, d); return fs.existsSync(p) ? fs.readdirSync(p).filter((f) => f.endsWith('.md')).length : 0; };
   say(`  filed: ${tasks.length} tasks, ${count('20_projects')} projects, ${count('30_goals')} goals, ${count('05_model/people')} people, ${count('05_model/responsibilities')} areas, ${count('05_model/commitments')} commitments, ${count('05_model/wants')} wants, ${count('05_model/decisions')} decisions`);
 

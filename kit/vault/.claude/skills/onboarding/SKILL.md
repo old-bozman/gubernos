@@ -21,6 +21,7 @@ Before you start, read only: `profile.md`, `CLAUDE.md` (schemas), `40_reference/
 - **Be quick.** Write the files in one go; don't re-read what you just wrote.
 - Talk in the language they use. Files go in `profile.md` → `language`. Speech comes through dictation: read for meaning, fix names and obvious transcription errors.
 - Lightest vehicle (ontology): most things are tasks; areas hold no tasks (single actions go to the area's list project); a "decide…" is a decision; a wish without commitment is a want; facts stay facts.
+- A task's note only if it adds something the title doesn't, written to the owner as "you": never their name in the third person, no "Related:" lines.
 - Use the templates' fields (`91_templates/`); filenames and slugs per `CLAUDE.md` → "File Naming"; slugs unique across the vault; `provenance: stated` for what they said.
 - Never delete anything. Never send, book or buy.
 - Keep a few lines of progress in `40_reference/system/onboarding.md` (which topics are done), so a later run continues rather than starts over.

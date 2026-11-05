@@ -93,8 +93,12 @@ export async function connect(url) {
     get width() { return width; }, get height() { return height; },
     screenshot: async (file) => {
       await update();
-      for (let i = 3; i < frame.length; i += 4) frame[i] = 255;
-      fs.writeFileSync(file, png(width, height, frame));
+      // the server may have queued older frames: read until the newest
+      for (let i = 0; i < 20; i++) { await sleep(250); if (!buf.length) break; await update(); }
+      // the VM's server sends blue first whatever format is asked for
+      const rgba = Buffer.alloc(frame.length);
+      for (let i = 0; i < frame.length; i += 4) { rgba[i] = frame[i + 2]; rgba[i + 1] = frame[i + 1]; rgba[i + 2] = frame[i]; rgba[i + 3] = 255; }
+      fs.writeFileSync(file, png(width, height, rgba));
     },
     click,
     doubleClick: async (x, y) => { pointer(x, y, 0); await sleep(150); pointer(x, y, 1); await sleep(60); pointer(x, y, 0); await sleep(60); pointer(x, y, 1); await sleep(60); pointer(x, y, 0); await sleep(150); },
