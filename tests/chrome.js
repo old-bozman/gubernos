@@ -1,5 +1,5 @@
 // Headless Google Chrome over the DevTools protocol, no dependencies (Node's own WebSocket). For tests that need the page
-// actually running: openPage() → {goto, eval, resize, errors, close}. errors collects uncaught exceptions, console.error
+// actually running: openPage() → {goto, eval, screenshot, resize, errors, close}. errors collects uncaught exceptions, console.error
 // and failed loads. No Chrome on the machine is a failure, not a skip: this is what stands between a broken page and people.
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
@@ -11,16 +11,16 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Chrome occasionally doesn't come up cleanly: try again, and never leave a half-started one behind (it would keep the test
 // process alive for ever: a hung release)
-export async function openPage() {
+export async function openPage({ args = [] } = {}) {
   let last;
-  for (let i = 0; i < 3; i++) { try { return await start(); } catch (e) { last = e; } }
+  for (let i = 0; i < 3; i++) { try { return await start(args); } catch (e) { last = e; } }
   throw last;
 }
 
-async function start() {
+async function start(args) {
   if (!fs.existsSync(CHROME)) throw new Error(`no Chrome at ${CHROME} (set GUBERNOS_CHROME)`);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gubernos-chrome-'));
-  const proc = spawn(CHROME, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${dir}`, '--no-first-run', '--no-default-browser-check', '--disable-extensions', 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
+  const proc = spawn(CHROME, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${dir}`, '--no-first-run', '--no-default-browser-check', '--disable-extensions', ...args, 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
   let chromeLog = '', gone = null;
   proc.stderr.on('data', (d) => { chromeLog = (chromeLog + d).slice(-2000); });
   proc.once('exit', (code, signal) => { gone = `Chrome exited (${code ?? signal}): ${chromeLog.slice(-500)}`; for (const w of waiting.values()) w.reject(new Error(gone)); waiting.clear(); });
@@ -60,6 +60,7 @@ async function start() {
   const page = {
     errors, sleep, eval: evaluate,
     goto: (url) => send('Page.navigate', { url }),
+    screenshot: async (file) => fs.writeFileSync(file, Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64')),
     resize: (width, height, mobile = false) => send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile }),
     waitFor: async (expression, ms = 8000) => { for (let t = 0; t < ms; t += 100) { if (await evaluate(expression).catch(() => false)) return true; await sleep(100); } return false; },
     close: async () => {

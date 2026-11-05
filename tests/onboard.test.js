@@ -29,6 +29,20 @@ after(async () => { try { await page?.close(); } finally { await s?.stop(); fs.r
 
 const send = (text) => page.eval(`document.querySelector("#ob-msg").value = ${JSON.stringify(text)}; document.querySelector("#ob-msg").dispatchEvent(new Event("input", { bubbles: true })); document.querySelector("[data-act=onboard-send]").click()`);
 
+test('in the interview a long press on the mic starts the talk: letting go does not end it', { timeout: 40000 }, async () => {
+  const mic = await openPage({ args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] });
+  try {
+    await mic.goto(`${s.url}/#/onboard`);
+    assert.ok(await mic.waitFor('document.querySelector("[data-voice][data-dictate=ob-msg], [data-dictate=ob-msg] [data-voice]")'), 'no mic');
+    await mic.eval('document.querySelector("[data-voice][data-dictate=ob-msg], [data-dictate=ob-msg] [data-voice]").dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0 }))');
+    assert.ok(await mic.waitFor('document.querySelector("#rec-t")'), 'recording didn\'t start');
+    await mic.sleep(900);
+    await mic.eval('document.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, button: 0 }))');
+    await mic.sleep(1500);
+    assert.ok(await mic.eval('!!document.querySelector("[data-act=qa-mic]")'), 'the recording ended when the button was let go');
+  } finally { await mic.close(); }
+});
+
 test('it says what it takes and waits; a talk in, the answer in the chat, to the end', { timeout: 60000 }, async () => {
   await page.goto(`${s.url}/#/onboard`);
   assert.ok(await page.waitFor('document.querySelector(".ob-intro")?.innerText.includes("15–20 minutes")'), `no intro: ${page.errors.join(' | ')}`);

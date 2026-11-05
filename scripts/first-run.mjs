@@ -102,5 +102,6 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, '127.0.0.1', () => {
   const link = `http://127.0.0.1:${PORT}/?code=${CODE}`;
   console.log(`first run: ${link}`);
+  if (process.env.GUBERNOS_FIRST_RUN_LINK_FILE) fs.writeFileSync(process.env.GUBERNOS_FIRST_RUN_LINK_FILE, link, { mode: 0o600 }); // scripts/check-clean-mac.mjs: how a test finds the page
   if (!process.argv.includes('--no-open')) spawn('open', [link], { stdio: 'ignore', detached: true }).unref();
 });

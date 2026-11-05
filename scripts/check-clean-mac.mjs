@@ -1,0 +1,211 @@
+#!/usr/bin/env node
+// The whole no-Terminal setup on a truly clean Mac, with nobody at the keyboard: a new VM from Apple's vanilla image (tart), the
+// real Gubernos.dmg, the launcher, the setup page, the app, a second launch, an update and a restart. Screenshots of the VM's real
+// screen (dialogs included) and of the pages go to the printed folder. Exit 1 if a check failed.
+//   node scripts/check-clean-mac.mjs [--dmg dist/Gubernos.dmg] [--keep]     --keep leaves the VM running
+// It fetches the app from `main`, as people do: release first. Not covered: signing in to a model stops at the sign-in page (the
+// owner's account), the VM has Gatekeeper off, so the signature and notarization are checked on this Mac instead.
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { ROOT } from '../tests/helpers.js';
+import { openPage } from '../tests/chrome.js';
+import { connect } from '../tests/vnc.js';
+
+const arg = (name) => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : null; };
+const KEEP = process.argv.includes('--keep');
+const DMG = path.resolve(arg('--dmg') || path.join(ROOT, 'dist/Gubernos.dmg'));
+const TART = [path.join(os.homedir(), '.local/bin/tart'), '/opt/homebrew/bin/tart'].find((f) => fs.existsSync(f)) || 'tart';
+const VM = 'gubernos-check', BASE = 'ghcr.io/cirruslabs/macos-tahoe-vanilla:latest';
+const SETUP_PORT = 4746, APP_PORT = 4747, HOST_APP_PORT = 4947; // this Mac's own Gubernos may be on 4747
+const OUT = fs.mkdtempSync(path.join(os.tmpdir(), 'gubernos-cleanmac-'));
+const LINK = '/tmp/gubernos-first-run-link';
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const report = [];
+let failed = 0, n = 0, vm, vnc, tunnel, page;
+const say = (l) => { console.log(l); report.push(l); };
+const check = (ok, text, detail = '') => { if (!ok) failed++; say(`${ok ? '✓' : '✗'} ${text}${!ok && detail ? `\n  ${String(detail).slice(0, 800)}` : ''}`); return ok; };
+const tart = (...a) => spawnSync(TART, a, { encoding: 'utf8' });
+const until = async (fn, ms, every = 1000) => { const end = Date.now() + ms; for (;;) { const v = await fn(); if (v) return v; if (Date.now() > end) return null; await sleep(every); } };
+const seconds = (t) => `${Math.round((Date.now() - t) / 1000)} s`;
+
+const key = path.join(OUT, 'key');
+let ip;
+const SSH = () => ['-i', key, '-o', 'StrictHostKeyChecking=no', '-o', 'UserKnownHostsFile=/dev/null', '-o', 'LogLevel=ERROR', '-o', 'ConnectTimeout=5', `admin@${ip}`];
+const ssh = (cmd, ms = 60000) => { const r = spawnSync('ssh', [...SSH(), cmd], { encoding: 'utf8', timeout: ms }); return { ok: r.status === 0, out: `${r.stdout || ''}${r.stderr || ''}`.trim() }; };
+const screen = async (name) => { n++; try { await vnc?.screenshot(path.join(OUT, `${String(n).padStart(2, '0')}-vm-${name}.png`)); } catch (e) { say(`  (no VM screenshot: ${e.message})`); } };
+const shot = async (name) => { n++; await page.screenshot(path.join(OUT, `${String(n).padStart(2, '0')}-page-${name}.png`)); };
+
+async function bootVm() {
+  if (tart('list').stdout.includes(VM)) { tart('stop', VM); tart('delete', VM); }
+  const c = tart('clone', BASE, VM);
+  if (c.status !== 0) throw new Error(`clone: ${c.stderr}`);
+  const log = path.join(OUT, 'vm.log');
+  vm = spawn(TART, ['run', '--no-graphics', '--vnc-experimental', VM], { stdio: ['ignore', fs.openSync(log, 'a'), fs.openSync(log, 'a')], detached: true });
+  vm.unref();
+  const url = await until(() => fs.readFileSync(log, 'utf8').match(/vnc:\/\/\S+/)?.[0], 60000);
+  if (!url) throw new Error('the VM gave no screen address');
+  ip = tart('ip', VM, '--wait', '120').stdout.trim();
+  if (!ip) throw new Error('the VM got no address');
+  vnc = await connect(url);
+  // a key of this run only; the image's public default password is used once, to put it there
+  execFileSync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-f', key]);
+  const pub = fs.readFileSync(`${key}.pub`, 'utf8').trim();
+  const exp = `set timeout 20\nspawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR admin@${ip} "mkdir -p ~/.ssh && echo '${pub}' >> ~/.ssh/authorized_keys && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys"\nexpect "assword:" { send "admin\\r" }\nexpect eof\n`;
+  const keyed = await until(() => { spawnSync('expect', ['-c', exp], { timeout: 30000 }); return ssh('true').ok; }, 180000, 3000);
+  if (!keyed) throw new Error('no SSH into the VM');
+  // the desktop is really there (auto-login)
+  if (!await until(() => ssh('pgrep -x Dock').ok, 180000, 2000)) throw new Error('no desktop in the VM');
+  await sleep(8000);
+}
+
+async function run() {
+  // the DMG itself, on this Mac: what Gatekeeper will say to people
+  check(fs.existsSync(DMG), `the DMG is there (${path.relative(ROOT, DMG)})`);
+  const q = (cmd, ...a) => { const r = spawnSync(cmd, a, { encoding: 'utf8' }); return { ok: r.status === 0, out: `${r.stdout}${r.stderr}` }; };
+  const stapled = q('xcrun', 'stapler', 'validate', DMG);
+  check(stapled.ok, 'the DMG has its notarization ticket', stapled.out);
+  const gk = q('spctl', '-a', '-t', 'open', '--context', 'context:primary-signature', '-v', DMG);
+  check(gk.ok && /accepted/.test(gk.out) && /Notarized Developer ID/.test(gk.out), 'Gatekeeper accepts the DMG', gk.out);
+  const mnt = fs.mkdtempSync(path.join(OUT, 'mnt-'));
+  execFileSync('hdiutil', ['attach', '-quiet', '-nobrowse', '-readonly', '-mountpoint', mnt, DMG]);
+  try {
+    const app = path.join(mnt, 'Gubernos.app');
+    const gka = q('spctl', '-a', '-t', 'exec', '-v', app);
+    check(gka.ok && /Notarized Developer ID/.test(gka.out), 'Gatekeeper accepts the app', gka.out);
+    const bundled = fs.readFileSync(path.join(app, 'Contents/Resources/install.sh'), 'utf8');
+    check(bundled === fs.readFileSync(path.join(ROOT, 'install.sh'), 'utf8'), 'the DMG has the current install.sh (else: scripts/build-mac-app.sh)');
+  } finally { spawnSync('hdiutil', ['detach', '-quiet', mnt]); }
+
+  // a clean machine, and it really is clean
+  const t0 = Date.now();
+  await bootVm();
+  say(`  the VM is up in ${seconds(t0)}`);
+  await screen('desktop');
+  const left = ssh('ls -a ~ | grep -i gubernos; ls -d ~/.config/gubernos /Applications/Gubernos.app 2>/dev/null; command -v node claude codex; ls ~/.local/bin 2>/dev/null; launchctl list | grep -i gubernos; true').out;
+  if (!check(!left, 'the machine is clean', left)) throw new Error('not a clean machine');
+
+  // the DMG, as downloaded
+  execFileSync('scp', ['-i', key, '-o', 'StrictHostKeyChecking=no', '-o', 'UserKnownHostsFile=/dev/null', '-o', 'LogLevel=ERROR', DMG, `admin@${ip}:Downloads/Gubernos.dmg`]);
+  ssh('xattr -w com.apple.quarantine "0081;$(printf %x $(date +%s));Safari;" ~/Downloads/Gubernos.dmg');
+  check(ssh('open ~/Downloads/Gubernos.dmg').ok, 'the DMG opens');
+  check(!!await until(() => ssh('test -d /Volumes/Gubernos/Gubernos.app').ok, 60000, 2000), 'Gubernos.app is on it');
+  await sleep(4000);
+  await screen('dmg-open');
+
+  // the launcher: what a double-click does
+  const t1 = Date.now();
+  check(ssh(`open --env GUBERNOS_FIRST_RUN_LINK_FILE=${LINK} /Volumes/Gubernos/Gubernos.app`).ok, 'the app starts');
+  await sleep(6000);
+  await screen('launcher');
+  const link = await until(() => { const r = ssh(`cat ${LINK} 2>/dev/null`); return r.ok && r.out.startsWith('http') ? r.out : null; }, 420000, 3000);
+  if (!link) {
+    await screen('launcher-stuck');
+    say(`  running: ${ssh('ps -axo pid,etime,command | grep -iE "gubernos|install.sh|node" | grep -v grep').out}`);
+    check(false, 'the setup page comes up within 7 minutes');
+    throw new Error('no setup page');
+  }
+  check(true, `the setup page comes up in ${seconds(t1)}`);
+  await sleep(4000);
+  await screen('setup-in-safari');
+
+  // the page itself, through a tunnel, in a browser this script can drive (the VM's Safari shows the same page, see the screenshots)
+  tunnel = spawn('ssh', ['-i', key, '-o', 'StrictHostKeyChecking=no', '-o', 'UserKnownHostsFile=/dev/null', '-o', 'LogLevel=ERROR', '-N', '-L', `${SETUP_PORT}:127.0.0.1:${SETUP_PORT}`, '-L', `${HOST_APP_PORT}:127.0.0.1:${APP_PORT}`, `admin@${ip}`], { stdio: 'ignore' });
+  await sleep(2000);
+  page = await openPage();
+  await page.resize(900, 1100);
+  await page.goto(link);
+  check(await page.waitFor('document.querySelector("input[name=folder]")', 20000), 'the form shows', page.errors.join(' | '));
+  await shot('setup');
+  check(/Get it and sign in/.test(await page.eval('document.querySelector("#models").innerText')), 'it offers to get a model');
+
+  // getting a model: it installs, then stops at the sign-in page, which is the person's
+  const t2 = Date.now();
+  await page.eval('document.querySelector("[data-model=claude]").click()');
+  const signing = await page.waitFor('/sign in, in the browser/.test(document.querySelector("#status").innerText) || document.querySelector("#status").className === "err"', 300000);
+  const status = await page.eval('document.querySelector("#status").innerText');
+  check(signing && /sign in/.test(status), `Claude is installed and asks to sign in, in ${seconds(t2)}`, status);
+  await shot('model-signin');
+  await sleep(8000);
+  await screen('claude-signin-page');
+  check(ssh('pgrep -f "claude auth login"').ok, 'the sign-in is waiting for the person');
+  ssh('pkill -f "claude auth login"');
+  check(await page.waitFor('!document.querySelector("#go").disabled', 30000), 'giving up on signing in leaves the page usable', await page.eval('document.querySelector("#status").innerText'));
+  await shot('model-gave-up');
+  say(`  after giving up it says: ${await page.eval('document.querySelector("#status").innerText')}`);
+
+  // set up, without a model: the page hands over to the app. This Mac's own Gubernos may answer on the app's port, so the hand-over goes to the tunnel
+  await page.eval(`(() => {
+    const f = window.fetch;
+    window.fetch = async (...a) => {
+      const r = await f(...a);
+      if (String(a[0]) !== '/job') return r;
+      const j = await r.clone().json();
+      if (!j.next) return r;
+      window.__next = j.next; j.next = j.next.replace(':${APP_PORT}', ':${HOST_APP_PORT}');
+      return new Response(JSON.stringify(j), { status: r.status, headers: { 'content-type': 'application/json' } });
+    };
+    document.querySelector("#name").value = "Sam";
+    document.querySelector("#go").click();
+  })()`);
+  const t3 = Date.now();
+  const went = await until(async () => (await page.eval('location.href').catch(() => '')).includes('#/onboard'), 480000, 1000);
+  if (!check(!!went, `it sets up and hands over to the interview, in ${seconds(t3)}`, await page.eval('(document.querySelector("#status")?.innerText || "") + " " + (document.querySelector("#log")?.innerText || "")').catch(() => ''))) throw new Error('setup failed');
+  check(await page.waitFor('document.querySelector(".ob-intro")?.innerText.includes("15–20 minutes") || document.querySelector(".onboard")', 30000), 'the interview screen shows', page.errors.join(' | '));
+  await sleep(1500);
+  await shot('interview');
+  say(`  the interview screen without a model: ${(await page.eval('document.querySelector("#main").innerText')).replace(/\s+/g, ' ').slice(0, 300)}`);
+
+  // what's on the machine now
+  check(await until(() => !ssh('pgrep -x Gubernos').ok, 30000, 2000) !== null, 'the launcher window closed by itself');
+  const home = ssh('ls -a ~ | grep -i gubernos').out.split('\n');
+  check(home.includes('.gubernos') && home.includes('Gubernos') && !home.includes('gubernos'), 'the app is in ~/.gubernos, the files in ~/Gubernos', home.join(' '));
+  check(/Sam/.test(ssh('cat ~/Gubernos/profile.md').out), 'the files are the person’s');
+  check(ssh('launchctl list | grep -q gubernos').ok, 'it runs as a service');
+
+  // Today, and the rest of the app, reached over the tunnel
+  await page.goto(`http://127.0.0.1:${HOST_APP_PORT}/#/today`);
+  check(await page.waitFor('document.querySelector("#main")?.innerText.trim().length > 0', 15000), 'Today opens');
+  await sleep(1500);
+  await shot('today');
+  check(await page.eval('!!document.querySelector(".scr-intro")'), 'Today explains itself the first time');
+  const errors = page.errors.filter((e) => !/favicon|127\.0\.0\.1:4746/.test(e));
+  check(!errors.length, 'no errors in the pages', errors.join(' | '));
+
+  // the app, opened again: straight to the app
+  ssh('pkill -x Safari; true');
+  await sleep(2000);
+  ssh('open /Volumes/Gubernos/Gubernos.app');
+  await sleep(10000);
+  await screen('second-launch');
+  check(await until(() => !ssh('pgrep -x Gubernos').ok, 30000, 2000) !== null, 'opened again, it hands over to the browser and quits');
+
+  // an update must leave the person's files alone
+  const count = 'find ~/Gubernos -type f | wc -l';
+  const before = ssh(count).out;
+  const up = ssh('PATH="$HOME/.gubernos/node/bin:$HOME/.local/bin:$PATH" ~/.gubernos/app/scripts/update.sh', 300000);
+  check(up.ok, 'an update runs', up.out.slice(-500));
+  check(ssh(count).out === before, `an update leaves the files alone (${before.trim()})`, ssh(count).out);
+  const answers = () => ssh(`curl -sf -o /dev/null http://127.0.0.1:${APP_PORT}/api/settings`).ok;
+  check(!!await until(answers, 60000, 2000), 'the app answers after the update');
+
+  // a restart: it comes back by itself
+  tunnel.kill();
+  await page.close(); page = null;
+  spawnSync('ssh', [...SSH(), 'echo admin | sudo -S shutdown -r now'], { encoding: 'utf8', timeout: 20000 });
+  await sleep(20000);
+  check(!!await until(answers, 300000, 5000), 'after a restart the app is back by itself');
+  await screen('after-restart');
+}
+
+let crashed = null;
+try { await run(); } catch (e) { crashed = e; check(false, 'the run finished', e.message); await screen('crash'); }
+try { await page?.close(); } catch { /* gone */ }
+tunnel?.kill();
+vnc?.close();
+fs.writeFileSync(path.join(OUT, 'report.txt'), `${report.join('\n')}\n`);
+if (KEEP || failed) say(`the VM is left running: ${VM} (${ip})`);
+else { tart('stop', VM); tart('delete', VM); }
+console.log(`${failed ? `✗ ${failed} failed` : '✓ all good'} · ${OUT}`);
+process.exit(failed ? 1 : 0);

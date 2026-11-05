@@ -3386,7 +3386,7 @@ function voiceCapture({ ctx, input, notes, onReset }) {
     const recording = rec?.state === 'recording';
     const recHeld = recording ? Date.now() - started : 0;
     clog(`release after ${heldMs}ms (${how}), recording ${recHeld}ms`);
-    if (recording && heldMs >= 350 && recHeld >= 300) { handsFree = false; stop(); }
+    if (recording && heldMs >= 350 && recHeld >= 300 && S.voiceTarget !== 'field:ob-msg') { handsFree = false; stop(); } // the interview: a long press starts the talk too, only Done ends it
     else { handsFree = true; const h = $('#rec-hint'); if (h && !$('.rec-dot.wait')) h.textContent = hint(); }
   }
   function stop() { if (rec?.state === 'recording') rec.stop(); $('#mic')?.classList.remove('recording'); }
