@@ -173,7 +173,7 @@ export const archHtml = () => `<div class="cpt-arch">
     </div></div>
   <div class="cpt-zone cpt-theirs"><div class="zl"><b>Services you already use</b><span>with your own accounts, only when you turn them on</span></div>
     <div class="cpt-svc">
-      <div><b>Your AI provider</b><span>Anthropic, OpenAI or Google get the text an agent needs for the task it is doing, under your account.</span></div>
+      <div><b>Your AI provider</b><span>Anthropic or OpenAI get the text an agent needs for the task it is doing, under your account.</span></div>
       <div><b>Your calendar</b><span>Google or Apple Calendar, read for free time; blocks are written only when you apply a plan.</span></div>
       <div><b>Apple iCloud, if you like</b><span>Only if you keep the folder in iCloud Drive, to open it on your other devices too.</span></div>
       <div><b>Apple Health</b><span>Ticks off habits like steps or sleep: read on your phone, written only into your own files.</span></div>

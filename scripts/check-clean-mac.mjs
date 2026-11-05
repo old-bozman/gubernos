@@ -86,8 +86,10 @@ async function run() {
   await bootVm();
   say(`  the VM is up in ${seconds(t0)}`);
   await screen('desktop');
-  const left = ssh('ls -a ~ | grep -i gubernos; ls -d ~/.config/gubernos /Applications/Gubernos.app 2>/dev/null; command -v node claude codex; ls ~/.local/bin 2>/dev/null; launchctl list | grep -i gubernos; true').out;
-  if (!check(!left, 'the machine is clean', left)) throw new Error('not a clean machine');
+  // a VM just up can drop a connection: that says nothing about what's on it
+  const look = await until(() => { const r = ssh('ls -a ~ | grep -i gubernos; ls -d ~/.config/gubernos /Applications/Gubernos.app 2>/dev/null; command -v node claude codex; ls ~/.local/bin 2>/dev/null; launchctl list | grep -i gubernos; true'); return r.ok ? r : null; }, 120000, 3000);
+  if (!look) throw new Error('no SSH into the VM');
+  if (!check(!look.out, 'the machine is clean', look.out)) throw new Error('not a clean machine');
 
   // the DMG, as downloaded
   execFileSync('scp', ['-i', key, '-o', 'StrictHostKeyChecking=no', '-o', 'UserKnownHostsFile=/dev/null', '-o', 'LogLevel=ERROR', DMG, `admin@${ip}:Downloads/Gubernos.dmg`]);
