@@ -20,5 +20,11 @@ test('install into ~/Gubernos without iCloud', { timeout: 180000 }, () => {
   assert.equal(fs.realpathSync(cfg.vault), fs.realpathSync(path.join(home, 'Gubernos')));
   for (const f of ['CLAUDE.md', 'AGENTS.md', 'profile.md', '10_tasks']) assert.ok(fs.existsSync(path.join(home, 'Gubernos', f)), f);
   assert.match(fs.readFileSync(path.join(home, 'Gubernos', 'profile.md'), 'utf8'), /Sam/);
+  // a new install gets the line on each screen; running setup again doesn't turn it back on for someone who switched it off
+  const settings = path.join(app, 'data/settings.json');
+  assert.equal(JSON.parse(fs.readFileSync(settings, 'utf8')).screenIntros, true);
+  fs.writeFileSync(settings, JSON.stringify({ screenIntros: false }));
+  execFileSync('bash', [path.join(app, 'scripts/setup.sh'), 'install', '--vault', '~/Gubernos', '--name', 'Sam', '--no-launchd'], { env: { ...process.env, HOME: home }, encoding: 'utf8' });
+  assert.equal(JSON.parse(fs.readFileSync(settings, 'utf8')).screenIntros, false);
   fs.rmSync(d, { recursive: true, force: true });
 });

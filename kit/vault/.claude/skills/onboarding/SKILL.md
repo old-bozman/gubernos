@@ -6,7 +6,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 
 # Onboarding
 
-A mini interview: 10 minutes of the owner's time, 15–20 at the very most. They talk, as much as they like, in any order. You pick out what matters and put it straight into their system. It's a conversation with someone who listens, not a questionnaire. It doesn't have to be complete: whatever is missing can be added later, and anything wrong can be corrected later.
+A mini interview: 15–20 minutes at the very most, often less. They talk, as much as they like, in any order. You pick out what matters and put it straight into their system. It's a conversation with someone who listens, not a questionnaire. It doesn't have to be complete: whatever is missing can be added later, and anything wrong can be corrected later.
 
 Before you start, read only: `profile.md`, `CLAUDE.md` (schemas), `40_reference/system/ontology.md` (how to tell the concepts apart).
 
@@ -15,7 +15,9 @@ Before you start, read only: `profile.md`, `CLAUDE.md` (schemas), `40_reference/
 - **Nothing to confirm.** Never ask "shall I create…", never show a proposal, a table or a seeding sheet. What they said goes into the vault right after each answer. Say once that anything can be changed later.
 - **Don't interrogate.** One open question at a time, in a sentence or two, never a numbered list. Don't ask for details you can leave empty. If you can't tell what something is, make your best guess, mark it `provenance: inferred`, and move on. No follow-up about dates, outcomes or reasons: an empty field is fine.
 - **React like a person.** After each answer: one or two warm lines on what you heard, what stood out, in plain words, and how many things you added. No file names, no slugs, no schema words like "provenance" or "commitment". Then the next question.
-- **At most four questions in the whole interview**, one per topic below. If they already covered a topic, don't ask it. If they say "enough" or "skip", go on or finish.
+- **Three questions at most in the whole interview**, one per topic below. If they already covered a topic, don't ask it. If they say "enough" or "skip", go on or finish.
+- **Plain words only.** They don't know this system's vocabulary yet, and the app explains each screen the first time they open it. Never say area, responsibility, commitment, want, decision, win, focus, habit, protocol, goal, vault, inbox or provenance. Say "what you look after", "things you can't miss", "what you're hoping for", "choices", "this week".
+- **Never ask them to decide what goes where, or what to focus on.** That's your job, from what they said.
 - **Be quick.** Write the files in one go; don't re-read what you just wrote.
 - Talk in the language they use. Files go in `profile.md` → `language`. Speech comes through dictation: read for meaning, fix names and obvious transcription errors.
 - Lightest vehicle (ontology): most things are tasks; areas hold no tasks (single actions go to the area's list project); a "decide…" is a decision; a wish without commitment is a want; facts stay facts.
@@ -27,27 +29,32 @@ Before you start, read only: `profile.md`, `CLAUDE.md` (schemas), `40_reference/
 
 In the app the screen has already said this and asked the first question, so their first message is the answer: go straight to filing it. In a terminal, say it yourself: "Set aside 15–20 minutes somewhere you can talk. Tell me whatever comes to mind, in any order; I'll pick out what matters and put it straight into your system."
 
-## The four topics
+## The three topics
 
-Everything they say goes where it belongs, whichever question it came after.
+Everything they say goes where it belongs, whichever question it came after. Don't ask about choices they have to make, about focus, or about habits.
 
 1. **You and your people.** "Tell me about yourself: where you live, what you do, who's in your life, and what you'd like this to help with."
    - `profile.md`: `name`, `language`, `workday` if they mention it; a short "About me" paragraph.
    - `05_model/people/<slug>.md` for the owner (`relationship: self`) and each close person (template `person.md`, Timeline line `- YYYY-MM-DD · onboarding · …`).
-   - 4–7 areas (`05_model/responsibilities/<slug>.md`, template `responsibility.md`) inferred from all this, each with a category from `profile.md` → `categories` and one line on what "well kept" means. Don't ask about them; tell them what you made.
+   - 4–7 areas (`05_model/responsibilities/<slug>.md`, template `responsibility.md`) inferred from all this, each with a category from `profile.md` → `categories` and one line on what "well kept" means. Don't ask about them.
 2. **What's on your mind.** "What's on your plate right now? Projects, things to do, dates you can't miss, bills, anything that nags at you."
    - Multi-step work with an end → project (`20_projects/`, `## Outcome`, `serves` the area, `category`). One action → task (`10_tasks/`) in the area's list project (outcome "No end: …"), with any due date they said.
    - An obligation (rent, taxes, insurance, a contract, a renewal) → commitment (`05_model/commitments/`, template `commitment.md`: `deadline` and `recurrence` if said, `attention_at` a sensible time before the deadline).
-   - "Should I…", "I have to decide…" → decision (`05_model/decisions/`, template `decision.md`: the question as the title, `about`, `decide_by` only if there's a real date).
-3. **What you want.** "What would you like to happen this year or the next few, even if you haven't committed? And is there any choice you keep putting off?"
+   - If they clearly name a choice they're stuck on, a decision (`05_model/decisions/`, template `decision.md`: the question as the title, `about`, `decide_by` only if there's a real date). Otherwise a "decide…" stays a task; it can become a decision later.
+3. **What you're hoping for.** "What would you like to happen in the next year or so, even if you haven't committed to it?"
    - A want (`05_model/wants/`, `latent` or `active`). A goal (`30_goals/`, `## Success condition`, `horizon`) only when they named a result and a date.
-4. **This week.** "What would make this week a win? And what's one small thing you could start doing every day?"
-   - Up to 3 wins in `05_model/focus.md`, `## Week (YYYY-Www, D Mon – D Mon)`, `- [ ] result · [[link]]` (format in `CLAUDE.md`), the most important first. A `## Quarter (YYYY-Qn)` line only if they said what matters this quarter.
-   - One habit (`05_model/habits/<slug>.md`, template `habit.md`): `protocol: null`, `keystone: true`, a `minimum` small enough for a bad day (your guess is fine), `serves` the area, the cue and why if they said them.
+
+## Your suggestion for this week
+
+They don't choose this; you suggest it from what they said. Pick what looks most important for the next few days: one thing, two, at most three, only what really stands out. Write it in `05_model/focus.md` as `## Week (YYYY-Www, D Mon – D Mon)`, `- [ ] result · [[link]]` (format in `CLAUDE.md`), the most important first. Add nothing for the quarter, and no habit: the app offers those on their own screens.
 
 ## The ending
 
-In four or five lines: what's in the system now (counts, in plain words); where to see it (Today, the project list, Decisions, Wins); the two habits, **every morning** Plan the day and **every week** the Weekly review; that they can capture anything with the + button or the mic, and add or change anything later. If they mentioned another task app, say they can bring it in later by asking their agent to import their tasks.
+No more than five short lines, no lists inside lists:
+- what you took in, in plain words, with one or two things that stood out;
+- what you'd start with this week and why, in one sentence, and that it's only a suggestion they can change;
+- that the first thing to open is Today, and each screen explains itself the first time;
+- if they mentioned another task app, that they can bring it in later by asking their agent to import their tasks.
 
 ## Importing tasks from another app (when asked, in a terminal; not during the interview)
 

@@ -139,6 +139,8 @@ install() {
   echo "1/4 dependencies"; (cd "$APP" && npm ci --silent --no-audit --no-fund)
   echo "2/4 vault"; $KIT vault --vault "$vault" ${name:+--name "$name"} ${language:+--language "$language"} ${opath:+--obsidian-path "$opath"}
   echo "3/4 config"; $KIT config --vault "$vault" ${p:+--port "$p"} ${ovault:+--obsidian-vault "$ovault"} ${opath:+--obsidian-path "$opath"} >/dev/null && ok "$HOME/.config/gubernos/config.json"
+  # a new install: each screen explains itself the first time (an install that's already in use stays as it is)
+  [[ -f "${GUBERNOS_DATA_DIR:-$APP/data}/settings.json" ]] || (cd "$APP" && node -e "import('./lib/settings.js').then((m) => m.update({ screenIntros: true }))")
   [[ -n "$llm" ]] && model "$llm" # after the config: the model is saved next to it
   [[ -n "$vlang" ]] && voice-language "$vlang"
   # Bug reports also go to the app's developer (privately, through relay.gubernos.app), unless this is the developer's

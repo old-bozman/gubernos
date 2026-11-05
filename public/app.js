@@ -369,18 +369,13 @@ function howHtml() {
   conceptCss();
   return `<div class="how"><p class="how-lede">${TEXT.lede}</p><button class="linkbtn" data-act="tour">Take the short tour</button>${conceptHtml({ h: 'h2' })}</div>`;
 }
-// The first-launch tour: four screens, once per device (skippable; again from Settings → About → How it works → Tour)
+// The tour: four screens, from How it works (a new person gets the interview, then a line on each screen: INTROS)
 const TOUR = [
   ['Your life, as one model', 'The areas you are responsible for, your goals and promises, the projects that move them, and today at the centre. Every task links out to why it matters.', () => `<div class="tour-wheel">${wheelSvg()}</div>`],
   ['Win the day', 'Each morning, plan the day against your calendar and pick a #1. Habits frame the morning and the evening. At night, look back and choose tomorrow’s #1.', () => loopsHtml('Day')],
   ['Life loops', 'Days roll into the week: three wins and a weekly review. Weeks roll into the quarter: focus, goals, decisions. Everything you capture lands in the Inbox and feeds them.', () => captureHtml()],
-  ['Yours, all the way down', 'Plain Markdown files in your own iCloud. AI agents like Claude and Codex work in the same files, with your accounts. There is no Gubernos account and no server of ours.', () => `<ul class="tour-own"><li><b>Your files</b> open in Files, Obsidian or any editor</li><li><b>Your agents</b> run on your Mac, on your plan</li><li><b>No servers of ours</b>, no tracking, nothing to lock you in</li></ul>`],
+  ['Yours, all the way down', 'Plain files on your own Mac. AI agents like Claude and Codex work in the same files, with your accounts. There is no Gubernos account.', () => `<ul class="tour-own"><li><b>Your files</b> open in Files, Obsidian or any editor</li><li><b>Your agents</b> run on your Mac, on your plan</li><li><b>No account</b>, no tracking, nothing to lock you in</li></ul>`],
 ];
-function tourFirstRun() {
-  let seen = true;
-  try { seen = !!localStorage.getItem('tourSeen'); } catch { /* private window: don't nag */ }
-  if (!seen && !S.focus && !$('#modal').innerHTML) tourOpen(0);
-}
 function tourOpen(i) {
   conceptCss();
   try { localStorage.setItem('tourSeen', '1'); } catch { /* private window */ }
@@ -652,6 +647,8 @@ function paintMain(html) {
   const scroll = main.scrollTop;
   const hadFocus = document.activeElement?.id === 'search';
   main.innerHTML = html;
+  const intro = screenIntro();
+  if (intro) (main.querySelector('.page-h') || { insertAdjacentHTML: (_, h) => main.insertAdjacentHTML('afterbegin', h) }).insertAdjacentHTML('afterend', intro);
   main.scrollTop = scroll;
   if (hadFocus) { const s = $('#search'); s.focus(); s.setSelectionRange(s.value.length, s.value.length); }
   if (S.q) renderSearch(); // keep open results across re-renders (e.g. after a voice search, data reloads)
@@ -692,6 +689,40 @@ function capturesHtml() {
 // with the next most important, and proposes a date for the rest. Nothing is written until Apply.
 S.plan = null; // { draft, pick: {id: 'do'|'move'}, moveTo: {id}, run: {id}, loading, evening }
 const planMins = (m) => (m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ''}` : `${m}m`);
+// The first time on a screen, a new person gets a line on what it's for, in plain words (setup.sh turns this on for a new
+// install; an existing one keeps its screens as they are). Seen on one device means seen on all: it's in the server's settings.
+const INTROS = {
+  today: 'What’s on for today. Pick the one thing that matters most and put it first: get that done and the day is won.',
+  inbox: 'Anything you capture lands here, so you don’t have to sort it on the spot. Your AI suggests what each thing is, and one tap applies it.',
+  upcoming: 'What’s coming, by date.',
+  agent: 'Work you’ve handed to your AI. It does it on your Mac, and you look over what comes back: accept it, or send it back.',
+  waiting: 'Things that are with someone else, so you can stop holding them in your head.',
+  someday: 'Ideas you haven’t committed to. Out of your way, and not lost.',
+  week: 'Wins are the few results you want by the end of this week, the most important first. They’re what you look back on when the week ends.',
+  day: 'What you want to do every day. A protocol is a few of them done in order, like a morning routine. On a bad day, the small version counts.',
+  plan: 'Do this in the morning. It looks at your calendar and suggests what fits today, what your AI can take, and what can move.',
+  decisions: 'Choices you still have to make, each with its options and a recommendation, so they don’t just hang over you.',
+  goals: 'Results you’ve committed to, each with a date, and the projects that get you there.',
+  projects: 'Anything that takes more than one step.',
+  reflect: 'A few lines at the end of the day: how it went, and what matters tomorrow.',
+  weekly: 'Once a week: what happened, what carries over, and what matters next week.',
+};
+function screenIntro() {
+  const st = S.settings, text = INTROS[S.view];
+  if (!st?.screenIntros || !text || st.seenIntros?.includes(S.view)) return '';
+  return `<div class="scr-intro"><p>${esc(text)}</p><button class="linkbtn" data-intro-ok="${S.view}">Got it</button></div>`;
+}
+document.addEventListener('click', async (e) => {
+  const ok = e.target.closest('[data-intro-ok]')?.dataset.introOk;
+  if (ok) {
+    e.target.closest('.scr-intro').remove();
+    S.settings = await api('PATCH', '/api/settings', { seenIntros: [...(S.settings.seenIntros || []), ok] });
+  } else if (e.target.closest('[data-intro-again]')) {
+    S.settings = await api('PATCH', '/api/settings', { screenIntros: true, seenIntros: [] });
+    toast('Each screen will explain itself again');
+  }
+});
+
 // The time a task takes: your own (the task's `estimate`, minutes) wins over the agent's (✦, Plan the day's estimate).
 // Chips or a number set yours; ✦ goes back to the agent's.
 const EST_OPTS = [15, 30, 45, 60, 90, 120, 180];
@@ -1846,7 +1877,7 @@ function dayHtml() {
   if (S.dayTab === 'week' && D.habits.length) return `<div class="day">${nav}${dayWeekHtml(D)}</div>`;
   // the protocols and habits only: the day's plan is on Today (its tasks) and Plan the day
   const parts = (D.summary || []).map((g) => protocolHtml(g, D));
-  // no habits yet: start with one (the first interview asks the same); protocols come once there are a few
+  // no habits yet: start with one; protocols come once there are a few
   const none = !D.enabled ? '' : !D.habits.length ? `<div class="empty hb-first"><b>Start with one habit</b>
     <p>What’s one thing you could start doing today that would improve your life the most? Keep it small enough for a bad day: a 20-minute walk, water before coffee, the phone away after 22:00.</p>
     <button class="btn primary" data-act="hb-new" data-proto="">+ My first habit</button>
@@ -4006,7 +4037,7 @@ swReady?.then(async (reg) => { S.push.on = !!(await reg.pushManager.getSubscript
 navigator.serviceWorker?.addEventListener('message', (e) => { if (e.data?.type === 'open') location.href = e.data.url; });
 // ---------- settings (theme is per device; the rest is shared, data/settings.json on the Mac) ----------
 S.settings = { undoSeconds: 5, digestAt: '08:30' };
-fetch('/api/settings').then((r) => r.json()).then((s) => { S.settings = s; GRACE_MS = s.undoSeconds * 1000; applyPalette(s.palette); if (S.data) renderTop(); mirrorSettings(s); clockTimes(document.body); if (S.view === 'settings') renderMain(); S.remindersSent = null; syncNativeReminders(); }).catch(() => {});
+fetch('/api/settings').then((r) => r.json()).then((s) => { S.settings = s; GRACE_MS = s.undoSeconds * 1000; applyPalette(s.palette); if (S.data) { renderTop(); if (s.screenIntros) renderMain(); } mirrorSettings(s); clockTimes(document.body); if (S.view === 'settings') renderMain(); S.remindersSent = null; syncNativeReminders(); }).catch(() => {});
 // iPhone app online: keep the phone's own copy of the settings (gubernos-data/settings.json) the same as the Mac's, so offline
 // it uses the same week start, habits switch, times… (2026-10-12: offline it fell back to a Monday week)
 function mirrorSettings(s) {
@@ -4094,6 +4125,7 @@ function settingsHtml() {
     ${window.gubernosNative ? '<div class="set-row"><div class="set-l">iPhone app<small>Mac address, system folder in iCloud</small></div><button class="btn" data-act="native-settings">Open</button></div>' : ''}
     <div class="set-row"><div class="set-l">Profile<small>profile.md in the vault</small></div><div class="set-note">${esc(ME().name)} · ${esc(ME().categories.join(', '))}${ME().assistant ? ` · assistant ${esc(ME().assistant.name)}` : ''}</div></div>
     ${g('About')}
+    <div class="set-row"><div class="set-l">Screen explanations<small>the line each screen shows the first time you open it</small></div><span class="set-btns"><button class="btn" data-intro-again>Show them again</button></span></div>
     <div class="set-row"><div class="set-l">How it works<small>the personal OS, its loops and where your data lives</small></div><span class="set-btns"><button class="btn" data-act="tour">Tour</button><a class="btn" href="#/how">Open</a></span></div>
     <div class="set-row"><div class="set-l">${esc(APP_NAME)}<small>open source: the app under MIT, the method under CC BY 4.0</small></div><button class="btn" data-act="licenses">Licenses</button></div>
   </div>`;
@@ -4135,7 +4167,7 @@ function onboardHtml() {
   const voice = S.data?.voice !== false;
   const intro = o.turns.length ? '' : `<div class="ob-intro"><h2>Let’s load your system</h2>
     <p>Set aside <b>15–20 minutes</b> somewhere you can talk. ${voice ? 'Press the mic and tell me' : 'Tell me'} whatever comes to mind, in any order, as much as you like. I’ll pick out what matters and put it straight into your system. You can change anything later.</p>
-    <ul><li>Who you are, who’s in your life, what you do</li><li>What’s on your mind: projects, to-dos, dates you can’t miss</li><li>What you want this year, and choices you keep putting off</li><li>What would make this week a win</li></ul></div>`;
+    <ul><li>Who you are, who’s in your life, what you do</li><li>What’s on your mind: projects, to-dos, dates you can’t miss</li><li>What you’re hoping for in the next year or so</li></ul></div>`;
   const bubbles = o.turns.map((t) => `<div class="ob-t ob-${t.from}">${t.from === 'agent' ? md(t.text) : esc(t.text)}</div>`).join('');
   const working = S.onboardBusy ? '<div class="ob-t ob-agent ob-working">Putting this into your system…</div>' : '';
   const foot = !o.model ? '<p class="ph-text">Connect a model first: Settings → Agents → Model. Then come back here.</p>'
@@ -4397,7 +4429,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) warm
 applyTheme(currentTheme());
 setInterval(pomoTick, 500);
 route();
-load().then(() => { for (const r of S.data.runs) if (r.state === 'running') follow(r.id); tourFirstRun(); });
+load().then(() => { for (const r of S.data.runs) if (r.state === 'running') follow(r.id);  });
 
 
 // ---------- commands (voice + palette) ----------

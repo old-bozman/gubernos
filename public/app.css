@@ -1667,6 +1667,9 @@ button.dc-ev:hover, .dc-ev.cal-hl { box-shadow: 0 0 0 2px var(--accent); z-index
 .ob-t { padding: 10px 14px; border-radius: 14px; margin: 0 0 10px; }
 .ob-agent { background: var(--bg-2, rgba(127,127,127,.1)); }
 .ob-you { margin-left: 15%; border: 1px solid var(--line); white-space: pre-wrap; }
+.scr-intro { display: flex; gap: 12px; align-items: baseline; justify-content: space-between; margin: 0 0 14px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; }
+.scr-intro p { margin: 0; }
+.scr-intro .linkbtn { flex: none; }
 .ob-intro { margin: 0 0 16px; }
 .ob-intro h2 { font-size: 22px; margin: 0 0 8px; }
 .ob-intro p { margin: 0 0 10px; }
