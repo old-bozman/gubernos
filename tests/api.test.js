@@ -17,6 +17,11 @@ test('state answers on a fresh vault', async () => {
   assert.ok(Array.isArray(r.body.tasks));
 });
 
+test('a test server never reaches the owner\'s calendar', async () => {
+  const r = await s.get('/api/gcal/status');
+  assert.equal(r.body.connected, false, JSON.stringify(r.body));
+});
+
 test('a task: create, read, complete', async () => {
   const c = await s.post('/api/tasks', { title: 'Buy milk', priority: 'planned' });
   assert.equal(c.status, 200, JSON.stringify(c.body));

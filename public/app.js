@@ -4182,10 +4182,12 @@ async function onboardSend() {
   S.onboard.turns.push({ from: 'you', text: message });
   S.onboard.error = null;
   S.onboardDraft = message; // kept until the model has answered: a failed turn gives it back
+  const toLatest = () => [...document.querySelectorAll('.onboard .ob-agent, .onboard .d-over')].at(-1)?.scrollIntoView({ block: 'start' }); // after a long talk: the answer, not the top of the talk
   renderMain();
+  toLatest();
   try { S.onboard = await api('POST', '/api/onboard', { message }); S.onboardDraft = ''; } catch (e) { S.onboard.error = e.message; S.onboard.turns.pop(); }
   S.onboardBusy = false;
-  if (S.view === 'onboard') renderMain();
+  if (S.view === 'onboard') { renderMain(); toLatest(); }
 }
 // a long answer survives the page redrawing itself while the agent or anything else writes to the vault
 document.addEventListener('input', (e) => { if (e.target.id === 'ob-msg') S.onboardDraft = e.target.value; });

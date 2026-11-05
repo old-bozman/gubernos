@@ -13,7 +13,7 @@ case "${1:-}" in
     DIR="$(mktemp -d "${TMPDIR:-/tmp}/gubernos-test.XXXXXX")"
     rsync -a --exclude 40_reference/attachments --exclude 80_archive "$VAULT/" "$DIR/vault/"
     mkdir -p "$DIR/vault/80_archive" "$DIR/data"
-    GUBERNOS_VAULT="$DIR/vault" GUBERNOS_DATA_DIR="$DIR/data" GUBERNOS_NO_NOTIFY=1 GUBERNOS_TRIAGE=0 GUBERNOS_MAC_FOCUS=0 GUBERNOS_PAIR_FILE="$DIR/data/pair.json" GUBERNOS_FEEDBACK_RELAY= GUBERNOS_FEEDBACK_INBOX= PORT="$PORT" HOST=127.0.0.1 \
+    GUBERNOS_MACCAL_BIN=/nonexistent GUBERNOS_VAULT="$DIR/vault" GUBERNOS_DATA_DIR="$DIR/data" GUBERNOS_NO_NOTIFY=1 GUBERNOS_TRIAGE=0 GUBERNOS_MAC_FOCUS=0 GUBERNOS_PAIR_FILE="$DIR/data/pair.json" GUBERNOS_FEEDBACK_RELAY= GUBERNOS_FEEDBACK_INBOX= PORT="$PORT" HOST=127.0.0.1 \
       nohup node server.js > "$DIR/server.log" 2>&1 &
     for _ in $(seq 1 30); do curl -s -o /dev/null "http://127.0.0.1:$PORT/api/settings" && break; sleep 0.3; done
     echo "http://127.0.0.1:$PORT · vault copy: $DIR/vault · log: $DIR/server.log"

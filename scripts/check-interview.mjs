@@ -126,6 +126,8 @@ try {
 
   // 4. the way out: Today, ready
   check(await page.waitFor('document.querySelector(".onboard a.btn.primary[href=\\"#/today\\"]")'), 'it ends with Open Today');
+  await sleep(300);
+  check(await page.eval('(() => { const r = document.querySelector(".onboard a.btn.primary").getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; })()'), 'Open Today is on the screen, no scrolling');
   await shot('finished');
   await page.eval('document.querySelector(".onboard a.btn.primary").click()');
   await sleep(1500);
@@ -137,6 +139,7 @@ try {
   const missing = dueToday.filter((t) => t.id !== one?.[2] && !has(t.title));
   check(!missing.length, 'Today lists the tasks due today', `${missing.map((t) => t.title).join(', ')}\n${main}`);
   check(await page.eval('!!document.querySelector(".scr-intro")'), 'Today explains itself the first time');
+  check(!/Probably not today/.test(main), 'on an empty calendar, the tasks fit today', main);
   await page.resize(390, 844, true);
   await sleep(500);
   await shot('today-phone');
