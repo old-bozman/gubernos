@@ -6,6 +6,12 @@
 
 Two steps: the Mac, then the iPhone.
 
+**The easiest way (no Terminal):** download **[Gubernos.dmg](https://github.com/old-bozman/gubernos/releases/latest/download/Gubernos.dmg)** (macOS 13 or later), open it and double-click
+**Gubernos**; macOS asks whether to open an app downloaded from the Internet: **Open**. A page in your browser asks your
+name, where your files live and your AI model (it gets it for you, you sign in), sets everything up and hands over to a
+15–20 minute interview that fills your system. Then go to [2. iPhone](#2-iphone-5-minutes). The rest of this part is the
+same setup done by your AI agent or by hand, for those who prefer it.
+
 **Or skip the reading:** on the Mac, open your AI agent (Claude Code or Codex) and paste
 `Install Gubernos for me: read https://raw.githubusercontent.com/old-bozman/gubernos/main/SETUP.md and do the part "For the agent".` — it does the Mac part for you and tells you when to tap on the phone.
 

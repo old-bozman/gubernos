@@ -7,31 +7,37 @@ Codex), one place to steer it. The name is Latin *gubernare*, to steer. The meth
 Allen's Getting Things Done®, Gabriele Oettingen's WOOP and Brian Johnson's Heroic (Masterpiece Days, protocols);
 Gubernos is not affiliated with any of them.
 
-> **Beta.** Gubernos is in beta: the iPhone and Apple Watch app is on TestFlight, the Mac app installs from this
-> repository. Things change quickly, and your files stay yours whatever happens (plain Markdown on your own Mac).
+> **Beta.** Gubernos is in beta: the iPhone and Apple Watch app is on TestFlight, the Mac app is a download from this
+> repository's Releases. Things change quickly, and your files stay yours whatever happens (plain Markdown on your own Mac).
 
 ### Install the beta
 
 **Before you install: you need a paid AI subscription.** Gubernos runs on your own plan: Claude (Pro or higher) or ChatGPT (Plus or higher). The first interview, the chat and the agents all need it, and free plans aren't supported. Don't have one? Get it first: [Claude plans](https://claude.com/pricing) · [ChatGPT plans](https://chatgpt.com/pricing).
 
-**You don't have to do the setup yourself: your AI agent does it.** On your Mac, open Claude Code or Codex
-(whichever your plan covers; the table in [SETUP.md](SETUP.md) shows how to get one) and paste:
+**On your Mac** (macOS 13 or later), no Terminal needed:
+
+1. Download **[Gubernos.dmg](https://github.com/old-bozman/gubernos/releases/latest/download/Gubernos.dmg)**, open it and double-click **Gubernos**. macOS asks whether to open an app
+   downloaded from the Internet: **Open**.
+2. A page opens in your browser: your name, where your files live, and your AI model (it gets it for you, you sign in).
+   A few minutes, and Gubernos runs on your Mac.
+3. Gubernos interviews you, by voice if you like: 15–20 minutes, and it ends with your plan for today.
+
+**On your iPhone:**
+
+1. Install **TestFlight** from the App Store.
+2. On the iPhone, open **[testflight.apple.com/join/rBUGmgJG](https://testflight.apple.com/join/rBUGmgJG)** → **Accept** →
+   **Install**.
+3. On the Mac, Gubernos → **Connect your iPhone** → **Set up**, then point the iPhone's Camera at the code. The phone
+   keeps a copy of your files from the Mac, so it works when the Mac is away too.
+
+**Or let your AI agent do the setup.** On your Mac, open Claude Code or Codex (the table in [SETUP.md](SETUP.md) shows
+how to get one) and paste:
 
 ```
 Install Gubernos for me: read https://raw.githubusercontent.com/old-bozman/gubernos/main/SETUP.md and do the part "For the agent".
 ```
 
-It checks the Mac, installs what's missing (asking first), creates your folder (on the Mac, or in iCloud if you like), starts the app, sets up the
-phone connection and then interviews you to fill the system. It asks you for what only you can do: a few Allow dialogs,
-and these taps on your iPhone:
-
-1. On your iPhone, install **TestFlight** from the App Store.
-2. On the iPhone, open **[testflight.apple.com/join/rBUGmgJG](https://testflight.apple.com/join/rBUGmgJG)** → **Accept** →
-   **Install**.
-3. Open Gubernos and point the iPhone's Camera at the pairing code your agent shows on the Mac. The phone keeps a copy
-   of your files from the Mac, so it works when the Mac is away too.
-
-By hand instead of the agent: `curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash`
+By hand in the Terminal: `curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash`
 (details: [docs/install.md](docs/install.md)).
 
 Feedback: in TestFlight take a screenshot → **Share Beta Feedback**, or open an issue here.
