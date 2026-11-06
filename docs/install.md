@@ -24,7 +24,7 @@ same setup done by your AI agent or by hand, for those who prefer it.
 | **Claude** Pro or higher | Claude Code | `curl -fsSL https://claude.ai/install.sh \| bash` | `~/.local/bin/claude` |
 | **ChatGPT** Plus or higher | Codex | `npm install -g @openai/codex` | `codex login` |
 
-That model reads your inbox and voice notes, answers in the app's chat and runs agents on tasks. You can switch later (Settings → Agents → Model), or install a second one as another agent.
+That model reads your inbox and voice notes, answers in the app's chat and runs agents on tasks. You can switch later (Settings → Your Mac → Model), or install a second one as another agent.
 
 1. **Get the app.** Open Terminal and paste:
    ```
@@ -53,7 +53,7 @@ Install **TestFlight** from the App Store, open [testflight.apple.com/join/rBUGm
 1. Tell your agent: **"connect my phone"** (that's `scripts/setup.sh phone`). Your Mac gets an address like `https://m-3f2a….gubernos.dev` the phone reaches from anywhere: Cloudflare's small `cloudflared` program runs in the background on the Mac. Nothing to sign in to, nothing on the phone. The traffic passes through Cloudflare, on the developer's account, and HTTPS ends there, so Cloudflare could see it. We don't store it; Cloudflare may keep request data, such as IP addresses and page addresses, under its own policy.
 2. Point the **iPhone camera** at the code on the Connect your iPhone screen → Open in Gubernos. The app remembers the Mac and connects: agents, chat and the calendar appear.
 
-Only devices with the code get in: everyone else gets nothing, and an address that keeps trying wrong codes is turned away. Lost a phone? On the Mac, Settings → Connections → **New code**: every old device is unpaired. Want HTTPS to end on your Mac instead of at Cloudflare? `scripts/setup.sh phone --tailscale` uses Tailscale Funnel (a Tailscale account, its installer and your Mac password) and deletes the Cloudflare address. Rather not have the Mac on the internet at all? `scripts/setup.sh phone --private` keeps it inside your Tailscale network; then the iPhone needs Tailscale too (same account, VPN On Demand on).
+Only devices with the code get in: everyone else gets nothing, and an address that keeps trying wrong codes is turned away. Lost a phone? On the Mac, Settings → Your Mac → iPhone and other devices → **New code**: every old device is unpaired. Want HTTPS to end on your Mac instead of at Cloudflare? `scripts/setup.sh phone --tailscale` uses Tailscale Funnel (a Tailscale account, its installer and your Mac password) and deletes the Cloudflare address. Rather not have the Mac on the internet at all? `scripts/setup.sh phone --private` keeps it inside your Tailscale network; then the iPhone needs Tailscale too (same account, VPN On Demand on).
 
 The phone keeps a copy of your files from the Mac: when the Mac is asleep or away it still shows everything, and the changes you make go to the Mac once it's back. Agents, chat and the calendar need the Mac on.
 

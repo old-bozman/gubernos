@@ -102,7 +102,7 @@ phone URL, Obsidian vault) and the vault's `profile.md` (name, language, categor
   proposes clears the note), Archive, Delete (kept in the archive as trash). Processed notes move to `80_archive/` with "Processed → task/project [[…]]".
 - **Group by** (layers icon in the list header): Default · Project · Category · Priority · Owner, per view, remembered in the browser.
   Project groups are ordered by category and link to the project.
-- **Plan the day** (menu → Focus, or the calendar icon on Today with free hours; the 08:30 digest "Plan your day · 6h free" opens it): free time today from the calendar — the Mac's own (Calendar.app, EventKit: `lib/maccal.js` + `tools/calendar/`) or Google's (`lib/gcal.js`), Settings → Calendar, `lib/calendar.js` (9–19, minus meetings and
+- **Plan the day** (menu → Focus, or the calendar icon on Today with free hours; the 08:30 digest "Plan your day · 6h free" opens it): free time today from the calendar — the Mac's own (Calendar.app, EventKit: `lib/maccal.js` + `tools/calendar/`) or Google's (`lib/gcal.js`), Settings → Your Mac → Calendar, `lib/calendar.js` (9–19, minus meetings and
   a lunch hour; "Focus time" counts as working time), an agent's estimate per task and what truly has to happen today
   (cached for the day). The screen picks must-do tasks first, fills ~85% of the free time, proposes a date for the rest
   (Tomorrow / Weekend / Next week / Someday), lists agent tasks to run, and decisions due within 3 days (accept the
@@ -149,7 +149,7 @@ phone URL, Obsidian vault) and the vault's `profile.md` (name, language, categor
   Dates are never computed by the model: it returns a date spec, `lib/dates.js` resolves it on the local clock.
 - **One-at-a-time modes** (full screen): **Focus** (the most important task + a 25/5 sprint timer, Why this one?,
   Break down; every finished sprint is logged to the vault's `50_reviews/pomodoros.csv`, "⚡ N today" in Focus and on Today), **Process inbox**, **Review agents** (Accept = back to you, Accept & close, Send back).
-- **The model** (Settings → Agents → Model; `scripts/setup.sh model …`): the app's model calls go through one CLI on the
+- **The model** (Settings → Your Mac → Model; `scripts/setup.sh model …`): the app's model calls go through one CLI on the
   Mac, on the owner's own plan — Claude Code (Claude Pro or higher) or Codex (ChatGPT Plus or higher). Free plans aren't supported.
   `lib/llm.js` has the three kinds of call: one-shot structured answers (Codex: strict `--output-schema`), the read-only resumable chat and agent runs, each with gubernos-tools plugged in. `GUBERNOS_CLAUDE_BIN`,
   `GUBERNOS_CODEX_BIN` point at a CLI elsewhere.
@@ -215,8 +215,11 @@ phone URL, Obsidian vault) and the vault's `profile.md` (name, language, categor
   next to the issue. Every 20 min the app asks the relay: the developer's comments → the task's log; a comment on an open
   issue → `blocked` (Reply), a closed issue → `review` (Works now / Still wrong) — each with a push. Reply and Still wrong
   go back as a comment and reopen the issue.
-- **Settings** (menu ☰ → Settings): theme (Auto / Light / Dark, per device), notifications (per device), morning digest
-  time or off, Undo window (3 / 5 / 10 s). Shared settings live in `data/settings.json` on the Mac.
+- **Settings** (menu ☰ → Settings), each where it applies: **this device** (theme, its notifications; in the iPhone app its own
+  reminders, Mac address and voice), **General** and **Your day** (the same on every device: time format, week start, the
+  day's times, habits…), **Your Mac** (model, voice, agents, calendar — this Mac's or Google, Google, pairing; on a phone one
+  line). Reminders don't ring twice: the Mac skips an iPhone whose app rings them itself. Shared settings live in
+  `data/settings.json` on the Mac.
 - **⌘K** command palette, keyboard shortcuts (`?` lists them all): `g` then a letter goes to a screen (`g t` Today, `g i` Inbox, `g u` Upcoming, `g d` Protocol, `g p` Plan the day…); on the selected task `e` completes, `t` schedules, `y` steps the priority; `z` undoes; `d` cycles the theme. PWA icon.
 
 ## Run
@@ -256,7 +259,7 @@ Whisper models download to `~/.cache/huggingface` on first use.
 | `GUBERNOS_DIGEST_AT` | `08:30` | default digest time until changed in Settings (sent within 3 h after); `GUBERNOS_NO_NOTIFY=1` disables the notifier |
 | `GUBERNOS_DATA_DIR` | `./data` | push subscriptions, notifier state (VAPID keys: `~/.config/gubernos/vapid.json`) |
 | `GUBERNOS_STT_PYTHON` | `.venv/bin/python` | |
-| `GUBERNOS_GCAL_ID`, `GUBERNOS_WORK_START`, `GUBERNOS_WORK_END`, `GUBERNOS_WORK_WEEKENDS` | primary, profile.md `workday`, off | time-blocking (the calendar written to; more calendars are read from Settings → Google → Calendars) |
+| `GUBERNOS_GCAL_ID`, `GUBERNOS_WORK_START`, `GUBERNOS_WORK_END`, `GUBERNOS_WORK_WEEKENDS` | primary, profile.md `workday`, off | time-blocking (the calendar written to; more calendars are read from Settings → Your Mac → Calendar) |
 | `GUBERNOS_GOOGLE_DIR`, `GUBERNOS_GCAL_API`, `GUBERNOS_GMAIL_API`, `GUBERNOS_PEOPLE_API`, `GUBERNOS_DRIVE_API`, `GUBERNOS_GOOGLE_TOKEN_URL` | `~/.config/gubernos`, Google | OAuth files / endpoints (tests use a stub) |
 
 ### Google Calendar + Gmail (one-time)

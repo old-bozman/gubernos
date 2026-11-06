@@ -875,6 +875,10 @@ body.drawer-open.composer-visible .dock { opacity: 0; pointer-events: none; tran
 .settings .set-cals { display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
 .settings .set-cals label { display: flex; align-items: center; gap: 8px; }
 .settings .set-cals small { color: var(--muted); }
+.settings .set-cal .set-cals { margin-top: 10px; }
+.settings .set-cals label small { display: inline; margin: 0; }
+.settings .set-mf .seg { margin: 0 4px; vertical-align: middle; }
+.settings .set-mf .seg button { padding: 3px 10px; font-size: 12px; }
 .settings .set-owp { font-size: 14px; display: grid; gap: 6px; }
 .settings .linkbtn { margin-left: 8px; font-size: 13px; }
 
@@ -1445,7 +1449,7 @@ html.local-mode body::after { content: attr(data-offline); position: fixed; left
 .hb-pick { font-size: 13px; padding: 4px 0 8px; }
 @media (max-width: 800px) { .ks-row input { font-size: 16px; } .ks-head, .ks-row { grid-template-columns: minmax(0, 1fr) repeat(3, 42px) 26px; } }
 
-/* Settings → Agents */
+/* Settings → Your Mac → Agents */
 .set-agents { align-items: flex-start; }
 .ag-list { display: grid; gap: 6px; }
 .ag-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }

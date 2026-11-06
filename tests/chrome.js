@@ -60,6 +60,8 @@ async function start(args) {
   const page = {
     errors, sleep, eval: evaluate,
     goto: (url) => send('Page.navigate', { url }),
+    onNewDocument: (source) => send('Page.addScriptToEvaluateOnNewDocument', { source }), // runs before the page's own scripts (the iPhone app's window.gubernosNative)
+    userAgent: (userAgent) => send('Emulation.setUserAgentOverride', { userAgent }),
     screenshot: async (file) => fs.writeFileSync(file, Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64')),
     resize: (width, height, mobile = false) => send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile }),
     waitFor: async (expression, ms = 8000) => { for (let t = 0; t < ms; t += 100) { if (await evaluate(expression).catch(() => false)) return true; await sleep(100); } return false; },

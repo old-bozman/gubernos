@@ -167,7 +167,7 @@ const VIEWS = {
   more: { title: 'More', icon: '…' }, // the phone's fifth tab: pinned, projects, goals, the other screens
   how: { title: 'How it works', icon: '?' },
   onboard: { title: 'Set up your system', icon: '✦' }, // the first interview (lib/onboarding.js); first run lands here
-  phone: { title: 'Connect your iPhone', icon: '▯' }, // on the Mac: the app from TestFlight, then the pairing code (SETUP.md; Settings → Connections) // the personal OS explained (public/concept.js); More and Settings → About
+  phone: { title: 'Connect your iPhone', icon: '▯' }, // on the Mac: the app from TestFlight, then the pairing code (SETUP.md; Settings → Your Mac) // the personal OS explained (public/concept.js); More and Settings → About
   reflect: { title: 'Daily reflection', icon: '☾' },
   weekly: { title: 'Weekly review', icon: '↻', key: '8' },
   settings: { title: 'Settings', icon: '⚙', key: '9' },
@@ -992,7 +992,7 @@ const notPlanned = (t) => t.status === 'new' && t.assigned !== 'agent' && t.due 
 function dayCalHtml() {
   const f = S.planFree;
   if (!f) return '<div class="dc-empty">Reading your calendar…</div>';
-  if (f.calendarError) return `<div class="dc-empty">${/not connected|No OAuth client|no access to calendars/.test(f.calendarError) ? 'No calendar connected — Settings → Calendar' : 'Calendar not reachable right now'}</div>`;
+  if (f.calendarError) return `<div class="dc-empty">${/not connected|No OAuth client|no access to calendars/.test(f.calendarError) ? 'No calendar connected — Settings → Your Mac → Calendar' : 'Calendar not reachable right now'}</div>`;
   const wd = f.workday || ME().workday, a = mins(wd.start), z = mins(wd.end), PH = 56, now = mins(nowHM());
   const y = (n) => ((Math.min(Math.max(n, a), z) - a) / 60) * PH, byEv = calTasks();
   const evs = [];
@@ -1182,7 +1182,7 @@ function planHtml() {
   };
   const oneChain = P.one?.link ? goalChain(P.one.link) : [];
   return `<div class="plan">
-    <div class="plan-cap"><div class="plan-cap-t"><b>${planMins(free.freeMinutes)}</b> free today ${free.from !== wd.start ? `from ${free.from} ` : ''}· ${hh(wd.start)}–${hh(wd.end)}${wd.from === 'protocols' ? ' (between your AM and PM)' : ''}, minus meetings${free.lunch ? ` and lunch ${free.lunch.start}` : ''}${free.lunchToday ? ` · <button class="linkbtn" data-act="lunch-reset">${free.lunchToday === 'off' ? 'no lunch today — add it back' : 'lunch moved today — as usual'}</button>` : ''}${free.calendarError ? (/not connected|No OAuth client|no access to calendars/.test(free.calendarError) ? ' · no calendar connected (Settings → Calendar)' : ' · <span class="d-over">calendar not reachable</span>') : ''}</div>
+    <div class="plan-cap"><div class="plan-cap-t"><b>${planMins(free.freeMinutes)}</b> free today ${free.from !== wd.start ? `from ${free.from} ` : ''}· ${hh(wd.start)}–${hh(wd.end)}${wd.from === 'protocols' ? ' (between your AM and PM)' : ''}, minus meetings${free.lunch ? ` and lunch ${free.lunch.start}` : ''}${free.lunchToday ? ` · <button class="linkbtn" data-act="lunch-reset">${free.lunchToday === 'off' ? 'no lunch today — add it back' : 'lunch moved today — as usual'}</button>` : ''}${free.calendarError ? (/not connected|No OAuth client|no access to calendars/.test(free.calendarError) ? ' · no calendar connected (Settings → Your Mac → Calendar)' : ' · <span class="d-over">calendar not reachable</span>') : ''}</div>
       <div class="plan-cap-s">${d.pace ? `Your pace over ${d.pace.days} planned days: ${Math.round(d.pace.rate * 100)}% done → take on <b>${planMins(cap)}</b>` : `Take on up to 85% → <b>${planMins(cap)}</b> (your real pace shows after 3 planned days)`}${d.oneStreak ? ` · #1 streak ${d.oneStreak}` : ''}</div>
       <div class="plan-bar"><span style="width:${pct}%" class="${used > cap ? 'over' : ''}"></span></div>
       ${d.estimateError ? '<div class="plan-cap-s d-over">The agent couldn’t estimate this time — 50 min each for now. Tap re-estimate to try again.</div>' : ''}
@@ -1817,7 +1817,7 @@ function todayOneHtml() {
       <div class="plan-meta">${chainHtml(goalChain(one.link))}${b.oneStreak ? `<span>#1 streak ${b.oneStreak} day${b.oneStreak === 1 ? '' : 's'}</span>` : ''}${b.oneDone ? '<span class="d-today">day won</span>' : ''}</div></div>${go}</div>`;
 }
 
-// AICODE-NOTE: the Focus view of Today (Settings → Today → Focus view; was "Simple Today", setting `simple`; option B of the mockups, 2026-10-14): only the #1 and the tasks
+// AICODE-NOTE: the Focus view of Today (Settings → Your day → Focus view; was "Simple Today", setting `simple`; option B of the mockups, 2026-10-14): only the #1 and the tasks
 // due today or overdue that aren't an agent's — waiting ones too, last (2026-10-20: they got lost) — in time order
 // (today's blocks by their time, then the rest by priority), titles only, each with a Focus button. Deadlines stay on
 // the full Today. No sidebar sections, chips, protocol, agents or day calendar; the header toggle switches it (saved).
@@ -2653,7 +2653,7 @@ function propsHtml(t, done, seg) {
 // One line above the task chat: the agent's state and the buttons that belong to it. Replies go through the chat box.
 // AICODE-NOTE: Ask, task chat and Run are one conversation now (option A, 2026-09-28): the agent's reports come from
 // ## Agent log into the same feed, and "▶ Do it" starts a run from the chat.
-// Agents come from Settings → Agents (lib/settings.js agentList): name, how it starts (run), shown in the picker (on).
+// Agents come from Settings → Your Mac → Agents (lib/settings.js agentList): name, how it starts (run), shown in the picker (on).
 // run: claude / codex = started here with that CLI (▶ Run); queue = it takes its own queue (an assistant, a session
 // elsewhere); dev = the app developer's Claude Code session in the app's code (only on the developer's own install).
 const agentList = () => S.settings?.agentList || [{ id: 'claude', name: 'Claude', run: 'claude', on: true },
@@ -2663,7 +2663,7 @@ const agentOf = (id) => agentList().find((a) => a.id === id);
 const agentReady = (a) => !(MODEL_CLI[a.run] && S.data.agents?.[a.run] === false);
 const agentNames = () => Object.fromEntries(agentList().map((a) => [a.id, a.name]));
 const agentName = (id) => agentOf(id)?.name || (id ? id[0].toUpperCase() + id.slice(1) : 'agent');
-// the model the app uses (Settings → Agents → Model, lib/llm.js): a task with no agent runs with it
+// the model the app uses (Settings → Your Mac → Model, lib/llm.js): a task with no agent runs with it
 const MODEL_CLI = { claude: 'Claude Code', codex: 'Codex' };
 const appModel = () => S.data.agents?.provider || 'claude';
 // started here (when that model's CLI is on this Mac) or not: then it takes its own queue
@@ -2837,7 +2837,7 @@ function replaceTask(t) {
 // ---------- completion with a grace period ----------
 // AICODE-NOTE: completing is deferred GRACE_MS so a mis-tap can be undone right in the row. Nothing is written
 // to the vault (so Todoist sync can't see it) until the grace period ends; leaving the page commits immediately.
-let GRACE_MS = 5000; // Settings → Undo window
+const GRACE_MS = 5000; // the undo window: long enough to catch a mis-tap (it was a setting; nobody needs to tune it)
 const pendingDone = new Map(); // id -> { timer, until, committing }
 
 function complete(id, { drop = false, carry } = {}) {
@@ -4046,8 +4046,8 @@ const swReady = S.push.supported ? navigator.serviceWorker.register('/sw.js').th
 swReady?.then(async (reg) => { S.push.on = !!(await reg.pushManager.getSubscription()) && Notification.permission === 'granted'; if (S.view === 'settings') renderMain(); }).catch(() => {});
 navigator.serviceWorker?.addEventListener('message', (e) => { if (e.data?.type === 'open') location.href = e.data.url; });
 // ---------- settings (theme is per device; the rest is shared, data/settings.json on the Mac) ----------
-S.settings = { undoSeconds: 5, digestAt: '08:30' };
-fetch('/api/settings').then((r) => r.json()).then((s) => { S.settings = s; GRACE_MS = s.undoSeconds * 1000; applyPalette(s.palette); if (S.data) { renderTop(); if (s.screenIntros) renderMain(); } mirrorSettings(s); clockTimes(document.body); if (S.view === 'settings') renderMain(); S.remindersSent = null; syncNativeReminders(); }).catch(() => {});
+S.settings = { digestAt: '08:30' };
+fetch('/api/settings').then((r) => r.json()).then((s) => { S.settings = s; applyPalette(s.palette); if (S.data) { renderTop(); if (s.screenIntros) renderMain(); } mirrorSettings(s); clockTimes(document.body); if (S.view === 'settings') renderMain(); S.remindersSent = null; syncNativeReminders(); }).catch(() => {});
 // iPhone app online: keep the phone's own copy of the settings (gubernos-data/settings.json) the same as the Mac's, so offline
 // it uses the same week start, habits switch, times… (2026-10-12: offline it fell back to a Monday week)
 function mirrorSettings(s) {
@@ -4077,7 +4077,6 @@ refreshCalStatus();
 async function saveSetting(patch) {
   S.settings = await api('PATCH', '/api/settings', patch);
   mirrorSettings(S.settings);
-  GRACE_MS = S.settings.undoSeconds * 1000;
   renderMain(); toast('Saved');
 }
 // Settings → About → Licenses: the app's own licenses and the third-party notices (public/licenses.txt, also in the iPhone app)
@@ -4096,67 +4095,107 @@ function settingsHtml() {
   const notif = !p.supported ? '<span class="set-note">Not available here — on iPhone, open the app from the Home Screen.</span>'
     : `${seg('set-notif', p.on ? 'on' : 'off', [['off', 'Off'], ['on', 'On']])}${p.on ? ' <button class="linkbtn" data-act="notif-test">Send a test</button>' : ''}`;
   const local = !!S.data?.local, g = (t) => `<h2 class="set-g">${t}</h2>`;
+  // Each setting lives where it applies: this device (theme, its notifications; the iPhone app's own), you (the same on every
+  // device), your Mac (model, voice, agents, calendar, Google, pairing — shown on a computer; a phone gets one line about it)
+  const native = !!window.gubernosNative, phone = native || /iPhone|iPod|Android.+Mobile/.test(navigator.userAgent);
   return `<div class="page settings"><div class="page-h"><h1>Settings</h1>${pomoLiveHtml() ? `<div class="tools">${pomoLiveHtml()}</div>` : ''}${MENU_BTN}</div>
+    ${g(native ? 'This iPhone' : 'This device')}
+    <div class="set-row"><div class="set-l">Theme</div>${seg('set-theme', currentTheme(), [['system', 'Auto'], ['light', 'Light'], ['dark', 'Dark']])}</div>
+    ${native ? nativeSettingsHtml() : `<div class="set-row"><div class="set-l">Notifications<small>reminders, morning digest, agents</small></div><div>${notif}</div></div>`}
     ${g('General')}
-    <div class="set-row"><div class="set-l">Theme<small>this device</small></div>${seg('set-theme', currentTheme(), [['system', 'Auto'], ['light', 'Light'], ['dark', 'Dark']])}</div>
     <div class="set-row"><div class="set-l">Colours<small>all your devices</small></div><span class="pal-pick">${PALETTES.map(([name, bg, hub], i) => `<button data-act="set-palette" data-val="${i}" class="pal-sw ${(st.palette || 0) === i ? 'on' : ''}" style="--tile-bg:${bg};--tile-fg:#fff;--tile-hub:${hub}" title="${name}" aria-label="Colours: ${name}">${LOGO}<span>${name}</span></button>`).join('')}</span></div>
     <div class="set-row"><div class="set-l">Time format<small>how times show everywhere in the app</small></div><span data-noclock>${seg('set-clock', st.clock === '12h' ? '12h' : '24h', [['24h', '24h · 16:30'], ['12h', 'am / pm · 4:30pm']])}</span></div>
     <div class="set-row"><div class="set-l">Week starts on<small>this week’s wins, the weekly review, habits this week, sprints this week</small></div>${seg('set-week-start', st.weekStart === 'sunday' ? 'sunday' : 'monday', [['sunday', 'Sunday'], ['monday', 'Monday']])}</div>
     <div class="set-row"><div class="set-l">Focus sprint<small>its length by default; the Focus screen changes it for one sprint · break: a fifth, at least 5 min</small></div><span class="set-btns">${seg('set-sprint', [15, 25, 30, 50, 60].includes(st.sprintMinutes || 25) ? st.sprintMinutes || 25 : 'x', [...[15, 25, 30, 50, 60].map((m) => [m, `${m}`]), ['x', [15, 25, 30, 50, 60].includes(st.sprintMinutes || 25) ? 'Other' : `${st.sprintMinutes} min`]])}</span></div>
-    <div class="set-row"><div class="set-l">Undo window<small>complete, drop, reschedule</small></div>${seg('set-undo', st.undoSeconds, [[3, '3 s'], [5, '5 s'], [10, '10 s']])}</div>
-    ${g('Today')}
+    ${g('Your day')}
     <div class="set-row"><div class="set-l">Focus view<small>Today shows only the #1 and your tasks for today, each a tap from Focus · also the toggle at the top of Today</small></div>${seg('set-simple', st.simple ? 'on' : 'off', [['off', 'Off'], ['on', 'On']])}</div>
-    ${local ? '' : macFocusHtml()}
     ${timeRow('Lunch', 'Plan the day keeps it free — at this time, or the nearest free slot within an hour of it. A “Lunch” event in your calendar counts instead. For one day: Move or Skip today on its row in Plan the day', 'lunchAt', '12:00', () => seg('set-lunch-min', st.lunchMinutes || 60, [[30, '30m'], [45, '45m'], [60, '1h'], [90, '1.5h']]))}
-    ${local ? '' : calendarSourceHtml()}
-    ${calendarsHtml()}
-    ${g('Daily rhythm')}
     <div class="set-row"><div class="set-l">Morning digest<small>due today, overdue, to review</small></div>
       <div class="set-digest">${seg('set-digest-off', st.digestAt ? 'on' : 'off', [['off', 'Off'], ['on', 'On']])}${st.digestAt ? `<input type="time" id="set-digest" value="${esc(st.digestAt)}" step="300">` : ''}</div></div>
     ${timeRow('Evening check-in', 'what’s left today → move it', 'eveningAt', '19:00')}
-    ${timeRow('Daily reflection', 'three short answers about the day', 'reflectionAt', '22:00')}
-    <div class="set-row"><div class="set-l">Reflection format<small>E-S-P: effort, success, progress · Journal: went well, needs work, tomorrow</small></div>${seg('set-reflect-format', st.reflectionFormat || 'esp', [['esp', 'E-S-P'], ['journal', 'Journal']])}</div>
-    ${g('Habits')}
+    ${timeRow('Daily reflection', 'three short answers about the day · E-S-P: effort, success, progress · Journal: went well, needs work, tomorrow', 'reflectionAt', '22:00', () => seg('set-reflect-format', st.reflectionFormat || 'esp', [['esp', 'E-S-P'], ['journal', 'Journal']]))}
     <div class="set-row"><div class="set-l">Habits<small>daily check-ins and the AM / PM protocols on the Day screen, their reminders; off = Plan the day uses profile.md’s workday</small></div>${seg('set-habits', st.habits === false ? 'off' : 'on', [['off', 'Off'], ['on', 'On']])}</div>
     ${st.habits === false ? '' : offWorkHtml()}
-    ${g('Notifications')}
-    <div class="set-row"><div class="set-l">On this device<small>reminders, morning digest, agents</small></div><div>${notif}</div></div>
-    <div class="set-row"><div class="set-l">Reminder pushes from the Mac<small>off if the iPhone app reminds you (no doubles)</small></div>${seg('set-reminder-push', st.reminderPush === false ? 'off' : 'on', [['off', 'Off'], ['on', 'On']])}</div>
-    <div class="set-row"><div class="set-l">Morning &amp; evening pushes from the Mac<small>off if the iPhone app sends them (no doubles)</small></div>${seg('set-checkin-push', st.checkinPush === false ? 'off' : 'on', [['off', 'Off'], ['on', 'On']])}</div>
-    ${ME().feedbackRemote ? `<div class="set-row"><div class="set-l">Pushes through the relay<small>this Mac sends pushes to the iPhone app (agent finished, reminders…) through relay.gubernos.app, which signs them for Apple: the alert's text passes through, nothing is stored. Off = no pushes from this Mac</small></div>${seg('set-relay-push', st.relayPush === false ? 'off' : 'on', [['off', 'Off'], ['on', 'On']])}</div>` : ''}
-    ${g('Agents')}
-    ${local ? '' : modelSettingsHtml()}
-    ${local ? '' : voiceSettingsHtml()}
+    ${g('Your Mac')}
+    ${local ? '<div class="set-row"><div class="set-l">Your Mac<small>not reachable now: the phone works from its copy of your files. Model, calendar, Google and pairing are set on the Mac</small></div></div>'
+      : phone ? macSummaryHtml() : `${modelSettingsHtml()}
+    ${voiceSettingsHtml()}
     ${agentsSettingsHtml()}
-    ${g('Connections')}
-    <div class="set-row"><div class="set-l">Google<small>calendar for Plan the day; mail, contacts, docs for agents</small></div><div class="set-note">${googleNote()}</div></div>
-    ${local ? '' : '<div class="set-row"><div class="set-l">Connect your iPhone<small>the app from TestFlight, then the pairing code: a few minutes, step by step</small></div><a class="btn" href="#/phone">Open</a></div>'}
-    ${local ? '' : pairHtml()}
-    ${window.gubernosNative ? '<div class="set-row"><div class="set-l">iPhone app<small>Mac address, system folder in iCloud</small></div><button class="btn" data-act="native-settings">Open</button></div>' : ''}
-    <div class="set-row"><div class="set-l">Profile<small>profile.md in the vault</small></div><div class="set-note">${esc(ME().name)} · ${esc(ME().categories.join(', '))}${ME().assistant ? ` · assistant ${esc(ME().assistant.name)}` : ''}</div></div>
+    ${calendarHtml()}
+    <div class="set-row"><div class="set-l">Google<small>mail, contacts and docs for agents${S.gstatus?.source === 'google' ? ', and your calendar' : ''}</small></div><div class="set-note">${googleNote()}</div></div>
+    ${macFocusHtml()}
+    ${devicesHtml()}
+    ${ME().feedbackRemote ? `<div class="set-row"><div class="set-l">Pushes through the relay<small>this Mac sends pushes to the iPhone app (agent finished, reminders…) through relay.gubernos.app, which signs them for Apple: the alert's text passes through, nothing is stored. Off = no pushes from this Mac</small></div>${seg('set-relay-push', st.relayPush === false ? 'off' : 'on', [['off', 'Off'], ['on', 'On']])}</div>` : ''}`}
     ${g('About')}
-    <div class="set-row"><div class="set-l">Screen explanations<small>the line each screen shows the first time you open it</small></div><span class="set-btns"><button class="btn" data-intro-again>Show them again</button></span></div>
-    <div class="set-row"><div class="set-l">How it works<small>the personal OS, its loops and where your data lives</small></div><span class="set-btns"><button class="btn" data-act="tour">Tour</button><a class="btn" href="#/how">Open</a></span></div>
-    <div class="set-row"><div class="set-l">${esc(APP_NAME)}<small>open source: the app under MIT, the method under CC BY 4.0</small></div><button class="btn" data-act="licenses">Licenses</button></div>
+    <div class="set-row"><div class="set-l">How it works<small>the personal OS, its loops and where your data lives · the line each screen shows the first time you open it</small></div><span class="set-btns"><button class="btn" data-act="tour">Tour</button><a class="btn" href="#/how">Open</a><button class="btn" data-intro-again>Screen tips again</button></span></div>
+    <div class="set-row"><div class="set-l">${esc(APP_NAME)}${native ? ` ${esc(window.gubernosNative.version || '')}` : ''}<small>open source: the app under MIT, the method under CC BY 4.0</small></div><button class="btn" data-act="licenses">Licenses</button></div>
   </div>`;
 }
-// Settings → Connections → Pair a device (lib/pair.js): a QR code the iPhone's camera opens in the app
-// (gubernos://pair?url=…&token=…), a link for another browser, and — on the Mac only — whether pairing is required and a
-// new code that unpairs every device.
+// Settings on a phone: the Mac's own settings aren't changed from here — one line says what the Mac uses
+function macSummaryHtml() {
+  const a = S.ai ?? (modelSettingsHtml(), null), g = S.gstatus;
+  const model = a?.list?.find((x) => x.id === a.current)?.name;
+  const cal = g ? (g.source === 'macos' ? 'the Mac’s calendars' : 'Google Calendar') : '';
+  const bits = [model && `model ${esc(model)}`, cal && `calendar: ${cal}`].filter(Boolean).join(' · ');
+  return `<div class="set-row"><div class="set-l">Your Mac<small>connected${bits ? ` · ${bits}` : ''} · the model, voice, agents, calendar, Google and pairing are set on the Mac itself</small></div></div>`;
+}
+// Settings → This iPhone (the iPhone app, gubernos-ios WebView.swift ops "native" / "setNative"): its own notifications,
+// voice without the Mac, and the connection (Mac address, files when the Mac is away) in the app's own sheet. An app from
+// before that (no gubernosNative.settings) only has the sheet.
+S.native = null;
+function nativeSettingsHtml() {
+  const h = window.webkit?.messageHandlers?.gubernos;
+  const sheet = (label, hint) => `<div class="set-row"><div class="set-l">${label}<small>${hint}</small></div><button class="btn" data-act="native-settings">Change…</button></div>`;
+  if (!window.gubernosNative?.settings || !h) return sheet('iPhone app', 'Mac address, your files when the Mac is away, notifications, voice without the Mac');
+  if (!S.native) { if (S.native !== false) { S.native = false; h.postMessage({ op: 'native' }).then((n) => { S.native = n; if (S.view === 'settings') renderMain(); }).catch(() => {}); } return ''; }
+  const n = S.native;
+  const sw = (key, label, hint) => `<div class="set-row"><div class="set-l">${label}<small>${hint}</small></div><span class="seg">${[['off', 'Off'], ['on', 'On']].map(([v, l]) => `<button data-act="set-native" data-key="${key}" data-val="${v}" class="${(n[key] ? 'on' : 'off') === v ? 'on' : ''}">${l}</button>`).join('')}</span></div>`;
+  const where = n.mac ? `${esc(n.mac.replace(/^https?:\/\//, ''))}${n.paired ? ' · paired ✓' : ''}` : 'no Mac yet';
+  return `${sheet('Mac', `${where} · without the Mac: ${n.folder ? `the folder ${esc(n.folder)}` : 'a copy of your files'}`)}
+    ${sw('reminders', 'Reminders', 'ring from the phone itself, even without the Mac or network')}
+    ${sw('checkins', 'Morning plan &amp; evening check-in', 'the digest, the evening check-in, the reflection and your protocols, from the phone')}
+    ${sw('agents', 'Agent finished or blocked', 'when iOS lets the app look at the Mac in the background: minutes to hours later, not instantly')}
+    <div class="set-row"><div class="set-l">Voice without the Mac<small>the iPhone’s own speech recognition needs one language; with the Mac, voice understands any</small></div>
+      <select id="set-native-lang" class="pm-select set-select">${(n.languages || []).map((l) => `<option value="${esc(l.id)}" ${l.id === n.language ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></div>`;
+}
+// the iPhone app's sheet closed (Mac address, folder): read its settings again
+window.gubernosNativeChanged = () => { S.native = null; if (S.view === 'settings') renderMain(); };
+document.addEventListener('change', (e) => {
+  if (e.target.id !== 'set-native-lang') return;
+  window.webkit?.messageHandlers?.gubernos?.postMessage({ op: 'setNative', key: 'language', value: e.target.value }).then((n) => { S.native = n; toast('Saved'); }).catch((err) => toast(err.message));
+});
+// Settings → Your Mac → Calendar: one source — this Mac's calendars (Calendar.app, every account added there; one Allow) or
+// Google's (its own sign-in); its connection and which calendars count are right here (lib/calendar.js)
+function calendarHtml() {
+  const g = S.gstatus;
+  if (!g) return '';
+  const onMac = ['127.0.0.1', 'localhost'].includes(location.hostname), mac = g.macAccess;
+  const state = g.source === 'macos'
+    ? (mac === 'full' ? 'allowed' : mac === 'notDetermined'
+      ? (onMac ? '<button class="linkbtn" data-act="set-maccal-allow">Allow access</button> (a macOS dialog)' : 'allow access on the Mac itself: Settings → Your Mac → Calendar')
+      : `<span class="d-over">${esc(MAC_CAL_NOTE[mac] || String(mac))}</span>`)
+    : g.googleCalendar ? 'connected' : !g.configured ? 'Google isn’t set up: see <code>docs/google.md</code> in the app folder'
+      : onMac ? '<a href="/api/gcal/connect">Sign in with Google</a>' : `sign in on the Mac: 127.0.0.1:${location.port || 4747}/api/gcal/connect`;
+  return `<div class="set-row set-cal"><div class="set-l">Calendar<small>where Plan the day sees your meetings and puts time blocks: this Mac’s calendars (every account in Calendar.app) or your Google calendar · ${state}</small>${calendarsHtml()}</div>
+    <span class="seg">${[['macos', 'This Mac'], ['google', 'Google']].map(([v, l]) => `<button data-act="set-calsrc" data-val="${v}" class="${g.source === v ? 'on' : ''}">${l}</button>`).join('')}</span></div>`;
+}
+// Settings → Your Mac → iPhone and other devices (lib/pair.js): Connect your iPhone (#/phone, step by step), the pairing code —
+// a QR code the iPhone's camera opens in the app (gubernos://pair?url=…&token=…) and a link for another browser — and, on
+// the Mac only, whether pairing is required and a new code that unpairs every device.
 S.pair = null; S.pairShow = false;
-function pairHtml() {
+function devicesHtml() {
   const p = S.pair;
   if (!p) { if (p !== false) { S.pair = false; api('GET', '/api/pair').then((x) => { S.pair = x; if (S.view === 'settings') renderMain(); }).catch(() => {}); } return ''; }
+  const connect = '<a class="btn" href="#/phone">Connect your iPhone</a>';
+  if (!p.publicUrl) return `<div class="set-row"><div class="set-l">iPhone and other devices<small>the iPhone app from TestFlight, then the pairing code: a few minutes, step by step</small></div><span class="set-btns">${connect}</span></div>`;
   const seg = (act, cur, opts, dis) => `<span class="seg">${opts.map(([v, l]) => `<button data-act="${act}" data-val="${v}" class="${String(cur) === String(v) ? 'on' : ''}"${dis ? ' disabled' : ''}>${l}</button>`).join('')}</span>`;
-  if (!p.publicUrl) return `<div class="set-row"><div class="set-l">Pair a device<small>phone access isn’t set up on this Mac yet: in the app’s folder run <code>scripts/setup.sh phone</code> (an https address through Cloudflare)</small></div></div>`;
   const code = S.pairShow ? `<div class="pair-box"><div class="pair-qr">${pairQr()}</div>
       <div class="set-note"><b>iPhone:</b> point the Camera at the code → Open in ${esc(APP_NAME)}.<br><b>Another browser</b> (an iPad, a second Mac): open this link there once —
       <button class="linkbtn" data-act="set-pair-copy">Copy link</button></div></div>` : '';
-  return `<div class="set-row"><div class="set-l">Pair a device<small>a phone or another computer reaches this Mac through ${esc(p.publicUrl.replace(/^https?:\/\//, ''))} once it has the code</small>${code}</div>
-      <button class="btn" data-act="set-pair-show">${S.pairShow ? 'Hide' : 'Show code'}</button></div>
-    <div class="set-row"><div class="set-l">Require pairing<small>${p.local ? 'on: only paired devices get in (the Mac itself always does) · off: anyone who reaches this address' : 'changed on the Mac itself'}</small>
-      ${p.local ? '<div class="set-mf"><button class="linkbtn" data-act="set-pair-rotate">New code — unpairs every device</button></div>' : ''}</div>
-      ${seg('set-pair-required', p.required ? 'on' : 'off', [['off', 'Off'], ['on', 'On']], !p.local)}</div>`;
+  const require = `<div class="set-mf">Only paired devices get in ${seg('set-pair-required', p.required ? 'on' : 'off', [['off', 'Off'], ['on', 'On']], !p.local)}
+      ${p.local ? ' · <button class="linkbtn" data-act="set-pair-rotate">New code — unpairs every device</button>' : ' · changed on the Mac itself'}<br><small>off: anyone who reaches this address · the Mac itself always gets in</small></div>`;
+  return `<div class="set-row"><div class="set-l">iPhone and other devices<small>they reach this Mac through ${esc(p.publicUrl.replace(/^https?:\/\//, ''))} once they have the code</small>${code}${require}</div>
+      <span class="set-btns">${connect}<button class="btn" data-act="set-pair-show">${S.pairShow ? 'Hide code' : 'Show code'}</button></span></div>`;
 }
 // a QR code as SVG (public/vendor/qrcode.js, loaded the first time one is shown, then the page is drawn again)
 function qrSvg(text) {
@@ -4206,7 +4245,7 @@ async function onboardSend() {
 // a long answer survives the page redrawing itself while the agent or anything else writes to the vault
 document.addEventListener('input', (e) => { if (e.target.id === 'ob-msg') S.onboardDraft = e.target.value; });
 // #/phone, on the Mac: get the iPhone app (TestFlight), connect it (the pairing code), ✓ when it has reached the Mac.
-// The setup agent opens it (SETUP.md → iPhone); Settings → Connections → Connect your iPhone.
+// The setup agent opens it (SETUP.md → iPhone); Settings → Your Mac → iPhone and other devices → Connect your iPhone.
 const TESTFLIGHT = 'https://testflight.apple.com/join/rBUGmgJG';
 function phoneHtml() {
   const p = S.pair;
@@ -4238,7 +4277,7 @@ function phonePoll() {
     try { const x = await api('GET', '/api/pair'); const changed = x.seenAt !== S.pair?.seenAt || x.publicUrl !== S.pair?.publicUrl; S.pair = x; if (changed && S.view === 'phone') renderMain(); else phonePoll(); } catch { phonePoll(); }
   }, 3000);
 }
-// Settings → Today → Mac Focus: the Mac's Focus follows the Focus view, through two Shortcuts made once (lib/macfocus.js)
+// Settings → Your Mac → Mac Focus: the Mac's Focus follows the Focus view, through two Shortcuts made once (lib/macfocus.js)
 S.macFocus = null;
 function macFocusHtml() {
   const m = S.macFocus, st = S.settings;
@@ -4268,7 +4307,7 @@ function offWorkHtml() {
   return `<div class="set-row"><div class="set-l">Off work<small>${hint}</small></div><div class="set-owp">${now}${ahead}${form}</div></div>`;
 }
 
-// Settings → Agents: who a task can go to — the name, how it starts, shown in the task's picker or not. Built-ins can be
+// Settings → Your Mac → Agents: who a task can go to — the name, how it starts, shown in the task's picker or not. Built-ins can be
 // renamed or hidden; your own ones added and removed (lib/settings.js agentList).
 function agentsSettingsHtml() {
   const runs = [['claude', 'Claude Code, run here'], ['codex', 'Codex, run here'], ['queue', 'Takes its own queue']];
@@ -4281,7 +4320,7 @@ function agentsSettingsHtml() {
   return `<div class="set-row set-agents"><div class="set-l">Agents<small>who a task can go to: the name, how it starts (▶ Run), shown in the task’s picker. Run here = Claude Code / Codex on this Mac; own queue = an assistant or a session takes it</small></div>
     <div class="ag-list">${rows}<div class="ag-row"><input id="ag-new" placeholder="New agent’s name"><button class="btn" data-act="set-ag-add">+ Add</button></div></div></div>`;
 }
-// Settings → Agents → Model: the model behind triage, voice, chat and ▶ Run — one of the CLIs on this Mac (lib/llm.js)
+// Settings → Your Mac → Model: the model behind triage, voice, chat and ▶ Run — one of the CLIs on this Mac (lib/llm.js)
 S.ai = null;
 function modelSettingsHtml() {
   if (!S.ai) { if (S.ai !== false) { S.ai = false; api('GET', '/api/ai').then((a) => { S.ai = a; if (S.view === 'settings') renderMain(); }).catch(() => {}); } return ''; }
@@ -4315,26 +4354,15 @@ function googleNote() {
   const link = local ? `<a href="/api/gcal/connect">${label}</a>` : `${label} on the Mac: 127.0.0.1:${location.port || 4747}/api/gcal/connect`;
   return `${on.length ? `Connected: ${on.join(', ')}` : 'Not connected'} · ${link}${on.length ? ' · <button class="linkbtn" data-act="google-disconnect">Disconnect</button>' : unverified}`;
 }
-// Settings → Calendar: where Plan the day reads meetings and puts time blocks — the Mac's own calendars (Calendar.app:
-// whatever accounts are added there, one Allow) or Google's (its own sign-in, Settings → Google). lib/calendar.js
+// Settings → Your Mac → Calendar: where Plan the day reads meetings and puts time blocks — the Mac's own calendars (Calendar.app:
+// whatever accounts are added there, one Allow) or Google's (its own sign-in, Settings → Your Mac → Google). lib/calendar.js
 const MAC_CAL_NOTE = {
   notDetermined: 'Gubernos needs your permission to read your calendars and add the time blocks you approve.',
   denied: 'Access was turned off: System Settings → Privacy & Security → Calendars → Gubernos Calendar → Full Access.',
   restricted: 'Calendar access is restricted on this Mac (Screen Time or a profile).',
   writeOnly: 'Gubernos can only add events, not read them: System Settings → Privacy & Security → Calendars → Gubernos Calendar → Full Access.',
 };
-function calendarSourceHtml() {
-  const g = S.gstatus;
-  if (!g) return '';
-  const local = ['127.0.0.1', 'localhost'].includes(location.hostname), mac = g.macAccess;
-  const macNote = g.source !== 'macos' ? '' : mac === 'full' ? ' · allowed' : mac === 'notDetermined'
-    ? ` · ${local ? '<button class="linkbtn" data-act="set-maccal-allow">Allow access</button> (a macOS dialog)' : 'Allow on the Mac: Settings → Calendar'}`
-    : ` · <span class="d-over">${esc(MAC_CAL_NOTE[mac] || String(mac))}</span>`;
-  const googleNote = g.source !== 'google' ? '' : g.googleCalendar ? ' · connected' : ' · not connected (Settings → Google)';
-  return `<div class="set-row"><div class="set-l">Calendar<small>where Plan the day sees your meetings and puts time blocks: this Mac’s calendars (every account in Calendar.app) or Google directly${macNote}${googleNote}</small></div>
-    <span class="seg">${[['macos', 'This Mac'], ['google', 'Google']].map(([v, l]) => `<button data-act="set-calsrc" data-val="${v}" class="${g.source === v ? 'on' : ''}">${l}</button>`).join('')}</span></div>`;
-}
-// Settings → Calendars: which calendars Plan the day reads for meetings, and (the Mac's) which one gets the time blocks
+// Settings → Your Mac → Calendar: which calendars Plan the day reads for meetings, and (the Mac's) which one gets the time blocks
 // (GET /api/gcal/calendars; settings.calendars for Google, macCalendars / macCalendar for the Mac's).
 S.gcals = null;
 function calendarsHtml() {
@@ -4342,8 +4370,7 @@ function calendarsHtml() {
   if (!S.gcals) { if (S.gcals !== false) { S.gcals = false; api('GET', '/api/gcal/calendars').then((l) => { S.gcals = l; if (S.view === 'settings') renderMain(); }).catch(() => {}); } return ''; }
   const mac = S.gstatus.source === 'macos';
   const main = mac ? `<label class="set-cal-main">Time blocks go to <select data-calmain>${S.gcals.filter((c) => c.writable).map((c) => `<option value="${esc(c.id)}"${c.primary ? ' selected' : ''}>${esc(c.name)}${c.account ? ` · ${esc(c.account)}` : ''}</option>`).join('')}</select></label>` : '';
-  return `<div class="set-row"><div class="set-l">Calendars<small>whose meetings Plan the day keeps free · events marked “free” and declined ones don’t count · time blocks go to the main one</small></div>
-    <div class="set-cals">${main}${S.gcals.map((c) => `<label><input type="checkbox" data-cal="${esc(c.id)}"${c.on ? ' checked' : ''}${c.primary ? ' disabled' : ''}> ${esc(c.name)}${mac && c.account ? ` <small>${esc(c.account)}</small>` : ''}${c.primary ? ' <small>main</small>' : ''}</label>`).join('')}</div></div>`;
+  return `<div class="set-cals"><small>whose meetings count · events marked “free” and declined ones don’t · time blocks go to the main one</small>${main}${S.gcals.map((c) => `<label><input type="checkbox" data-cal="${esc(c.id)}"${c.on ? ' checked' : ''}${c.primary ? ' disabled' : ''}> ${esc(c.name)}${mac && c.account ? ` <small>${esc(c.account)}</small>` : ''}${c.primary ? ' <small>main</small>' : ''}</label>`).join('')}</div>`;
 }
 const calsChanged = () => { S.planInfoAt = 0; S.planFree = null; S.gcals = null; renderMain(); };
 document.addEventListener('change', (e) => {
@@ -4368,7 +4395,6 @@ document.addEventListener('click', (e) => {
   if (b.dataset.act === 'set-maccal-allow') { toast('Look for the macOS dialog — Allow full access'); return api('POST', '/api/calendar/mac/access').then(refreshCalStatus, (err) => toast(err.message)); }
   if (b.dataset.act === 'set-notif') { if ((v === 'on') !== !!S.push.on) toggleNotifications(); return; }
   if (b.dataset.act === 'set-digest-off') return saveSetting({ digestAt: v === 'on' ? '08:30' : '' });
-  if (b.dataset.act === 'set-undo') return saveSetting({ undoSeconds: +v });
   if (b.dataset.act === 'set-sprint') {
     if (v !== 'x') return saveSetting({ sprintMinutes: +v }).then(() => { if (!pomoActive()) { pomoFresh(); savePomo(); } });
     const row = b.closest('.set-row').querySelector('.set-btns');
@@ -4378,8 +4404,7 @@ document.addEventListener('click', (e) => {
     return;
   }
   if (b.dataset.act === 'set-lunch-min') return saveSetting({ lunchMinutes: +v }).then(() => { S.planInfoAt = 0; });
-  if (b.dataset.act === 'set-reminder-push') return saveSetting({ reminderPush: v === 'on' });
-  if (b.dataset.act === 'set-checkin-push') return saveSetting({ checkinPush: v === 'on' });
+  if (b.dataset.act === 'set-native') return window.webkit?.messageHandlers?.gubernos?.postMessage({ op: 'setNative', key: b.dataset.key, value: v === 'on' }).then((n) => { S.native = n; renderMain(); toast('Saved'); }).catch((err) => toast(err.message));
   if (b.dataset.act === 'set-relay-push') return saveSetting({ relayPush: v === 'on' });
   if (b.dataset.act === 'set-time-off') return saveSetting({ [b.dataset.key]: v === 'on' ? b.dataset.def : '' });
   if (b.dataset.act === 'set-reflect-format') return saveSetting({ reflectionFormat: v });
@@ -5371,7 +5396,7 @@ async function timeblockModal(t, preset = {}) {
   const st = await api('GET', '/api/gcal/status');
   const shell = (inner) => { $('#modal').innerHTML = `<div class="overlay" data-act="qa-close"><div class="qa tb"><div class="bd-h">⏱ Block time · ${st.source === 'macos' ? 'Calendar' : 'Google Calendar'}</div><div class="bd-t">${inline(t.title)}</div><div id="tb-body">${inner}</div></div></div>`; };
   if (!st.connected) {
-    if (st.source === 'macos') return shell(`<p class="tb-setup">${MAC_CAL_NOTE[st.macAccess] || 'Your calendar isn’t reachable right now.'}</p><p class="tb-setup">Settings → Calendar.</p><div class="foot"><span class="sp"></span><button class="btn" data-act="qa-close">Close</button></div>`);
+    if (st.source === 'macos') return shell(`<p class="tb-setup">${MAC_CAL_NOTE[st.macAccess] || 'Your calendar isn’t reachable right now.'}</p><p class="tb-setup">Settings → Your Mac → Calendar.</p><div class="foot"><span class="sp"></span><button class="btn" data-act="qa-close">Close</button></div>`);
     return shell(`<p class="tb-setup">Google Calendar isn't connected yet.</p>
       <ol class="tb-setup">${st.configured ? '' : `<li>Put the Google OAuth client JSON at <code>${esc(st.setupFile)}</code> (see docs/google.md).</li>`}
       <li>On the Mac, open <code>http://127.0.0.1:4747/api/gcal/connect</code> and allow access.</li></ol>

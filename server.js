@@ -126,7 +126,7 @@ route('POST', '/api/voice/parse', (_, __, b) => interpret(String(b.text || ''), 
 route('POST', '/api/tasks/:id/breakdown', ({ id }) => breakdown(id));
 route('POST', '/api/focus/why', (_, __, b) => why(String(b.taskId || ''), Array.isArray(b.candidateIds) ? b.candidateIds : []));
 // Calendar time-blocking, the Mac's calendars or Google's (lib/calendar.js; events only after the UI's confirm step).
-route('GET', '/api/ai', () => AI.providers()); // the model behind the app (Settings → Agents → Model): lib/llm.js
+route('GET', '/api/ai', () => AI.providers()); // the model behind the app (Settings → Your Mac → Model): lib/llm.js
 route('GET', '/api/gcal/status', () => Cal.status());
 route('POST', '/api/gcal/disconnect', () => G.disconnect());
 route('POST', '/api/calendar/mac/access', async () => { const access = await Cal.requestMacAccess(); Plan.forgetFree(); return { access }; }); // the system dialog, on the Mac's screen

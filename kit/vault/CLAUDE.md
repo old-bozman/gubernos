@@ -72,7 +72,7 @@ checklist: true | null               # a list to tick off (shopping, packing): t
 ---
 ```
 
-Task bodies may contain a `## Time blocks` section written by Gubernos: lines like `- ⏱ 2026-09-25 10:00–10:50 · label <!-- gcal:EVENT_ID -->` link calendar events (the Mac's Calendar or Google Calendar, Gubernos → Settings → Calendar). Keep the `gcal:` markers intact; remove a block through the app so the event is deleted too.
+Task bodies may contain a `## Time blocks` section written by Gubernos: lines like `- ⏱ 2026-09-25 10:00–10:50 · label <!-- gcal:EVENT_ID -->` link calendar events (the Mac's Calendar or Google Calendar, Gubernos → Settings → Your Mac → Calendar). Keep the `gcal:` markers intact; remove a block through the app so the event is deleted too.
 A `## Attachments` section lists files added from the app (`- ![[20260926-receipt.png]]`); the files live in `40_reference/attachments/YYYY-MM/`.
 A `## Chat` section holds the owner's conversation with the app's agent about the task (`- YYYY-MM-DD HH:MM · <owner id>|claude · text`; the owner id is their first name in lowercase); append-only.
 A checklist task (`checklist: true`) keeps its items in `## Subtasks`; the app lists open items first, takes a pasted list (numbered or bulleted lines → items) and, when it is completed with items left, can move those into a new checklist. Checklist templates live in `91_templates/checklists/<slug>.md` (`type: checklist-template`, `title`, the items as `- [ ]` lines); the owner saves one from a checklist in the app and starts new lists from it (Add task → ☑ List).
@@ -123,7 +123,7 @@ The layer above projects: what the owner is responsible for, committed to, wants
   decisions/          # open and parked decisions (the queue)
   issues/             # problems with an unclear resolution (only when needed)
   people/             # family, friends, then people who show up in the work
-  habits/             # repeated behaviour the owner installs (or quits), checked daily in Gubernos (optional: Settings → Habits)
+  habits/             # repeated behaviour the owner installs (or quits), checked daily in Gubernos (optional: Settings → Your day → Habits)
   protocols/          # ordered sets of habits in a time window: am, pm (they frame the day)
 ```
 

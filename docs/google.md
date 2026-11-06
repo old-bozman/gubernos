@@ -1,17 +1,17 @@
 # Connecting Google (optional)
 
 **You don't need this for the calendar.** Plan the day uses the calendars in your Mac's Calendar app (iCloud, Google,
-Exchange… any account added there): Settings → Calendar → This Mac → Allow access. Connect Google only for what the Mac
-can't give: agents reading **Gmail**, **Contacts** and **Drive**, or Google Calendar read directly (Settings → Calendar →
+Exchange… any account added there): Settings → Your Mac → Calendar → This Mac → Allow access. Connect Google only for what the Mac
+can't give: agents reading **Gmail**, **Contacts** and **Drive**, or Google Calendar read directly (Settings → Your Mac → Calendar →
 Google) — e.g. calendars shared into your Google account that you haven't added to the Calendar app.
 
 What it gives: **Calendar** — Plan the day sees your meetings and free time, tasks get time blocks as calendar events; **Gmail** — agents can read mail a task depends on, the app drafts replies you send from a confirmation card; **Contacts** and **Drive** — agents can look up an address or read a document a task refers to. Agents only read; nothing is sent or created without your tap.
 
-Several calendars: Plan the day reads the main calendar, plus the ones ticked in **Settings → Google → Calendars** (a work calendar shared into this account, a family one…). Their events marked "free" and declined invitations don't take time; time blocks are always written to the main calendar.
+Several calendars: Plan the day reads the main calendar, plus the ones ticked in **Settings → Your Mac → Calendar** (a work calendar shared into this account, a family one…). Their events marked "free" and declined invitations don't take time; time blocks are always written to the main calendar.
 
 ## Sign in with Google
 
-On the Mac, open Gubernos → Settings → Google → **Sign in with Google**, pick your account and allow what you want. That's all.
+On the Mac, open Gubernos → Settings → Your Mac → Google → **Sign in with Google**, pick your account and allow what you want. That's all.
 
 Gubernos is in beta and Google hasn't verified it yet, so Google first shows "Google hasn't verified this app": click **Advanced → Go to Gubernos**. Until it's verified, Google lets at most 100 people sign in to it in total. The connection stays: it doesn't expire after a week.
 
@@ -70,10 +70,10 @@ The console won't publish an app until Branding, Audience, Data access **and a c
 
 On the Mac, open http://127.0.0.1:4747/api/gcal/connect (the port from your setup), pick the account and allow access. Untick anything you don't want: the app works with what you grant and shows "not granted — re-connect" where something is missing. To add a permission later, or after the connection expired, open the same link again.
 
-Check: the app's Settings → Google, or `curl -s http://127.0.0.1:4747/api/gcal/status`. When Google expires or revokes the connection the app notices within a day, shows **Expired** in Settings and sends a push.
+Check: the app's Settings → Your Mac → Google, or `curl -s http://127.0.0.1:4747/api/gcal/status`. When Google expires or revokes the connection the app notices within a day, shows **Expired** in Settings and sends a push.
 
 ## Removing access
 
-Settings → Google → **Disconnect**: it revokes the access at Google and deletes the token on this Mac.
+Settings → Your Mac → Google → **Disconnect**: it revokes the access at Google and deletes the token on this Mac.
 
 By hand: https://myaccount.google.com/permissions → Gubernos (or the name you gave it) → Remove access, and delete `~/.config/gubernos/google_calendar_token.json`.

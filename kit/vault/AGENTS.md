@@ -129,7 +129,7 @@ When picking up a task with `assigned: agent`:
 **Which agent** (`agent:` on the task; set in Gubernos or with `@claude` / `@codex` / `@<assistant>` in quick add):
 - `claude`, `codex` → run from Gubernos with that model's CLI on the Mac (Claude Code; `codex exec`, writes only inside the vault), or a session of that agent opened in the vault takes every task with its name and `agent_state: queued` when told "take my <name> tasks";
 - `<assistant>` (the name in `profile.md`, lowercase) → the assistant picks it up from its queue on its own schedule;
-- empty → any agent; nobody starts it until the owner does (the app runs it with its model: Settings → Agents → Model) or tells an agent to.
+- empty → any agent; nobody starts it until the owner does (the app runs it with its model: Settings → Your Mac → Model) or tells an agent to.
 Other agents leave a task alone when `agent:` names someone else.
 
 `agent_state` lifecycle: `queued → running → review → (accepted → assigned: me) | done`, with `blocked` and send-back returning to `queued`. Missing `agent_state` on an agent task = `queued`. Gubernos is the review surface for this loop; its README documents the HTTP API other agents can use.

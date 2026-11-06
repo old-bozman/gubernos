@@ -16,7 +16,7 @@ Single developer + agents; other people install it from `SETUP.md`, so keep pers
 | `lib/feedback.js`, `scripts/feedback-view.mjs` | Bug reports / ideas from the app → a task + `data/feedback.jsonl`; render a report's screen snapshot |
 | `lib/vault.js` | Read/write vault markdown (tasks, projects, goals, inbox items, checklist templates in `91_templates/checklists/`). All frontmatter edits go through here |
 | `lib/runner.js` | "▶ Run": starts the model's CLI on a task (`llm.agentRun`), streams events, finalizes `agent_state` |
-| `lib/llm.js` | The model behind the app, provider-neutral: Claude Code or Codex (settings `provider`, Settings → Agents → Model). `ask({system, prompt, schema})` one-shot structured, `chatTurn` read-only resumable chat, `agentRun` a task run; gubernos-tools plugged into each. Codex needs strict schemas (`strict()` / `unnull()`) |
+| `lib/llm.js` | The model behind the app, provider-neutral: Claude Code or Codex (settings `provider`, Settings → Your Mac → Model). `ask({system, prompt, schema})` one-shot structured, `chatTurn` read-only resumable chat, `agentRun` a task run; gubernos-tools plugged into each. Codex needs strict schemas (`strict()` / `unnull()`) |
 | `lib/voice.js` | Whisper workers (quick/full processes), `interpret()` = utterance → task drafts or a command |
 | `lib/stt.py` | Whisper worker (MLX), one process per model, JSON lines over stdin/stdout |
 | `lib/dates.js` | Date spec → local date. The model never computes dates |

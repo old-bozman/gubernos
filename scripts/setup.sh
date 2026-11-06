@@ -6,7 +6,7 @@
 #   scripts/setup.sh install --vault PATH --name NAME [--language LANG]     (PATH: ~/Gubernos, or a folder in iCloud / Dropbox)
 #                            [--obsidian-vault NAME --obsidian-path SUB] [--port 4747] [--no-launchd] [--awake]
 #                            [--model claude|codex] [--voice-language en-US|ru-RU|…|mixed]
-#   scripts/setup.sh model claude|codex   the model behind the app (lib/llm.js; Settings → Agents → Model)
+#   scripts/setup.sh model claude|codex   the model behind the app (lib/llm.js; Settings → Your Mac → Model)
 #   scripts/setup.sh voice-language LOCALE|mixed the language spoken to the app (Settings → Voice; lib/voice.js)
 #   scripts/setup.sh phone                       HTTPS for the phone: an https://m-….gubernos.dev address through Cloudflare Tunnel
 #                                                (the relay makes it; cloudflared runs here as a background service). Nothing to sign in to
@@ -90,7 +90,7 @@ voice-language() {
 
 model() {
   [[ "${1:-}" =~ ^(claude|codex)$ ]] || die "model claude|codex"
-  (cd "$APP" && node -e "import('./lib/settings.js').then((m) => m.update({ provider: process.argv[1] }))" "$1") && ok "the app's model: $1 (Settings → Agents → Model)"
+  (cd "$APP" && node -e "import('./lib/settings.js').then((m) => m.update({ provider: process.argv[1] }))" "$1") && ok "the app's model: $1 (Settings → Your Mac → Model)"
 }
 
 render() { # template → plist
@@ -142,7 +142,7 @@ install() {
   # own install ("devAgent": true in config.json): there they go to the dev session.
   if [[ "$(node -e 'try{console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).devAgent===true)}catch{console.log(false)}' "$HOME/.config/gubernos/config.json")" != true ]]; then
     $KIT config --feedback-relay https://relay.gubernos.app >/dev/null && ok "bug reports from the app also go to the developer (privately, no account needed)"
-    ok "pushes to the iPhone app go through relay.gubernos.app (it signs them for Apple; the alert text passes through, nothing is stored) — off: Settings → Notifications"
+    ok "pushes to the iPhone app go through relay.gubernos.app (it signs them for Apple; the alert text passes through, nothing is stored) — off: Settings → Your Mac → Pushes through the relay"
   fi
   if [[ $launchd == 0 ]]; then echo "4/4 background service skipped (--no-launchd): start with  npm start"; return; fi
   echo "4/4 background service"
@@ -326,7 +326,7 @@ awake() {
 calendar() {
   local out
   out=$(curl -sf -X POST "http://127.0.0.1:$(port)/api/calendar/mac/access" 2>/dev/null) || die "the app isn't answering on $(port) — install first"
-  if [[ "$out" == *'"full"'* ]]; then ok "Plan the day reads this Mac's calendars (Settings → Calendar picks which; time blocks go to the default one)"
+  if [[ "$out" == *'"full"'* ]]; then ok "Plan the day reads this Mac's calendars (Settings → Your Mac → Calendar picks which; time blocks go to the default one)"
   else no "no calendar access ($out): System Settings → Privacy & Security → Calendars → Gubernos Calendar → Full Access"; fi
 }
 

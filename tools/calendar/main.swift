@@ -59,7 +59,7 @@ func access() -> String {
   @unknown default: return "unknown"
   }
 }
-func needAccess() { if access() != "full" { fail("no access to calendars (\(access())): Gubernos → Settings → Calendar → Allow, or System Settings → Privacy & Security → Calendars", 2) } }
+func needAccess() { if access() != "full" { fail("no access to calendars (\(access())): Gubernos → Settings → Your Mac → Calendar → Allow, or System Settings → Privacy & Security → Calendars", 2) } }
 
 let localFmt: DateFormatter = { let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX"); f.timeZone = .current; f.dateFormat = "yyyy-MM-dd'T'HH:mm"; return f }()
 let dayFmt: DateFormatter = { let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX"); f.timeZone = .current; f.dateFormat = "yyyy-MM-dd"; return f }()

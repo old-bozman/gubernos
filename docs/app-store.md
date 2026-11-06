@@ -70,7 +70,7 @@ Everything is plain Markdown files in your own iCloud: there is no account and n
 **Feedback email:** me@alexandersafonov.com (hello@gubernos.app once its forwarding exists)
 
 **What to Test** (per build)
-Start a new system (or pick your existing folder), add a few tasks by typing and by voice, set a reminder, check off a habit, try the widgets and the watch. If you have a Mac with Gubernos: pair the phone (Settings → Connections → Pair a device) and hand a task to an agent.
+Start a new system (or pick your existing folder), add a few tasks by typing and by voice, set a reminder, check off a habit, try the widgets and the watch. If you have a Mac with Gubernos: pair the phone (Settings → Your Mac → iPhone and other devices → Show code) and hand a task to an agent.
 
 ## Beta App Review / App Review notes
 
@@ -93,7 +93,7 @@ Contact for review: Alexander Safonov, me@alexandersafonov.com for now (hello@gu
 Not yet verified on devices (only the simulator or not at all). Tick them on the TestFlight build:
 
 - [ ] First launch on a phone that never had the app: Start a new system → the starter kit appears; then pick an existing folder instead
-- [ ] Pairing by QR: Mac → Settings → Connections → Pair a device → camera → Open in Gubernos → the full app
+- [ ] Pairing by QR: Mac → Settings → Your Mac → iPhone and other devices → Show code → camera → Open in Gubernos → the full app
 - [ ] Offline: flight mode → add a task, check a habit → back online → both reach the Mac
 - [ ] Reminders ring with the phone locked; notification buttons (Done, Snooze) work, also on the watch
 - [ ] Habit check-ins (local notifications) and the alarm at the end of a watch timer
