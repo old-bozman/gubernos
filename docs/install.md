@@ -48,7 +48,7 @@ On the Mac the app is at http://127.0.0.1:4747 (Safari → File → Add to Dock 
 
 ## 2. iPhone (5 minutes)
 
-Install **TestFlight** from the App Store, open [testflight.apple.com/join/rBUGmgJG](https://testflight.apple.com/join/rBUGmgJG) on the iPhone and tap **Accept** → **Install**. Then connect it to the Mac. Your agent does this with you if you said you have an iPhone; you can also do it later: Gubernos on the Mac → ☰ → **Settings** → **Connections** → **Connect your iPhone**. That screen shows two codes and a ✓ when the phone is in.
+Install **TestFlight** from the App Store, open [testflight.apple.com/join/rBUGmgJG](https://testflight.apple.com/join/rBUGmgJG) on the iPhone and tap **Accept** → **Install**. Then connect it to the Mac. Your agent does this with you if you said you have an iPhone; you can also do it later: Gubernos on the Mac → ☰ → **Settings** → **Your Mac** → **iPhone and other devices** → **Connect your iPhone**. That screen shows two codes and a ✓ when the phone is in.
 
 1. Tell your agent: **"connect my phone"** (that's `scripts/setup.sh phone`). Your Mac gets an address like `https://m-3f2a….gubernos.dev` the phone reaches from anywhere: Cloudflare's small `cloudflared` program runs in the background on the Mac. Nothing to sign in to, nothing on the phone. The traffic passes through Cloudflare, on the developer's account, and HTTPS ends there, so Cloudflare could see it. We don't store it; Cloudflare may keep request data, such as IP addresses and page addresses, under its own policy.
 2. Point the **iPhone camera** at the code on the Connect your iPhone screen → Open in Gubernos. The app remembers the Mac and connects: agents, chat and the calendar appear.
@@ -56,6 +56,17 @@ Install **TestFlight** from the App Store, open [testflight.apple.com/join/rBUGm
 Only devices with the code get in: everyone else gets nothing, and an address that keeps trying wrong codes is turned away. Lost a phone? On the Mac, Settings → Your Mac → iPhone and other devices → **New code**: every old device is unpaired. Want HTTPS to end on your Mac instead of at Cloudflare? `scripts/setup.sh phone --tailscale` uses Tailscale Funnel (a Tailscale account, its installer and your Mac password) and deletes the Cloudflare address. Rather not have the Mac on the internet at all? `scripts/setup.sh phone --private` keeps it inside your Tailscale network; then the iPhone needs Tailscale too (same account, VPN On Demand on).
 
 The phone keeps a copy of your files from the Mac: when the Mac is asleep or away it still shows everything, and the changes you make go to the Mac once it's back. Agents, chat and the calendar need the Mac on.
+
+## Android
+
+There's no Android app yet, but Gubernos works in Chrome as an installed web app, with notifications. You need the Mac's phone address (step 1 above: "connect my phone", or Connect your iPhone on the Mac, which sets it up).
+
+1. On the Mac: Settings → Your Mac → iPhone and other devices → **Show code** → **Copy link**, and send the link to your phone (a message to yourself).
+2. Open it in **Chrome** on the phone: it pairs the phone and opens Gubernos.
+3. Chrome menu **⋮** → **Install app** (or Add to Home screen): it gets its own icon and window.
+4. In Gubernos: Settings → This device → Notifications **On**.
+
+Compared with the iPhone app it has no offline copy, widgets, Health or phone-side reminders: reminders come as pushes from the Mac, so the Mac needs to be on.
 
 **No Mac?** The iPhone app also works on its own over a folder in iCloud Drive (first screen → Or use the phone on its own): tasks, habits, reminders, widgets, the watch, without agents, chat or the calendar.
 

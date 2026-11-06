@@ -4190,7 +4190,7 @@ function devicesHtml() {
   if (!p.publicUrl) return `<div class="set-row"><div class="set-l">iPhone and other devices<small>the iPhone app from TestFlight, then the pairing code: a few minutes, step by step</small></div><span class="set-btns">${connect}</span></div>`;
   const seg = (act, cur, opts, dis) => `<span class="seg">${opts.map(([v, l]) => `<button data-act="${act}" data-val="${v}" class="${String(cur) === String(v) ? 'on' : ''}"${dis ? ' disabled' : ''}>${l}</button>`).join('')}</span>`;
   const code = S.pairShow ? `<div class="pair-box"><div class="pair-qr">${pairQr()}</div>
-      <div class="set-note"><b>iPhone:</b> point the Camera at the code → Open in ${esc(APP_NAME)}.<br><b>Another browser</b> (an iPad, a second Mac): open this link there once —
+      <div class="set-note"><b>iPhone:</b> point the Camera at the code → Open in ${esc(APP_NAME)}.<br><b>Android, or another browser</b> (an iPad, a second Mac): open this link there once (Android: in Chrome, then ⋮ → Install app) —
       <button class="linkbtn" data-act="set-pair-copy">Copy link</button></div></div>` : '';
   const require = `<div class="set-mf">Only paired devices get in ${seg('set-pair-required', p.required ? 'on' : 'off', [['off', 'Off'], ['on', 'On']], !p.local)}
       ${p.local ? ' · <button class="linkbtn" data-act="set-pair-rotate">New code — unpairs every device</button>' : ' · changed on the Mac itself'}<br><small>off: anyone who reaches this address · the Mac itself always gets in</small></div>`;
