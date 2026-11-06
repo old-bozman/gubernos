@@ -20,7 +20,8 @@ export async function openPage({ args = [] } = {}) {
 async function start(args) {
   if (!fs.existsSync(CHROME)) throw new Error(`no Chrome at ${CHROME} (set GUBERNOS_CHROME)`);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gubernos-chrome-'));
-  const proc = spawn(CHROME, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${dir}`, '--no-first-run', '--no-default-browser-check', '--disable-extensions', ...args, 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
+  // on Linux without its sandbox: Ubuntu 24's AppArmor blocks it for a Chromium that isn't installed system-wide
+  const proc = spawn(CHROME, ['--headless=new', ...(process.platform === 'linux' ? ['--no-sandbox'] : []), '--remote-debugging-port=0', `--user-data-dir=${dir}`, '--no-first-run', '--no-default-browser-check', '--disable-extensions', ...args, 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
   let chromeLog = '', gone = null;
   proc.stderr.on('data', (d) => { chromeLog = (chromeLog + d).slice(-2000); });
   proc.once('exit', (code, signal) => { gone = `Chrome exited (${code ?? signal}): ${chromeLog.slice(-500)}`; for (const w of waiting.values()) w.reject(new Error(gone)); waiting.clear(); });

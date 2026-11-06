@@ -99,7 +99,7 @@ async function run() {
   const r1 = ssh(`${PATHS}; ~/.gubernos/app/scripts/setup.sh restart`);
   check(r1.ok && /restarted/.test(r1.out), 'setup.sh restart restarts the service', r1.out);
   const count = 'find ~/Gubernos -type f | wc -l', before = ssh(count).out;
-  const up = ssh(`${PATHS}; ~/.gubernos/app/scripts/update.sh`, 300000);
+  const up = ssh(`${PATHS}; GUBERNOS_BRANCH=${BRANCH} ~/.gubernos/app/scripts/update.sh`, 300000); // the branch under test, not main
   check(up.ok, 'an update runs', up.out.slice(-400));
   check(ssh(count).out === before, `an update leaves the files alone (${before.trim()})`, ssh(count).out);
   check(!!await until(answers, 60000, 2000), 'the app answers after the update');
@@ -115,7 +115,7 @@ async function run() {
     if (check(/chrome$/.test(chrome), `Chromium for the page tests, in ${seconds(t3)}`, ssh('tail -15 /tmp/pw.log').out)) {
       const tt = ssh(`${PATHS}; cd ~/.gubernos/app && GUBERNOS_CHROME=${chrome} npm test 2>&1 | tail -40`, 1200000);
       fs.writeFileSync(path.join(OUT, 'npm-test.txt'), tt.out);
-      const pass = tt.out.match(/ℹ pass (\d+)/)?.[1], fail = tt.out.match(/ℹ fail (\d+)/)?.[1];
+      const pass = tt.out.match(/(?:ℹ|#) pass (\d+)/)?.[1], fail = tt.out.match(/(?:ℹ|#) fail (\d+)/)?.[1]; // no terminal there: the TAP report
       check(fail === '0' && Number(pass) > 0, `npm test on Linux: ${pass ?? '?'} passed, ${fail ?? '?'} failed`, tt.out.split('\n').filter((l) => /✖|Error|not ok/.test(l)).slice(0, 12).join('\n'));
     }
   }
