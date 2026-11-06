@@ -414,7 +414,14 @@ awake() {
   if is_wsl; then wsl_awake "${1:-status}"; return; fi
   if [[ $OS == Linux ]]; then
     case "${1:-status}" in
-      on) unit_up gubernos-awake "$APP/deploy/gubernos-awake.service.template"; ok "stays awake while plugged in (systemd-inhibit; the screen still turns off)";;
+      on) unit_up gubernos-awake "$APP/deploy/gubernos-awake.service.template"
+        sleep 3
+        if systemd-inhibit --list --no-pager 2>/dev/null | grep -q Gubernos; then ok "stays awake while plugged in (systemd-inhibit; the screen still turns off)"
+        else # most systems let only someone at the screen hold off sleep: one admin step lets this user's service do it too
+          no "this system lets only someone at the screen keep it awake. To let Gubernos do it, an admin runs once:"
+          printf '      %s\n' "echo 'polkit.addRule(function(a, s) { if ((a.id == \"org.freedesktop.login1.inhibit-block-sleep\" || a.id == \"org.freedesktop.login1.inhibit-block-idle\") && s.user == \"$USER\") return polkit.Result.YES; });' | sudo tee /etc/polkit-1/rules.d/50-gubernos-awake.rules"
+          echo "    (or turns sleep off in the system's power settings; a server doesn't sleep anyway)"
+        fi;;
       off) unit_down gubernos-awake; ok "normal sleep again";;
       status) if systemd_ok && [[ "$(systemctl --user is-active gubernos-awake.service 2>/dev/null)" == active ]]; then ok "staying awake while plugged in"; systemd-inhibit --list --no-pager 2>/dev/null | grep -i gubernos | head -1; else no "sleeps as usual (scripts/setup.sh awake on)"; fi;;
       *) die "awake on|off|status";;

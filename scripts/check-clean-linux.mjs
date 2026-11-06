@@ -81,7 +81,15 @@ async function run() {
 
   check(ssh('systemctl --user is-active gubernos.service').out === 'active', 'it runs as a systemd user service', ssh('systemctl --user status gubernos.service --no-pager | tail -5').out);
   check(ssh('loginctl show-user "$USER" -p Linger').out === 'Linger=yes', 'and keeps running after logging out (linger)', ssh('loginctl show-user "$USER" -p Linger').out);
-  check(ssh('systemctl --user is-active gubernos-awake.service').out === 'active' && /Gubernos/.test(ssh('systemd-inhibit --list --no-pager').out), 'kept awake while plugged in: Gubernos holds the sleep lock', ssh('systemd-inhibit --list --no-pager; systemctl --user status gubernos-awake.service --no-pager | tail -4').out);
+  // keeping it awake: Ubuntu's polkit lets only someone at the screen hold off sleep, so a background service needs one
+  // admin step (a polkit rule), which the setup prints; this check doesn't change the system, it checks what's said and
+  // that the service waits quietly instead of spinning
+  const aw = ssh(`${PATHS}; ~/.gubernos/app/scripts/setup.sh awake on`);
+  const locked = /Gubernos/.test(ssh('systemd-inhibit --list --no-pager').out);
+  check(locked || (/an admin runs once/.test(aw.out) && /50-gubernos-awake\.rules/.test(aw.out)), locked ? 'kept awake while plugged in: Gubernos holds the sleep lock' : 'keeping it awake needs one admin step here, and the setup says which', aw.out);
+  await sleep(5000);
+  const spins = Number(ssh('journalctl --user -u gubernos-awake --since "-5s" --no-pager | grep -c inhibit').out) || 0;
+  check(spins <= 1, `without the rule the keep-awake service waits instead of spinning (${spins} tries in 5 s)`);
   const home = ssh('ls -a ~ | grep -i gubernos').out.split('\n');
   check(home.includes('.gubernos') && home.includes('Gubernos'), 'the app is in ~/.gubernos, the files in ~/Gubernos', home.join(' '));
   check(/Sam/.test(ssh('cat ~/Gubernos/profile.md').out), 'the files are the person’s');
@@ -118,7 +126,7 @@ async function run() {
   spawnSync('ssh', [...SSH(), 'sudo -n reboot || echo admin | sudo -S reboot'], { timeout: 20000 });
   await sleep(20000);
   check(!!await until(answers, 300000, 5000), 'after a reboot the app is back by itself (nobody logged in)');
-  check(/Gubernos/.test(ssh('systemd-inhibit --list --no-pager').out), 'and keeps the computer awake again', ssh('systemd-inhibit --list --no-pager').out);
+  check(ssh('systemctl --user is-active gubernos-awake.service').out === 'active', 'and the keep-awake service is back too', ssh('systemctl --user status gubernos-awake.service --no-pager | tail -3').out);
 
   if (TESTS) { // the whole suite on this machine: Chromium (Playwright's build, it has one for Linux on ARM) for the page tests
     const t3 = Date.now();

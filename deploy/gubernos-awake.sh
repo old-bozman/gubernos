@@ -10,6 +10,7 @@ plugged() {
   [ $mains = 0 ] # no charger listed: a desktop or a server
 }
 while :; do
-  if plugged; then systemd-inhibit --what=sleep:idle --who=Gubernos --why="Gubernos stays reachable from your phone" --mode=block sleep 120
+  # not allowed (polkit: a background service needs the rule scripts/setup.sh awake on prints): wait, don't spin
+  if plugged; then systemd-inhibit --what=sleep:idle --who=Gubernos --why="Gubernos stays reachable from your phone" --mode=block sleep 120 || sleep 60
   else sleep 60; fi
 done
