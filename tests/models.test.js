@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { startServer } from './helpers.js';
 
@@ -33,4 +34,22 @@ test('an install that used Gemini: no Gemini anywhere, its tasks and settings st
     await s.patch('/api/settings', { provider: 'gemini' });
     assert.equal(JSON.parse(fs.readFileSync(path.join(s.dir, 'data/settings.json'), 'utf8')).provider, 'codex');
   } finally { await s.stop(); }
+});
+
+test('Claude answering too slowly at first is not taken as signed in (2026-11-06, a fresh Mac: the interview opened with no model)', { timeout: 30000 }, async () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'gubernos-slow-'));
+  const fake = path.join(d, 'claude');
+  // like the real CLI on a fresh Mac: the first run takes longer than the app waits; then it says it isn't signed in
+  fs.writeFileSync(fake, `#!/usr/bin/env node
+const a = process.argv.slice(2);
+if (a.join(' ') === 'auth status --json') setTimeout(() => { console.log(JSON.stringify({ loggedIn: false })); process.exit(1); }, 6500);
+else process.exit(1);
+`, { mode: 0o755 });
+  const s = await startServer({ GUBERNOS_CLAUDE_BIN: fake });
+  try {
+    const ai = (await s.get('/api/ai')).body;
+    assert.equal(ai.list.find((p) => p.id === 'claude').ready, false, 'no answer read as signed in');
+    const ob = (await s.get('/api/onboard')).body;
+    assert.equal(ob.model, null, 'the interview would let them talk to nothing');
+  } finally { await s.stop(); fs.rmSync(d, { recursive: true, force: true }); }
 });
