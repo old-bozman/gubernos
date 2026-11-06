@@ -65,14 +65,14 @@ async function run() {
   await page.resize(900, 1100);
   await page.goto(link); // the same port on this side: the page answers only to 127.0.0.1:4746 as its Host
   check(await page.waitFor('document.querySelector("input[name=folder]")', 20000), 'the setup page shows', page.errors.join(' | '));
-  check(await page.waitFor('/this computer/.test(document.querySelector(".lead").innerText) && document.querySelector("#awake").closest("label").hidden'), 'it speaks of “this computer”, with no “keep this Mac awake”', await page.eval('document.querySelector(".lead").innerText'));
+  check(await page.waitFor('/this computer/.test(document.querySelector(".lead").innerText) && /Keep this computer awake/.test(document.querySelector("#awake").closest("label").innerText)'), 'it speaks of “this computer”, and offers to keep it awake', await page.eval('document.querySelector(".lead").innerText + " | " + document.querySelector("#awake").closest("label").innerText'));
   await shot('setup');
   check(/On this computer/.test(await page.eval('document.querySelector("#folders, form")?.innerText || ""')), 'it offers a folder here');
   await page.eval(`(() => {
     const f = window.fetch;
     window.fetch = async (...a) => { const r = await f(...a); if (String(a[0]) !== '/job') return r; const j = await r.clone().json(); if (!j.next) return r;
       j.next = j.next.replace(':${APP_PORT}', ':${HOST_APP}'); return new Response(JSON.stringify(j), { status: r.status, headers: { 'content-type': 'application/json' } }); };
-    document.querySelector("#name").value = "Sam"; document.querySelector("#go").click();
+    document.querySelector("#name").value = "Sam"; document.querySelector("#awake").checked = true; document.querySelector("#go").click();
   })()`);
   const t2 = Date.now();
   const went = await until(async () => (await page.eval('location.href').catch(() => '')).includes('#/onboard'), 480000, 1000);
@@ -81,6 +81,7 @@ async function run() {
 
   check(ssh('systemctl --user is-active gubernos.service').out === 'active', 'it runs as a systemd user service', ssh('systemctl --user status gubernos.service --no-pager | tail -5').out);
   check(ssh('loginctl show-user "$USER" -p Linger').out === 'Linger=yes', 'and keeps running after logging out (linger)', ssh('loginctl show-user "$USER" -p Linger').out);
+  check(ssh('systemctl --user is-active gubernos-awake.service').out === 'active' && /Gubernos/.test(ssh('systemd-inhibit --list --no-pager').out), 'kept awake while plugged in: Gubernos holds the sleep lock', ssh('systemd-inhibit --list --no-pager; systemctl --user status gubernos-awake.service --no-pager | tail -4').out);
   const home = ssh('ls -a ~ | grep -i gubernos').out.split('\n');
   check(home.includes('.gubernos') && home.includes('Gubernos'), 'the app is in ~/.gubernos, the files in ~/Gubernos', home.join(' '));
   check(/Sam/.test(ssh('cat ~/Gubernos/profile.md').out), 'the files are the person’s');
@@ -117,6 +118,7 @@ async function run() {
   spawnSync('ssh', [...SSH(), 'sudo -n reboot || echo admin | sudo -S reboot'], { timeout: 20000 });
   await sleep(20000);
   check(!!await until(answers, 300000, 5000), 'after a reboot the app is back by itself (nobody logged in)');
+  check(/Gubernos/.test(ssh('systemd-inhibit --list --no-pager').out), 'and keeps the computer awake again', ssh('systemd-inhibit --list --no-pager').out);
 
   if (TESTS) { // the whole suite on this machine: Chromium (Playwright's build, it has one for Linux on ARM) for the page tests
     const t3 = Date.now();

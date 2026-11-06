@@ -1,0 +1,11 @@
+# Linux: keep the computer awake while plugged in (scripts/setup.sh awake on)
+[Unit]
+Description=Gubernos: stay awake while plugged in
+
+[Service]
+ExecStart={{APP}}/deploy/gubernos-awake.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

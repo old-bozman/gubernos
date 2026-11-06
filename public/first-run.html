@@ -82,9 +82,9 @@ function paintModels(models) {
 }
 async function refresh() {
   const s = await call('GET', '/state');
-  if (s.mac === false) { // Linux (or WSL): no Mac to name, nothing to keep awake
+  if (s.mac === false) { // Linux (or Windows in WSL): no Mac to name
     $('.lead').textContent = $('.lead').textContent.replace('this Mac', 'this computer');
-    $('#awake').closest('label').hidden = true;
+    const k = $('#awake').nextElementSibling.firstChild; k.textContent = k.textContent.replace('this Mac', 'this computer');
   }
   if (!$('#name').value) $('#name').value = s.name;
   if (!$('#folders').children.length) $('#folders').innerHTML = s.folders.map((f, i) => `<label class="opt"><input type="radio" name="folder" value="${f.id}" ${i ? '' : 'checked'}><span>${esc(f.label)}<small>${esc(f.note)}</small></span></label>`).join('');

@@ -19,7 +19,8 @@
 #                                                Mac's own speech models hear one language each (macOS 26+, nothing to install)
 #   scripts/setup.sh obsidian                    Dataview + Templater plugins in a vault that is its own Obsidian vault
 #   scripts/setup.sh calendar                    Plan the day reads this Mac's calendars (asks macOS for access: a dialog)
-#   scripts/setup.sh awake on|off|status         keep the Mac awake on power (caffeinate -s as a login item) so the phone app works
+#   scripts/setup.sh awake on|off|status         keep the computer awake on power so the phone app works (Mac: caffeinate -s;
+#                                                Linux: systemd-inhibit; Windows in WSL: SetThreadExecutionState from PowerShell)
 #   scripts/setup.sh restart | status
 set -euo pipefail
 
@@ -140,6 +141,27 @@ wsl_keepalive() {
   ok "starts with Windows and keeps running when this window closes (Startup: Gubernos.vbs)"
 }
 
+# Windows (WSL): Linux can't keep Windows awake, so a small PowerShell script does (deploy/gubernos-awake.ps1: Windows'
+# SetThreadExecutionState, as PowerToys Awake uses; only while plugged in), copied to %LOCALAPPDATA%\Gubernos and started
+# hidden with Windows from the Startup folder. No admin, no power settings changed.
+wsl_awake() {
+  local local_app startup ps1 vbs
+  local_app=$(cmd.exe /c 'echo %LOCALAPPDATA%' 2>/dev/null | tr -d '\r'); [[ "$local_app" == *:\\* ]] || die "couldn't reach Windows"
+  startup="$(wslpath -u "$(cmd.exe /c 'echo %APPDATA%' 2>/dev/null | tr -d '\r')\\Microsoft\\Windows\\Start Menu\\Programs\\Startup")"
+  ps1="$(wslpath -u "$local_app")/Gubernos/gubernos-awake.ps1"; vbs="$startup/GubernosAwake.vbs"
+  local stop="Get-CimInstance Win32_Process -Filter \"Name='powershell.exe'\" | Where-Object { \$_.CommandLine -like '*gubernos-awake.ps1*' } | ForEach-Object { Stop-Process -Id \$_.ProcessId -Force }"
+  case "$1" in
+    on) mkdir -p "$(dirname "$ps1")" && cp "$APP/deploy/gubernos-awake.ps1" "$ps1"
+      printf '%s\r\n' "' Gubernos: keeps Windows awake while plugged in (deploy/gubernos-awake.ps1); made by scripts/setup.sh awake on" \
+        "CreateObject(\"WScript.Shell\").Run \"powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File \"\"$(wslpath -w "$ps1")\"\"\", 0, False" > "$vbs"
+      powershell.exe -NoProfile -Command "$stop" >/dev/null 2>&1; cmd.exe /c start "" wscript.exe "$(wslpath -w "$vbs")" >/dev/null 2>&1
+      ok "Windows stays awake while plugged in (the screen still turns off; Startup: GubernosAwake.vbs)";;
+    off) rm -f "$vbs"; powershell.exe -NoProfile -Command "$stop" >/dev/null 2>&1; ok "normal sleep again";;
+    status) [[ -f "$vbs" ]] && ok "Windows stays awake while plugged in" || no "Windows sleeps as usual (scripts/setup.sh awake on)";;
+    *) die "awake on|off|status";;
+  esac
+}
+
 unit_down() { # name
   [[ -f "$UNITS_DIR/$1.service" ]] || return 0
   if [[ -z "${GUBERNOS_NO_LAUNCHD:-}" ]]; then
@@ -202,6 +224,7 @@ install() {
   render "$APP/deploy/gubernos.plist.template" "$LABEL" > "$AGENTS_DIR/$LABEL.plist"
   load "$LABEL" "$AGENTS_DIR/$LABEL.plist"
   fi
+  if [[ $awake == 1 && $OS != Darwin ]]; then awake on; fi
   if [[ $awake == 1 && $OS == Darwin ]]; then render "$APP/deploy/gubernos-awake.plist.template" "$AWAKE_LABEL" > "$AGENTS_DIR/$AWAKE_LABEL.plist"; load "$AWAKE_LABEL" "$AGENTS_DIR/$AWAKE_LABEL.plist"; ok "Mac stays awake on power"; fi
   wait_up && ok "running: http://127.0.0.1:$(port)" || { no "the app didn't start — see $APP/server.log"; tail -5 "$APP/server.log"; exit 1; }
 }
@@ -388,7 +411,16 @@ obsidian() {
 
 # caffeinate -s: no system sleep while on power (battery behaves as usual; closing a laptop's lid still sleeps)
 awake() {
-  [[ $OS == Linux ]] && { ok "nothing to do on Linux: keep the machine on (a laptop: its own power settings)"; return 0; }
+  if is_wsl; then wsl_awake "${1:-status}"; return; fi
+  if [[ $OS == Linux ]]; then
+    case "${1:-status}" in
+      on) unit_up gubernos-awake "$APP/deploy/gubernos-awake.service.template"; ok "stays awake while plugged in (systemd-inhibit; the screen still turns off)";;
+      off) unit_down gubernos-awake; ok "normal sleep again";;
+      status) if systemd_ok && [[ "$(systemctl --user is-active gubernos-awake.service 2>/dev/null)" == active ]]; then ok "staying awake while plugged in"; systemd-inhibit --list --no-pager 2>/dev/null | grep -i gubernos | head -1; else no "sleeps as usual (scripts/setup.sh awake on)"; fi;;
+      *) die "awake on|off|status";;
+    esac
+    return
+  fi
   local plist="$AGENTS_DIR/$AWAKE_LABEL.plist"
   case "${1:-status}" in
     on) mkdir -p "$AGENTS_DIR"; render "$APP/deploy/gubernos-awake.plist.template" "$AWAKE_LABEL" > "$plist"; load "$AWAKE_LABEL" "$plist"; ok "the Mac stays awake on power (caffeinate -s)";;
