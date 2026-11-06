@@ -4145,7 +4145,7 @@ function macSummaryHtml() {
 S.native = null;
 function nativeSettingsHtml() {
   const h = window.webkit?.messageHandlers?.gubernos;
-  const sheet = (label, hint) => `<div class="set-row"><div class="set-l">${label}<small>${hint}</small></div><button class="btn" data-act="native-settings">Change…</button></div>`;
+  const sheet = (label, hint) => `<div class="set-row"><div class="set-l">${label}<small>${hint}</small></div><button class="btn" data-act="native-settings">Change…</button></div>`; // the app's sheet: address, folder
   if (!window.gubernosNative?.settings || !h) return sheet('iPhone app', 'Mac address, your files when the Mac is away, notifications, voice without the Mac');
   if (!S.native) { if (S.native !== false) { S.native = false; h.postMessage({ op: 'native' }).then((n) => { S.native = n; if (S.view === 'settings') renderMain(); }).catch(() => {}); } return ''; }
   const n = S.native;
@@ -4404,7 +4404,7 @@ document.addEventListener('click', (e) => {
     return;
   }
   if (b.dataset.act === 'set-lunch-min') return saveSetting({ lunchMinutes: +v }).then(() => { S.planInfoAt = 0; });
-  if (b.dataset.act === 'set-native') return window.webkit?.messageHandlers?.gubernos?.postMessage({ op: 'setNative', key: b.dataset.key, value: v === 'on' }).then((n) => { S.native = n; renderMain(); toast('Saved'); }).catch((err) => toast(err.message));
+  if (b.dataset.act === 'set-native') return window.webkit?.messageHandlers?.gubernos?.postMessage({ op: 'setNative', key: b.dataset.key, value: v === 'on' }).then((n) => { S.native = n; renderMain(); toast('Saved'); S.remindersSent = null; syncNativeReminders(); }).catch((err) => toast(err.message));
   if (b.dataset.act === 'set-relay-push') return saveSetting({ relayPush: v === 'on' });
   if (b.dataset.act === 'set-time-off') return saveSetting({ [b.dataset.key]: v === 'on' ? b.dataset.def : '' });
   if (b.dataset.act === 'set-reflect-format') return saveSetting({ reflectionFormat: v });
