@@ -2,7 +2,9 @@
 // The whole no-Terminal setup on a truly clean Mac, with nobody at the keyboard: a new VM from Apple's vanilla image (tart), the
 // real Gubernos.dmg, the launcher, the setup page, the app, a second launch, an update and a restart. Screenshots of the VM's real
 // screen (dialogs included) and of the pages go to the printed folder. Exit 1 if a check failed.
-//   node scripts/check-clean-mac.mjs [--dmg dist/Gubernos.dmg] [--keep] [--sign-in]     --keep leaves the VM running
+//   node scripts/check-clean-mac.mjs [--dmg dist/Gubernos.dmg] [--keep] [--sign-in] [--model claude|codex] [--video]
+//   --keep leaves the VM running · --model: the AI the person picks (default claude; codex = ChatGPT) · --video: the VM's
+//   screen and the setup page side by side, a frame a second, as video.mp4 in the printed folder
 // It fetches the app from `main`, as people do: release first. Signing in to a model stops at the sign-in page (the owner's
 // account); with --sign-in it opens the VM's screen on this Mac, waits for the owner to sign in there, then goes on with a real
 // model: the interview must take an answer and reply. The VM goes when the run passes, and the sign-in with it. Gatekeeper's assessments are off in this image, so its verdict on the signature and notarization is checked on
@@ -16,7 +18,10 @@ import { openPage } from '../tests/chrome.js';
 import { connect } from '../tests/vnc.js';
 
 const arg = (name) => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : null; };
-const KEEP = process.argv.includes('--keep'), SIGN_IN = process.argv.includes('--sign-in');
+const KEEP = process.argv.includes('--keep'), SIGN_IN = process.argv.includes('--sign-in'), VIDEO = process.argv.includes('--video');
+const MODEL = arg('--model') || 'claude';
+if (!['claude', 'codex'].includes(MODEL)) { console.error('--model claude or codex'); process.exit(2); }
+const NAME = { claude: 'Claude', codex: 'ChatGPT' }[MODEL], LOGIN = { claude: 'claude auth login', codex: 'codex login' }[MODEL];
 const DMG = path.resolve(arg('--dmg') || path.join(ROOT, 'dist/Gubernos.dmg'));
 const TART = [path.join(os.homedir(), '.local/bin/tart'), '/opt/homebrew/bin/tart'].find((f) => fs.existsSync(f)) || 'tart';
 const VM = 'gubernos-check', BASE = 'ghcr.io/cirruslabs/macos-tahoe-vanilla:latest';
@@ -39,6 +44,44 @@ const ssh = (cmd, ms = 60000) => { const r = spawnSync('ssh', [...SSH(), cmd], {
 const screen = async (name) => { n++; try { await vnc?.screenshot(path.join(OUT, `${String(n).padStart(2, '0')}-vm-${name}.png`)); } catch (e) { say(`  (no VM screenshot: ${e.message})`); } };
 const shot = async (name) => { n++; await page.screenshot(path.join(OUT, `${String(n).padStart(2, '0')}-page-${name}.png`)); };
 
+// --video: a frame a second of the VM's screen (its own VNC connection) and of the page this script drives, then side by side
+let rec = null;
+async function startRecording() {
+  if (!VIDEO || rec) return;
+  const dir = path.join(OUT, 'video');
+  for (const d of ['vm', 'page']) fs.mkdirSync(path.join(dir, d), { recursive: true });
+  let eye = null;
+  try { eye = await connect(vncUrl); } catch (e) { say(`  (no video: ${e.message})`); return; }
+  rec = { on: true, frames: 0, t0: Date.now(), dir };
+  rec.done = (async () => {
+    while (rec.on) {
+      const t = Date.now(), f = `${String(rec.frames).padStart(5, '0')}.png`;
+      try { await eye.screenshot(path.join(dir, 'vm', f)); } catch { /* a dropped frame is filled from the one before */ }
+      try { if (page) await page.screenshot(path.join(dir, 'page', f)); } catch { /* the page is between screens */ }
+      rec.frames++;
+      await sleep(Math.max(0, 1000 - (Date.now() - t)));
+    }
+    eye.close();
+  })();
+}
+async function stopRecording() {
+  if (!rec) return;
+  rec.on = false; await rec.done;
+  const { dir, frames } = rec, secs = (Date.now() - rec.t0) / 1000;
+  rec = null;
+  if (!frames) return;
+  const blank = path.join(dir, 'blank.png');
+  spawnSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=c=white:s=900x1100', '-frames:v', '1', blank]);
+  for (const d of ['vm', 'page']) { // every frame number on both sides: a missing one is the one before
+    let last = blank;
+    for (let i = 0; i < frames; i++) { const f = path.join(dir, d, `${String(i).padStart(5, '0')}.png`); if (fs.existsSync(f)) last = f; else fs.copyFileSync(last, f); }
+  }
+  const fps = String(Math.max(0.2, frames / secs).toFixed(3)), out = path.join(OUT, 'video.mp4');
+  const r = spawnSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', fps, '-i', path.join(dir, 'vm/%05d.png'), '-framerate', fps, '-i', path.join(dir, 'page/%05d.png'),
+    '-filter_complex', '[0]scale=-2:900[a];[1]scale=-2:900[b];[a][b]hstack', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '26', out], { encoding: 'utf8' });
+  say(r.status === 0 ? `  video: ${out} (${Math.round(secs / 60)} min)` : `  (the video didn't encode: ${r.stderr.slice(0, 300)})`);
+}
+
 async function bootVm() {
   if (tart('list').stdout.includes(VM)) { tart('stop', VM); tart('delete', VM); }
   const c = tart('clone', BASE, VM);
@@ -52,6 +95,7 @@ async function bootVm() {
   if (!ip) throw new Error('the VM got no address');
   vncUrl = url;
   vnc = await connect(url);
+  await startRecording();
   // a key of this run only; the image's public default password is used once, to put it there
   execFileSync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-f', key]);
   const pub = fs.readFileSync(`${key}.pub`, 'utf8').trim();
@@ -94,8 +138,11 @@ async function run() {
   // the DMG, as downloaded
   execFileSync('scp', ['-i', key, '-o', 'StrictHostKeyChecking=no', '-o', 'UserKnownHostsFile=/dev/null', '-o', 'LogLevel=ERROR', DMG, `admin@${ip}:Downloads/Gubernos.dmg`]);
   ssh('xattr -w com.apple.quarantine "0081;$(printf %x $(date +%s));Safari;" ~/Downloads/Gubernos.dmg');
-  check(ssh('open ~/Downloads/Gubernos.dmg').ok, 'the DMG opens');
-  check(!!await until(() => ssh('test -d /Volumes/Gubernos/Gubernos.app').ok, 60000, 2000), 'Gubernos.app is on it');
+  // a busy VM can drop an SSH call: opening is tried again until the volume is there
+  const mounted = () => ssh('test -d /Volumes/Gubernos/Gubernos.app').ok;
+  let opened = false;
+  for (let i = 0; i < 4 && !opened; i++) { ssh('open ~/Downloads/Gubernos.dmg'); opened = !!await until(mounted, 30000, 2000); }
+  check(opened, 'the DMG opens, Gubernos.app on it');
   await sleep(4000);
   await screen('dmg-open');
 
@@ -139,24 +186,24 @@ async function run() {
 
   // getting a model: it installs, then stops at the sign-in page, which is the person's
   const t2 = Date.now();
-  await page.eval('document.querySelector("[data-model=claude]").click()');
+  await page.eval(`document.querySelector("[data-model=${MODEL}]").click()`);
   const signing = await page.waitFor('/sign in, in the browser/.test(document.querySelector("#status").innerText) || document.querySelector("#status").className === "err"', 300000);
   const status = await page.eval('document.querySelector("#status").innerText');
-  check(signing && /sign in/.test(status), `Claude is installed and asks to sign in, in ${seconds(t2)}`, status);
+  check(signing && /sign in/.test(status), `${NAME} is installed and asks to sign in, in ${seconds(t2)}`, status);
   await shot('model-signin');
   await sleep(8000);
-  await screen('claude-signin-page');
-  check(ssh('pgrep -f "claude auth login"').ok, 'the sign-in is waiting for the person');
+  await screen(`${MODEL}-signin-page`);
+  check(ssh(`pgrep -f "${LOGIN}"`).ok, 'the sign-in is waiting for the person');
   if (SIGN_IN) {
     spawnSync('open', [`vnc://admin:admin@${ip}`]); // the VM's own Screen Sharing: with the VNC server tart starts, Apple's client got no keyboard
     say('→ SIGN IN NOW, on the VM’s screen (it just opened in Screen Sharing). Waiting up to an hour.');
     const t = Date.now();
     // the page's word, not `claude auth status` over SSH: the sign-in is in the keychain, which an SSH session can't read
-    const how = await until(() => page.eval('document.querySelector("input[name=model][value=claude]") ? "in" : document.querySelector("#status").className === "err" ? "failed" : null'), 3600000, 5000);
+    const how = await until(() => page.eval(`document.querySelector("input[name=model][value=${MODEL}]") ? "in" : document.querySelector("#status").className === "err" ? "failed" : null`), 3600000, 5000);
     await screen('after-sign-in');
-    check(how === 'in', `signed in to Claude in the browser, ${seconds(t)}`, how ? await page.eval('document.querySelector("#status").innerText') : 'nobody signed in within the hour');
+    check(how === 'in', `signed in to ${NAME} in the browser, ${seconds(t)}`, how ? await page.eval('document.querySelector("#status").innerText') : 'nobody signed in within the hour');
     if (how !== 'in') throw new Error('no sign-in');
-    check(await page.waitFor('document.querySelector("input[name=model][value=claude]")', 30000), 'the page sees it by itself: Claude ✓ Ready', await page.eval('document.querySelector("#models").innerText'));
+    check(await page.waitFor(`document.querySelector("input[name=model][value=${MODEL}]")`, 30000), `the page sees it by itself: ${NAME} ✓ Ready`, await page.eval('document.querySelector("#models").innerText'));
     await shot('model-ready');
   } else {
     // the sign-in page got lost: the page's own way out ends the real CLI's wait
@@ -196,9 +243,9 @@ async function run() {
     await shot('interview-real-reply');
   } else {
     // still not signed in: nobody talks for 15 minutes to nothing, and signing in is a button
-    check(await page.waitFor('document.querySelector("[data-act=onboard-connect][data-val=claude]")', 10000) && await page.eval('!document.querySelector("#ob-msg")'), 'not signed in, it says so before anyone talks', await page.eval('document.querySelector("#main").innerText'));
-    await page.eval('document.querySelector("[data-act=onboard-connect][data-val=claude]").click()');
-    check(!!await until(() => ssh('pgrep -f "claude auth login"').ok, 20000, 1000), 'Sign in, from the app itself, starts the sign-in');
+    check(await page.waitFor(`document.querySelector("[data-act=onboard-connect][data-val=${MODEL}]")`, 10000) && await page.eval('!document.querySelector("#ob-msg")'), 'not signed in, it says so before anyone talks', await page.eval('document.querySelector("#main").innerText'));
+    await page.eval(`document.querySelector("[data-act=onboard-connect][data-val=${MODEL}]").click()`);
+    check(!!await until(() => ssh(`pgrep -f "${LOGIN}"`).ok, 20000, 1000), 'Sign in, from the app itself, starts the sign-in');
     await sleep(8000);
     await screen('signin-from-the-app');
     await shot('interview-signing-in');
@@ -240,7 +287,8 @@ async function run() {
   const answers = () => ssh(`curl -sf -o /dev/null http://127.0.0.1:${APP_PORT}/api/settings`).ok;
   check(!!await until(answers, 60000, 2000), 'the app answers after the update');
 
-  // a restart: it comes back by itself
+  // a restart: it comes back by itself (the video ends here: the restart drops the VM's screen)
+  await stopRecording();
   tunnel.kill();
   await page.close(); page = null;
   spawnSync('ssh', [...SSH(), 'echo admin | sudo -S shutdown -r now'], { encoding: 'utf8', timeout: 20000 });
@@ -251,6 +299,7 @@ async function run() {
 
 let crashed = null;
 try { await run(); } catch (e) { crashed = e; check(false, 'the run finished', e.message); await screen('crash'); }
+await stopRecording();
 try { await page?.close(); } catch { /* gone */ }
 tunnel?.kill();
 vnc?.close();
