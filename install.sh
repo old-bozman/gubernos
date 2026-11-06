@@ -1,5 +1,5 @@
 #!/bin/bash
-# Gubernos for Mac in one line:
+# Gubernos for Mac or Linux (Windows: in WSL) in one line:
 #   curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash
 # Gets what the app needs without sudo, Homebrew or Apple's Command Line Tools — Node (into ~/.gubernos/node when there is
 # none) and the app (~/.gubernos/app, a download of the GitHub repo; no git) — then hands over to your AI agent for the rest
@@ -28,8 +28,10 @@ if [[ -t 1 ]]; then say() { printf '\033[1m%s\033[0m\n' "$1"; }; else say() { pr
 ok() { printf '  ✓ %s\n' "$1"; }
 die() { printf '\n✗ %s\n' "$1" >&2; exit 1; }
 
-[[ "$(uname)" == Darwin ]] || die "Gubernos for Mac needs macOS."
-[[ $UPDATE == 1 ]] || say "Gubernos for Mac"
+OS="$(uname)"
+case "$OS" in Darwin) os=darwin; PROFILE="$HOME/.zprofile";; Linux) os=linux; PROFILE="$HOME/.profile";; *) die "Gubernos runs on macOS or Linux (on Windows: in WSL).";; esac
+sha256() { if command -v shasum >/dev/null; then shasum -a 256 "$1"; else sha256sum "$1"; fi | cut -d' ' -f1; }
+[[ $UPDATE == 1 ]] || say "Gubernos for $([[ $os == darwin ]] && echo Mac || echo Linux)"
 
 # AICODE-NOTE: the download replaces everything in $DIR that isn't in the repo. A vault in the same folder (an install from
 # when both were ~/gubernos and ~/Gubernos) would be deleted, so stop before touching anything.
@@ -41,24 +43,24 @@ fi
 node_ok() { command -v node >/dev/null && [[ "$(node -p 'process.versions.node.split(".")[0]')" -ge 20 ]]; }
 [[ -x "$NODE_DIR/bin/node" ]] && export PATH="$NODE_DIR/bin:$PATH"
 if ! node_ok; then
-  arch="$(uname -m)"; [[ "$arch" == x86_64 ]] && arch=x64
+  arch="$(uname -m)"; [[ "$arch" == x86_64 ]] && arch=x64; [[ "$arch" == aarch64 ]] && arch=arm64
   base="https://nodejs.org/dist/latest-v$NODE_MAJOR.x"
   tmp="$(mktemp -d)"
   sums="$(curl -fsSL "$base/SHASUMS256.txt")" || die "couldn't reach nodejs.org"
-  file="$(printf '%s\n' "$sums" | awk -v a="darwin-$arch.tar.gz" '$2 ~ a"$" {print $2; exit}')"
-  [[ -n "$file" ]] || die "no Node build for darwin-$arch"
+  file="$(printf '%s\n' "$sums" | awk -v a="$os-$arch.tar.gz" '$2 ~ a"$" {print $2; exit}')"
+  [[ -n "$file" ]] || die "no Node build for $os-$arch"
   say "Getting Node ($file)…"
   curl -fsSL "$base/$file" -o "$tmp/$file"
   want="$(printf '%s\n' "$sums" | awk -v f="$file" '$2 == f {print $1}')"
-  [[ "$(shasum -a 256 "$tmp/$file" | cut -d' ' -f1)" == "$want" ]] || die "Node download failed its checksum"
+  [[ "$(sha256 "$tmp/$file")" == "$want" ]] || die "Node download failed its checksum"
   rm -rf "$NODE_DIR"; mkdir -p "$NODE_DIR"
   tar -xzf "$tmp/$file" -C "$NODE_DIR" --strip-components 1
   rm -rf "$tmp"
   export PATH="$NODE_DIR/bin:$PATH"
   # new terminals find it too
   line='export PATH="$HOME/.gubernos/node/bin:$PATH" # Gubernos: Node'
-  grep -qsF "$line" "$HOME/.zprofile" || printf '\n%s\n' "$line" >> "$HOME/.zprofile"
-  ok "Node $(node -v) in ~/.gubernos/node (added to ~/.zprofile)"
+  grep -qsF "$line" "$PROFILE" || printf '\n%s\n' "$line" >> "$PROFILE"
+  ok "Node $(node -v) in ~/.gubernos/node (added to ${PROFILE/#$HOME/~})"
 else
   ok "Node $(node -v)"
 fi
@@ -68,8 +70,8 @@ fi
 case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *)
   export PATH="$HOME/.local/bin:$PATH"
   line='export PATH="$HOME/.local/bin:$PATH" # Gubernos: Claude Code'
-  grep -qsF "$line" "$HOME/.zprofile" || printf '\n%s\n' "$line" >> "$HOME/.zprofile"
-  ok "~/.local/bin on PATH (added to ~/.zprofile)" ;;
+  grep -qsF "$line" "$PROFILE" || printf '\n%s\n' "$line" >> "$PROFILE"
+  ok "~/.local/bin on PATH (added to ${PROFILE/#$HOME/~})" ;;
 esac
 
 # 2. the app: a git checkout (a developer's clone) updates with git; otherwise the repo's files as a download.
@@ -92,12 +94,13 @@ download() {
   ok "Gubernos ${sha:0:7} in $DIR"
 }
 if [[ -d "$DIR/.git" ]]; then
-  xcode-select -p >/dev/null 2>&1 || die "$DIR is a git checkout but git isn't installed (xcode-select --install)"
+  if [[ $os == darwin ]]; then xcode-select -p >/dev/null 2>&1 || die "$DIR is a git checkout but git isn't installed (xcode-select --install)"; else command -v git >/dev/null || die "$DIR is a git checkout but git isn't installed"; fi
   git -C "$DIR" pull --ff-only --quiet || die "couldn't update $DIR (changed files there? git -C $DIR status)"
   ok "updated $DIR"
 elif [[ -e "$DIR" && ! -f "$VERSION_FILE" ]]; then
   die "$DIR exists and isn't Gubernos — move it away, or set GUBERNOS_DIR=another/folder"
 else
+  command -v rsync >/dev/null || die "rsync is missing: install it first (Debian / Ubuntu: sudo apt install rsync)"
   download
 fi
 (cd "$DIR" && npm ci --silent --no-audit --no-fund) || die "npm couldn't install the dependencies"

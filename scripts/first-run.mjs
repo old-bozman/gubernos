@@ -107,5 +107,9 @@ server.listen(PORT, '127.0.0.1', () => {
   fs.mkdirSync(path.dirname(kept), { recursive: true });
   fs.writeFileSync(kept, link, { mode: 0o600 });
   process.once('exit', () => fs.rmSync(kept, { force: true }));
-  if (!process.argv.includes('--no-open')) spawn('open', [link], { stdio: 'ignore', detached: true }).unref();
+  // the browser: macOS `open`; Linux the desktop's (xdg-open); WSL the Windows one; a server with no screen prints the link
+  const wsl = process.platform === 'linux' && /microsoft/i.test(fs.readFileSync('/proc/version', 'utf8'));
+  const opener = process.platform === 'darwin' ? ['open', [link]] : wsl ? ['cmd.exe', ['/c', 'start', '', link.replace(/&/g, '^&')]]
+    : process.env.DISPLAY || process.env.WAYLAND_DISPLAY ? ['xdg-open', [link]] : null;
+  if (!process.argv.includes('--no-open') && opener) spawn(...opener, { stdio: 'ignore', detached: true }).on('error', () => {}).unref();
 });

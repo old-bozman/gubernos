@@ -1,0 +1,17 @@
+# Linux: Gubernos as a systemd user service (scripts/setup.sh install writes it to ~/.config/systemd/user/)
+[Unit]
+Description=Gubernos
+After=network-online.target
+
+[Service]
+ExecStart={{NODE}} {{APP}}/server.js
+WorkingDirectory={{APP}}
+Environment=PATH={{PATH}}
+Environment=HOME={{HOME}}
+Restart=always
+RestartSec=10
+StandardOutput=append:{{APP}}/server.log
+StandardError=append:{{APP}}/server.log
+
+[Install]
+WantedBy=default.target

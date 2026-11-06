@@ -5,7 +5,10 @@
 set -euo pipefail
 APP="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$APP"
-restart() { launchctl kickstart -k "gui/$(id -u)/com.${USER}.gubernos" 2>/dev/null || echo "(no background service — start with npm start)"; }
+restart() {
+  if [[ "$(uname)" == Linux ]]; then "$APP/scripts/setup.sh" restart >/dev/null 2>&1 || echo "(no background service — start with npm start)"
+  else launchctl kickstart -k "gui/$(id -u)/com.${USER}.gubernos" 2>/dev/null || echo "(no background service — start with npm start)"; fi
+}
 
 if [[ -d .git ]]; then
   before=$(git rev-parse HEAD)

@@ -1,0 +1,14 @@
+# Linux: the phone's address through Cloudflare Tunnel (scripts/setup.sh phone), a systemd user service
+[Unit]
+Description=Gubernos tunnel (Cloudflare)
+After=network-online.target
+
+[Service]
+ExecStart={{HOME}}/.gubernos/bin/cloudflared tunnel --no-autoupdate run --token-file {{TOKEN_FILE}}
+Restart=always
+RestartSec=10
+StandardOutput=append:{{APP}}/tunnel.log
+StandardError=append:{{APP}}/tunnel.log
+
+[Install]
+WantedBy=default.target

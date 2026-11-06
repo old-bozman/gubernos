@@ -1,5 +1,5 @@
 #!/bin/bash
-# Installs Gubernos on this Mac. An agent (Claude Code or Codex) runs it step by step from SETUP.md; each step
+# Installs Gubernos on this Mac (or a Linux machine: a systemd user service instead of launchd; Windows: in WSL). An agent (Claude Code or Codex) runs it step by step from SETUP.md; each step
 # is safe to repeat.
 #
 #   scripts/setup.sh check                       what's installed, what's missing
@@ -35,6 +35,8 @@ CFG_DIR="${GUBERNOS_CONFIG_DIR:-$HOME/.config/gubernos}"
 CFD="$HOME/.gubernos/bin/cloudflared"
 TUNNEL_RELAY="${GUBERNOS_TUNNEL_RELAY:-https://relay.gubernos.app}"
 AGENTS_DIR="${GUBERNOS_LAUNCH_AGENTS:-$HOME/Library/LaunchAgents}"
+OS="$(uname)"
+UNITS_DIR="${GUBERNOS_SYSTEMD_DIR:-$HOME/.config/systemd/user}"
 KIT="node $APP/scripts/kit.mjs"
 ok() { printf '  ✓ %s\n' "$1"; }
 no() { printf '  ✗ %s\n' "$1"; }
@@ -45,7 +47,9 @@ proxy_port() { local p; p=$($KIT get proxyPort 2>/dev/null || true); echo "${p:-
 
 check() {
   echo "Required"
-  [[ "$(uname)" == Darwin ]] && ok "macOS $(sw_vers -productVersion)" || no "macOS (this is $(uname))"
+  if [[ $OS == Darwin ]]; then ok "macOS $(sw_vers -productVersion)"
+  elif [[ $OS == Linux ]]; then ok "Linux ($(. /etc/os-release 2>/dev/null; echo "${PRETTY_NAME:-$(uname -r)}")$(grep -qi microsoft /proc/version 2>/dev/null && echo ', WSL'))"; systemd_ok && ok "systemd (the background service)" || no "systemd for your user (without it Gubernos runs until a restart; WSL: systemd=true in /etc/wsl.conf)"
+  else no "macOS or Linux (this is $(uname))"; fi
   if command -v node >/dev/null; then
     v=$(node -p 'process.versions.node.split(".")[0]'); [[ $v -ge 20 ]] && ok "node $(node -v)" || no "node $(node -v) — need 20+ (run the installer again, or brew install node)"
   else no "node — run the installer again: curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash"; fi
@@ -98,6 +102,30 @@ render() { # template → plist
       -e "s#{{PATH}}#$HOME/.local/bin:$(dirname "$(command -v node)"):/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin#g" "$1"
 }
 
+# Linux: systemd user services (deploy/*.service.template → ~/.config/systemd/user/). No systemd (WSL without it, a
+# container): started in the background now, not after a restart. GUBERNOS_NO_LAUNCHD=1 (tests): written, not started.
+systemd_ok() { command -v systemctl >/dev/null && systemctl --user show-environment >/dev/null 2>&1; }
+unit_up() { # name template [token-file]
+  mkdir -p "$UNITS_DIR"; render "$2" "$1" | sed "s#{{TOKEN_FILE}}#${3:-}#g" > "$UNITS_DIR/$1.service"
+  [[ -n "${GUBERNOS_NO_LAUNCHD:-}" ]] && return 0
+  if systemd_ok; then
+    systemctl --user daemon-reload && systemctl --user enable "$1.service" >/dev/null 2>&1 && systemctl --user restart "$1.service"
+    [[ "$(loginctl show-user "$USER" -p Linger 2>/dev/null)" == Linger=yes ]] || loginctl enable-linger "$USER" 2>/dev/null \
+      || no "it runs while you're logged in; to keep it running after you log out: sudo loginctl enable-linger $USER"
+  else
+    pkill -f "$(sed -n 's/^ExecStart=//p' "$UNITS_DIR/$1.service")" 2>/dev/null || true
+    (cd "$APP" && nohup $(sed -n 's/^ExecStart=//p' "$UNITS_DIR/$1.service") >> "$APP/${1#gubernos-}.log" 2>&1 &)
+    no "no systemd here: running now, but not after a restart (WSL: systemd=true under [boot] in /etc/wsl.conf, then run this again)"
+  fi
+}
+unit_down() { # name
+  [[ -f "$UNITS_DIR/$1.service" ]] || return 0
+  if [[ -z "${GUBERNOS_NO_LAUNCHD:-}" ]]; then
+    if systemd_ok; then systemctl --user disable --now "$1.service" >/dev/null 2>&1 || true; else pkill -f "$(sed -n 's/^ExecStart=//p' "$UNITS_DIR/$1.service")" 2>/dev/null || true; fi
+  fi
+  rm -f "$UNITS_DIR/$1.service"
+}
+
 # GUBERNOS_NO_LAUNCHD=1 (tests): write the plists, start and restart nothing
 load() { # label plist
   [[ -n "${GUBERNOS_NO_LAUNCHD:-}" ]] && return 0
@@ -146,10 +174,13 @@ install() {
   fi
   if [[ $launchd == 0 ]]; then echo "4/4 background service skipped (--no-launchd): start with  npm start"; return; fi
   echo "4/4 background service"
+  if [[ $OS == Linux ]]; then unit_up gubernos "$APP/deploy/gubernos.service.template"
+  else
   mkdir -p "$AGENTS_DIR"
   render "$APP/deploy/gubernos.plist.template" "$LABEL" > "$AGENTS_DIR/$LABEL.plist"
   load "$LABEL" "$AGENTS_DIR/$LABEL.plist"
-  if [[ $awake == 1 ]]; then render "$APP/deploy/gubernos-awake.plist.template" "$AWAKE_LABEL" > "$AGENTS_DIR/$AWAKE_LABEL.plist"; load "$AWAKE_LABEL" "$AGENTS_DIR/$AWAKE_LABEL.plist"; ok "Mac stays awake on power"; fi
+  fi
+  if [[ $awake == 1 && $OS == Darwin ]]; then render "$APP/deploy/gubernos-awake.plist.template" "$AWAKE_LABEL" > "$AGENTS_DIR/$AWAKE_LABEL.plist"; load "$AWAKE_LABEL" "$AGENTS_DIR/$AWAKE_LABEL.plist"; ok "Mac stays awake on power"; fi
   wait_up && ok "running: http://127.0.0.1:$(port)" || { no "the app didn't start — see $APP/server.log"; tail -5 "$APP/server.log"; exit 1; }
 }
 
@@ -161,6 +192,7 @@ ts() { command -v tailscale >/dev/null && tailscale "$@" || /Applications/Tailsc
 TS_PKG="https://pkgs.tailscale.com/stable/Tailscale-latest-macos.pkg"
 TS_SIGNER="Developer ID Installer: Tailscale Inc. (W5364U7YZB)"
 get-tailscale() {
+  [[ $OS == Linux ]] && die "Tailscale for Linux: https://tailscale.com/download/linux (then scripts/setup.sh phone --tailscale)"
   if [[ ! -d /Applications/Tailscale.app ]]; then
     local tmp; tmp="$(mktemp -d)"
     echo "  downloading Tailscale (its official installer, ~25 MB)…"
@@ -201,6 +233,12 @@ pairing_on() {
 # Cloudflare's own build (signed by Cloudflare Inc., team 68WVV388M8), checked before it's kept. No Homebrew, no password.
 get-cloudflared() {
   if [[ -x "$CFD" ]]; then ok "cloudflared $("$CFD" --version | awk '{print $3}')"; return; fi
+  if [[ $OS == Linux ]]; then # Cloudflare's release binary from GitHub, over HTTPS (Linux builds carry no code signature to check)
+    local la=amd64; [[ "$(uname -m)" =~ ^(aarch64|arm64)$ ]] && la=arm64
+    mkdir -p "$(dirname "$CFD")"; curl -fsSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-$la" -o "$CFD.new" || die "couldn't download cloudflared"
+    chmod +x "$CFD.new" && "$CFD.new" --version >/dev/null && mv "$CFD.new" "$CFD" || { rm -f "$CFD.new"; die "the downloaded cloudflared doesn't run here"; }
+    ok "cloudflared $("$CFD" --version | awk '{print $3}') (Cloudflare's release) in ~/.gubernos/bin"; return
+  fi
   local arch tmp; arch=$([[ "$(uname -m)" == arm64 ]] && echo arm64 || echo amd64); tmp=$(mktemp -d)
   curl -fsSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-$arch.tgz" | tar -xz -C "$tmp" || die "couldn't download cloudflared"
   { codesign --verify --strict "$tmp/cloudflared" && codesign -dv "$tmp/cloudflared" 2>&1 | grep -q 'TeamIdentifier=68WVV388M8'; } \
@@ -219,9 +257,12 @@ cloudflare-tunnel() {
     mkdir -p "$CFG_DIR"; ( umask 077
       node -e 'const j=JSON.parse(process.argv[1]);require("fs").writeFileSync(process.argv[2],JSON.stringify({id:j.id,hostname:j.hostname,key:j.key,port:+process.argv[4]},null,1)+"\n");require("fs").writeFileSync(process.argv[3],j.token)' "$out" "$tf" "$tok" "$pp" )
   fi
+  if [[ $OS == Linux ]]; then unit_up gubernos-tunnel "$APP/deploy/gubernos-tunnel.service.template" "$tok" >&2
+  else
   mkdir -p "$AGENTS_DIR"
   render "$APP/deploy/gubernos-tunnel.plist.template" "$TUNNEL_LABEL" | sed "s#{{TOKEN_FILE}}#$tok#g" > "$AGENTS_DIR/$TUNNEL_LABEL.plist"
   load "$TUNNEL_LABEL" "$AGENTS_DIR/$TUNNEL_LABEL.plist"
+  fi
   node -p 'require(process.argv[1]).hostname' "$tf"
 }
 
@@ -229,6 +270,7 @@ cloudflare-tunnel() {
 # address stops working (someone who chose Tailscale to end HTTPS on this Mac shouldn't keep a way in through Cloudflare).
 stop-tunnel() {
   local tf="$CFG_DIR/tunnel.json" plist="$AGENTS_DIR/$TUNNEL_LABEL.plist"
+  unit_down gubernos-tunnel
   if [[ -f "$plist" ]]; then
     [[ -n "${GUBERNOS_NO_LAUNCHD:-}" ]] || launchctl bootout "gui/$(id -u)/$TUNNEL_LABEL" 2>/dev/null || true
     rm -f "$plist"
@@ -274,6 +316,7 @@ phone() {
 }
 
 voice() {
+  [[ $OS == Linux ]] && die "Whisper is set up on Macs only for now; on Linux, type instead of talking"
   # Whisper without Homebrew or Apple's Command Line Tools: uv (one program) fetches its own Python; the app sends WAV, so
   # no ffmpeg. Its models (~1.6 GB) download here too.
   # AICODE-NOTE: only-managed — looking for a Python on the Mac runs /usr/bin/python3, a stub that opens Apple's dialog.
@@ -313,6 +356,7 @@ obsidian() {
 
 # caffeinate -s: no system sleep while on power (battery behaves as usual; closing a laptop's lid still sleeps)
 awake() {
+  [[ $OS == Linux ]] && { ok "nothing to do on Linux: keep the machine on (a laptop: its own power settings)"; return 0; }
   local plist="$AGENTS_DIR/$AWAKE_LABEL.plist"
   case "${1:-status}" in
     on) mkdir -p "$AGENTS_DIR"; render "$APP/deploy/gubernos-awake.plist.template" "$AWAKE_LABEL" > "$plist"; load "$AWAKE_LABEL" "$plist"; ok "the Mac stays awake on power (caffeinate -s)";;
@@ -324,14 +368,20 @@ awake() {
 
 # The Mac's calendars for Plan the day (Calendar.app, any account added there): build the helper and ask macOS for access
 calendar() {
+  [[ $OS == Linux ]] && die "this computer's calendar is a Mac feature: use Google instead (Settings → Your Mac → Calendar)"
   local out
   out=$(curl -sf -X POST "http://127.0.0.1:$(port)/api/calendar/mac/access" 2>/dev/null) || die "the app isn't answering on $(port) — install first"
   if [[ "$out" == *'"full"'* ]]; then ok "Plan the day reads this Mac's calendars (Settings → Your Mac → Calendar picks which; time blocks go to the default one)"
   else no "no calendar access ($out): System Settings → Privacy & Security → Calendars → Gubernos Calendar → Full Access"; fi
 }
 
-restart() { [[ -n "${GUBERNOS_NO_LAUNCHD:-}" ]] && return 0; launchctl kickstart -k "gui/$(id -u)/$LABEL" && wait_up && ok "restarted"; }
-status() { launchctl print "gui/$(id -u)/$LABEL" 2>/dev/null | grep -E "state|pid" | head -2; curl -sf "http://127.0.0.1:$(port)/api/state" >/dev/null && ok "answering on $(port)" || no "not answering on $(port)"; }
+restart() {
+  [[ -n "${GUBERNOS_NO_LAUNCHD:-}" ]] && return 0
+  if [[ $OS == Linux ]]; then if systemd_ok; then systemctl --user restart gubernos.service; else unit_up gubernos "$APP/deploy/gubernos.service.template"; fi
+  else launchctl kickstart -k "gui/$(id -u)/$LABEL"; fi
+  wait_up && ok "restarted"
+}
+status() { if [[ $OS == Linux ]]; then systemd_ok && echo "  service: $(systemctl --user is-active gubernos.service 2>/dev/null)"; else launchctl print "gui/$(id -u)/$LABEL" 2>/dev/null | grep -E "state|pid" | head -2; fi; curl -sf "http://127.0.0.1:$(port)/api/state" >/dev/null && ok "answering on $(port)" || no "not answering on $(port)"; }
 
 cmd="${1:-check}"; shift || true
 case "$cmd" in check|install|model|voice-language|get-tailscale|get-cloudflared|stop-tunnel|phone|voice|obsidian|awake|calendar|restart|status) "$cmd" "$@";; *) die "unknown command $cmd";; esac
