@@ -24,7 +24,7 @@ test('phone: a tunnel address from the relay, kept; pairing required', { timeout
   }); }).listen(0, '127.0.0.1');
   await new Promise((r) => relay.once('listening', r));
   const run = () => promisify(execFile)('bash', [path.join(ROOT, 'scripts/setup.sh'), 'phone'], { env: { ...process.env, HOME: home,
-    GUBERNOS_NO_LAUNCHD: '1', GUBERNOS_LAUNCH_AGENTS: agents, GUBERNOS_TUNNEL_RELAY: `http://127.0.0.1:${relay.address().port}` } });
+    GUBERNOS_NO_LAUNCHD: '1', GUBERNOS_LAUNCH_AGENTS: agents, GUBERNOS_SYSTEMD_DIR: agents, GUBERNOS_TUNNEL_RELAY: `http://127.0.0.1:${relay.address().port}` } });
   try {
     const { stdout } = await run();
     assert.match(stdout, /phone URL: https:\/\/m-abc\.gubernos\.dev/);
@@ -33,15 +33,17 @@ test('phone: a tunnel address from the relay, kept; pairing required', { timeout
     assert.equal(fs.statSync(path.join(cfg, 'tunnel.token')).mode & 0o777, 0o600);
     assert.equal(JSON.parse(fs.readFileSync(path.join(cfg, 'config.json'), 'utf8')).publicUrl, 'https://m-abc.gubernos.dev');
     assert.equal(JSON.parse(fs.readFileSync(path.join(cfg, 'pair.json'), 'utf8')).required, true);
-    const plist = fs.readdirSync(agents).find((f) => f.endsWith('gubernos-tunnel.plist'));
-    assert.match(fs.readFileSync(path.join(agents, plist), 'utf8'), new RegExp(`--token-file</string><string>${cfg.replace(/[.]/g, '\\.')}/tunnel\\.token`));
+    // the background service for cloudflared: a launchd plist on a Mac, a systemd user unit on Linux
+    const svc = fs.readdirSync(agents).find((f) => /gubernos-tunnel\.(plist|service)$/.test(f));
+    const esc = cfg.replace(/[.]/g, '\\.');
+    assert.match(fs.readFileSync(path.join(agents, svc), 'utf8'), process.platform === 'darwin' ? new RegExp(`--token-file</string><string>${esc}/tunnel\\.token`) : new RegExp(`--token-file ${esc}/tunnel\\.token`));
     await run(); // again: the same tunnel, the relay isn't asked twice
     assert.equal(asked, 1);
     // leaving Cloudflare: the service file and the saved tunnel are gone, the relay is told to delete it
-    await promisify(execFile)('bash', [path.join(ROOT, 'scripts/setup.sh'), 'stop-tunnel'], { env: { ...process.env, HOME: home, GUBERNOS_NO_LAUNCHD: '1', GUBERNOS_LAUNCH_AGENTS: agents, GUBERNOS_TUNNEL_RELAY: `http://127.0.0.1:${relay.address().port}` } });
+    await promisify(execFile)('bash', [path.join(ROOT, 'scripts/setup.sh'), 'stop-tunnel'], { env: { ...process.env, HOME: home, GUBERNOS_NO_LAUNCHD: '1', GUBERNOS_LAUNCH_AGENTS: agents, GUBERNOS_SYSTEMD_DIR: agents, GUBERNOS_TUNNEL_RELAY: `http://127.0.0.1:${relay.address().port}` } });
     assert.equal(deleted, '/tunnel/tid?key=K');
     assert.ok(!fs.existsSync(path.join(cfg, 'tunnel.json')) && !fs.existsSync(path.join(cfg, 'tunnel.token')));
-    assert.ok(!fs.readdirSync(agents).some((f) => f.endsWith('gubernos-tunnel.plist')));
+    assert.ok(!fs.readdirSync(agents).some((f) => /gubernos-tunnel\.(plist|service)$/.test(f)));
   } finally { relay.close(); fs.rmSync(d, { recursive: true, force: true }); }
 });
 

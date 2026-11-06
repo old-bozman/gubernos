@@ -56,7 +56,7 @@ test('a new install keeps the app apart from ~/Gubernos, and an update leaves th
 
 test('its output reads as plain text in the app\'s window: colour codes only on a terminal', () => {
   const r = install(newHome('plain'), '--wizard-none');
-  assert.match(r.stdout, /Gubernos for Mac/);
+  assert.match(r.stdout, process.platform === 'darwin' ? /Gubernos for Mac/ : /Gubernos for Linux/);
   assert.ok(!r.stdout.includes('\x1b'), JSON.stringify(r.stdout.slice(0, 80)));
 });
 
@@ -92,7 +92,8 @@ test('setup refuses a vault in the app\'s folder, whatever the case of the name'
   const app = path.join(home, 'gubernos');
   fs.mkdirSync(app);
   fs.cpSync(path.join(ROOT, 'scripts'), path.join(app, 'scripts'), { recursive: true });
-  for (const vault of ['~/gubernos', '~/Gubernos', '~/gubernos/my-files']) {
+  // ~/Gubernos is the app's own folder only where names ignore case (macOS); on Linux it's another folder, and fine
+  for (const vault of ['~/gubernos', ...(process.platform === 'darwin' ? ['~/Gubernos'] : []), '~/gubernos/my-files']) {
     const r = spawnSync('bash', [path.join(app, 'scripts/setup.sh'), 'install', '--vault', vault, '--name', 'Sam', '--no-launchd'], { env: { ...process.env, HOME: home }, encoding: 'utf8' });
     assert.notEqual(r.status, 0, `${vault}: ${r.stdout}${r.stderr}`);
     assert.match(r.stdout + r.stderr, /inside the app's folder/, vault);
