@@ -95,6 +95,16 @@ async function run() {
   const errors = page.errors.filter((e) => !/favicon|:4746/.test(e));
   check(!errors.length, 'no errors in the pages', errors.join(' | '));
 
+  // voice: Whisper on Linux (faster-whisper, CPU), a sentence said on this Mac, heard there
+  const t4 = Date.now();
+  const v = ssh(`${PATHS}; ~/.gubernos/app/scripts/setup.sh voice 2>&1 | tail -3`, 1200000);
+  check(/Whisper ready/.test(v.out), `setup.sh voice installs Whisper here, in ${seconds(t4)}`, v.out);
+  const wav = path.join(OUT, 'say.wav');
+  execFileSync('say', ['-v', 'Samantha', '-o', wav, '--file-format=WAVE', '--data-format=LEI16@16000', 'Remind me to call the plumber tomorrow at ten.']);
+  execFileSync('scp', ['-i', key, '-o', 'StrictHostKeyChecking=no', '-o', 'UserKnownHostsFile=/dev/null', '-o', 'LogLevel=ERROR', wav, `admin@${ip}:/tmp/say.wav`]);
+  const heard = ssh(`cd ~/.gubernos/app && echo '{"id":1,"path":"/tmp/say.wav","language":"en"}' | .venv/bin/python lib/stt.py full`, 600000);
+  check(/plumber/i.test(heard.out) && /tomorrow/i.test(heard.out), `Whisper hears it: ${heard.out.match(/"text": *"([^"]*)"/)?.[1] || heard.out.slice(0, 200)}`, heard.out);
+  check(/"engine":"whisper"/.test(ssh(`curl -s http://127.0.0.1:${APP_PORT}/api/voice/status`).out), 'the app uses Whisper for voice now', ssh(`curl -s http://127.0.0.1:${APP_PORT}/api/voice/status`).out);
   const answers = () => ssh(`curl -sf -o /dev/null http://127.0.0.1:${APP_PORT}/api/settings`).ok;
   const r1 = ssh(`${PATHS}; ~/.gubernos/app/scripts/setup.sh restart`);
   check(r1.ok && /restarted/.test(r1.out), 'setup.sh restart restarts the service', r1.out);

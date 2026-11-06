@@ -53,7 +53,7 @@ The iPhone app comes from TestFlight; step 3b walks them through it.
 
 ### 1. Check the Mac
 
-(On Linux, or Windows in WSL, the steps are the same: `scripts/setup.sh` runs Gubernos as a systemd user service there. Skip what's Mac-only and say so plainly: the Mac's calendar (Google instead), voice (Whisper), keeping the Mac awake, Obsidian's iCloud folder.)
+(On Linux, or Windows in WSL, the steps are the same: `scripts/setup.sh` runs Gubernos as a systemd user service there. Skip what's Mac-only and say so plainly: the Mac's calendar (Google instead), keeping the Mac awake, Obsidian's iCloud folder. Voice works there too (`scripts/setup.sh voice`: faster-whisper). On Windows the install also makes Gubernos start with Windows (a starter in the Startup folder).)
 
 Run `scripts/setup.sh check`. Every "Required" line must be ✓:
 - node missing or older than 20 → run `install.sh` again (step 0): it puts Node in `~/.gubernos/node`. No Homebrew needed.

@@ -80,7 +80,11 @@ curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh
 
 It gets Node and the app into `~/.gubernos` (no sudo), then opens the same setup page in your browser (on WSL, the Windows one; on a machine without a screen it prints the link). Without `--wizard` it hands over to your AI agent instead, as on the Mac. Gubernos then runs as a background service of your user (systemd), also after a restart. You need `curl`, `tar` and `rsync` (Debian / Ubuntu: `sudo apt install rsync` if it's missing); on WSL, systemd on, which new Ubuntu installs have (else `systemd=true` under `[boot]` in `/etc/wsl.conf`).
 
-What's different from the Mac: the calendar comes from Google (Settings → Your Mac → Calendar), voice is off for now (type instead), and there's nothing to keep awake. The phone connects the same way (Settings → Your Mac → iPhone and other devices).
+On Windows, Linux stops when its last window closes and doesn't start with Windows; so the setup also puts a small hidden starter (`Gubernos.vbs`) in your Windows Startup folder: Gubernos starts when you log in to Windows and keeps running with no window open. Delete that file to stop it.
+
+Voice: ask your agent "set up voice", or run `~/.gubernos/app/scripts/setup.sh voice`: Whisper, on the computer itself (faster-whisper; on an NVIDIA graphics card, also in WSL, it's quicker). On the processor a talk takes about as long to read as it took to say.
+
+What's different from the Mac: the calendar comes from Google (Settings → Your Mac → Calendar), and there's nothing to keep awake. The phone connects the same way (Settings → Your Mac → iPhone and other devices).
 
 ## Keep the Mac awake
 

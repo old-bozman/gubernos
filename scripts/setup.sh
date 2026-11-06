@@ -15,7 +15,7 @@
 #   scripts/setup.sh get-cloudflared             only that: Cloudflare's signed cloudflared into ~/.gubernos/bin
 #   scripts/setup.sh stop-tunnel                 stop the Cloudflare address and delete it (--tailscale / --private do this too)
 #   scripts/setup.sh get-tailscale               only that: download Tailscale's installer, check its signature, open it, wait for the login
-#   scripts/setup.sh voice                       Whisper (MLX, Apple Silicon): Russian, mixed languages, accents. Without it the
+#   scripts/setup.sh voice                       Whisper (MLX on Apple Silicon; faster-whisper on Linux): Russian, mixed languages, accents. Without it the
 #                                                Mac's own speech models hear one language each (macOS 26+, nothing to install)
 #   scripts/setup.sh obsidian                    Dataview + Templater plugins in a vault that is its own Obsidian vault
 #   scripts/setup.sh calendar                    Plan the day reads this Mac's calendars (asks macOS for access: a dialog)
@@ -60,8 +60,12 @@ check() {
   [[ -d /Applications/Obsidian.app ]] && ok "Obsidian app" || no "Obsidian (optional, to read the files: https://obsidian.md)"
   [[ -d "$HOME/Library/Mobile Documents/iCloud~md~obsidian/Documents" ]] && ok "Obsidian iCloud folder" || no "Obsidian iCloud folder (appears once Obsidian on iPhone/Mac stores a vault in iCloud)"
   (command -v tailscale >/dev/null || [[ -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ]]) && ok "Tailscale" || no "Tailscale (optional, for the phone: https://tailscale.com/download)"
-  [[ "$(uname -m)" == arm64 ]] && ok "Apple Silicon (Whisper can run here)" || no "Apple Silicon (only for Whisper; this Mac's own speech models work without it)"
-  [[ -x "$APP/.venv/bin/python" ]] && ok "Whisper (voice: any language, mixed, accents)" || no "Whisper (optional: Russian, mixed languages, accents — scripts/setup.sh voice; one language works without it on macOS 26)"
+  if [[ $OS == Darwin ]]; then
+    [[ "$(uname -m)" == arm64 ]] && ok "Apple Silicon (Whisper can run here)" || no "Apple Silicon (only for Whisper; this Mac's own speech models work without it)"
+    [[ -x "$APP/.venv/bin/python" ]] && ok "Whisper (voice: any language, mixed, accents)" || no "Whisper (optional: Russian, mixed languages, accents — scripts/setup.sh voice; one language works without it on macOS 26)"
+  else
+    [[ -x "$APP/.venv/bin/python" ]] && ok "Whisper (voice)" || no "Whisper (optional: talking to the app instead of typing — scripts/setup.sh voice)"
+  fi
   if [[ -f "$HOME/.config/gubernos/config.json" ]]; then ok "configured: $(tr -d '\n' < "$HOME/.config/gubernos/config.json" | cut -c1-160)"; fi
 }
 
@@ -118,6 +122,24 @@ unit_up() { # name template [token-file]
     no "no systemd here: running now, but not after a restart (WSL: systemd=true under [boot] in /etc/wsl.conf, then run this again)"
   fi
 }
+# Windows (WSL): Linux stops when its last window closes and doesn't start when Windows does, so the service alone isn't
+# enough. A hidden starter in the person's Windows Startup folder (no admin) runs WSL with a process that only waits;
+# systemd then starts Gubernos as usual. Started now too, so closing this window doesn't stop it.
+is_wsl() { [[ $OS == Linux ]] && grep -qi microsoft /proc/version 2>/dev/null; }
+wsl_keepalive() {
+  is_wsl || return 0
+  [[ -n "${GUBERNOS_NO_LAUNCHD:-}" ]] && return 0
+  local appdata startup vbs win distro="${WSL_DISTRO_NAME:-Ubuntu}"
+  appdata=$(cmd.exe /c 'echo %APPDATA%' 2>/dev/null | tr -d '\r'); [[ "$appdata" == *:\\* ]] || { no "couldn't reach Windows to start Gubernos with it: open your Linux window after each restart"; return 0; }
+  startup="$(wslpath -u "$appdata\\Microsoft\\Windows\\Start Menu\\Programs\\Startup")"
+  vbs="$startup/Gubernos.vbs"
+  printf '%s\r\n' "' Gubernos: keeps Linux ($distro, in WSL) running so Gubernos works; made by scripts/setup.sh" \
+    "CreateObject(\"WScript.Shell\").Run \"wsl.exe -d $distro --exec /bin/sleep infinity\", 0, False" > "$vbs" || { no "couldn't write $vbs"; return 0; }
+  win="$(wslpath -w "$vbs")"
+  pgrep -f '^/bin/sleep infinity' >/dev/null || cmd.exe /c start "" wscript.exe "$win" >/dev/null 2>&1
+  ok "starts with Windows and keeps running when this window closes (Startup: Gubernos.vbs)"
+}
+
 unit_down() { # name
   [[ -f "$UNITS_DIR/$1.service" ]] || return 0
   if [[ -z "${GUBERNOS_NO_LAUNCHD:-}" ]]; then
@@ -174,7 +196,7 @@ install() {
   fi
   if [[ $launchd == 0 ]]; then echo "4/4 background service skipped (--no-launchd): start with  npm start"; return; fi
   echo "4/4 background service"
-  if [[ $OS == Linux ]]; then unit_up gubernos "$APP/deploy/gubernos.service.template"
+  if [[ $OS == Linux ]]; then unit_up gubernos "$APP/deploy/gubernos.service.template"; wsl_keepalive
   else
   mkdir -p "$AGENTS_DIR"
   render "$APP/deploy/gubernos.plist.template" "$LABEL" > "$AGENTS_DIR/$LABEL.plist"
@@ -316,15 +338,25 @@ phone() {
 }
 
 voice() {
-  [[ $OS == Linux ]] && die "Whisper is set up on Macs only for now; on Linux, type instead of talking"
   # Whisper without Homebrew or Apple's Command Line Tools: uv (one program) fetches its own Python; the app sends WAV, so
   # no ffmpeg. Its models (~1.6 GB) download here too.
   # AICODE-NOTE: only-managed — looking for a Python on the Mac runs /usr/bin/python3, a stub that opens Apple's dialog.
-  [[ "$(uname -m)" == arm64 ]] || die "Whisper needs Apple Silicon (this Mac's own speech models work without it: Settings → Voice)"
+  [[ $OS == Linux || "$(uname -m)" == arm64 ]] || die "Whisper needs Apple Silicon (this Mac's own speech models work without it: Settings → Voice)"
   local uv; uv="$(command -v uv || echo "$HOME/.local/bin/uv")"
   if [[ ! -x "$uv" ]]; then
     curl -LsSf https://astral.sh/uv/install.sh | env UV_NO_MODIFY_PATH=1 sh >/dev/null 2>&1 || die "couldn't install uv (https://docs.astral.sh/uv)"
     uv="$HOME/.local/bin/uv"
+  fi
+  if [[ $OS == Linux ]]; then # faster-whisper (lib/stt.py): the CPU, or an NVIDIA GPU when there is one (also in WSL)
+    (cd "$APP" && "$uv" venv --quiet --allow-existing --python 3.12 --python-preference only-managed .venv && "$uv" pip install --quiet --python .venv/bin/python faster-whisper) \
+      || die "couldn't install Whisper"
+    local models='"small","base"'; command -v nvidia-smi >/dev/null && models='"large-v3-turbo","small"'
+    echo "  downloading Whisper's models (~0.6–1.6 GB, a few minutes)…"
+    (cd "$APP" && .venv/bin/python -c "from faster_whisper import download_model; [download_model(m) for m in ($models)]" >/dev/null 2>&1) \
+      || no "couldn't download the models now; they download on first use"
+    ok "Whisper ready: voice uses it from now on ($(command -v nvidia-smi >/dev/null && echo 'on the NVIDIA GPU' || echo "on the CPU: a talk takes about as long to read as it took to say"))"
+    restart >/dev/null 2>&1 || true
+    return
   fi
   (cd "$APP" && "$uv" venv --quiet --allow-existing --python 3.12 --python-preference only-managed .venv && "$uv" pip install --quiet --python .venv/bin/python mlx-whisper) \
     || die "couldn't install Whisper"
