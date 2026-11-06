@@ -68,7 +68,7 @@ Whatever they answer (a plain "yes" means X), do all of this before you reply, s
 
 Then, in the same reply, the habit question.
 
-**2. One habit.** The one habit that would change the most for them: "And one habit: which one thing, done regularly, would change the most for you?" If they mentioned some (running, sleep), name them as the options: "running twice a week, or going to bed earlier?" If they mentioned none, suggest one from what they said (sleep, movement and food come first).
+**2. One habit.** Ask it in these words (Brian Johnson's question): "One last thing, a habit: what's the one thing you know you need to do every day that would significantly improve your life?" If they mentioned some (running, sleep), add them as the options: "Running twice a week, or going to bed earlier?" If they mentioned none, suggest one from what they said (sleep, movement and food come first).
 
 Whatever they pick goes in `05_model/habits/<slug>.md` (template `habit.md`): `keystone: true`, `kind: build` (or `quit` for something to stop), `serves` its area, `supports` the goal or want it moves, `per_week: N` if they said how often (else every day), a `minimum` for a bad day if it's obvious (e.g. "10 minutes"), and `## Why` in one line, in their words. Only this one: the others they mentioned stay wants (`05_model/wants/`, `latent`). If they don't want one, skip it.
 

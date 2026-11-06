@@ -96,7 +96,7 @@ try {
     await sleep(600);
     await shot(`turn-${i + 1}`);
     msg = /important now/i.test(reply) ? P.now
-      : /\bhabit\b/i.test(reply) && /\?/.test(reply) ? P.habit : FOLLOW_UPS[Math.min(followUp++, FOLLOW_UPS.length - 1)];
+      : /\bhabit\b|know you need to do/i.test(reply) && /\?/.test(reply) ? P.habit : FOLLOW_UPS[Math.min(followUp++, FOLLOW_UPS.length - 1)];
   }
   fs.writeFileSync(path.join(OUT, 'conversation.md'), convo.map((c) => `**You:** ${c.you}\n\n**Gubernos:** ${c.agent}\n`).join('\n'));
   say(`  ${convo.length} turns, ${Math.round((Date.now() - started) / 1000)} s with the model`);
@@ -110,9 +110,9 @@ try {
   check(!jargon.length, 'no system words in what it says', jargon.join(', '));
   check(!replies.some((r) => /\b(confirm|is that (right|correct)|shall i|should i (save|add|file))\b/i.test(r)), 'it asks nobody to confirm what it filed', replies.find((r) => /\b(confirm|is that (right|correct)|shall i|should i (save|add|file))\b/i.test(r)));
   check(!replies.some((r) => /\|.*\|/.test(r) || /^\s*[-*] /m.test(r)), 'it talks: no tables or lists', replies.find((r) => /\|.*\|/.test(r) || /^\s*[-*] /m.test(r)));
-  const nowQ = replies.findIndex((r) => /what.s important now for you\?/i.test(r)), habitQ = replies.findIndex((r) => /\bhabit\b/i.test(r) && /\?/.test(r));
+  const nowQ = replies.findIndex((r) => /what.s important now for you\?/i.test(r)), habitQ = replies.findIndex((r) => /know you need to do every day that would significantly improve your life\?/i.test(r));
   check(nowQ >= 0, 'it asks “What’s important now for you?”', replies.join('\n---\n'));
-  check(habitQ > nowQ && habitQ === replies.length - 2, 'then, last, about one habit', replies.join('\n---\n'));
+  check(habitQ > nowQ && habitQ === replies.length - 2, 'then, last, Brian’s habit question', replies.join('\n---\n'));
 
   // 3. what it filed
   const dailyFile = path.join(s.vault, `50_reviews/daily/${TODAY}.md`);
