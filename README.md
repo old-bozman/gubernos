@@ -20,7 +20,7 @@ Gubernos is not affiliated with any of them.
    downloaded from the Internet: **Open**.
 2. A page opens in your browser: your name, where your files live, and your AI model (it gets it for you, you sign in).
    A few minutes, and Gubernos runs on your Mac.
-3. Gubernos interviews you, by voice if you like: 15–20 minutes, and it ends with your plan for today.
+3. Gubernos interviews you, by voice if you like: about 10 minutes, and it ends with your plan for today.
 
 **On your iPhone:**
 

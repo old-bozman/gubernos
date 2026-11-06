@@ -713,7 +713,7 @@ function setupReminder() {
   if (S.view !== 'today' || !st?.screenIntros || st.seenIntros?.includes('onboard')) return '';
   if (S.onboard == null) { S.onboard = false; api('GET', '/api/onboard').then((x) => { S.onboard = x; if (S.view === 'today') renderMain(); }).catch(() => {}); return ''; }
   if (!S.onboard || S.onboard.finished) return '';
-  return `<div class="scr-intro ob-remind"><p><a href="#/onboard">Load your system</a>: a 15–20 minute talk, and Today fills itself.</p><button class="linkbtn" data-intro-ok="onboard">Not now</button></div>`;
+  return `<div class="scr-intro ob-remind"><p><a href="#/onboard">Load your system</a>: a 10-minute talk, and Today fills itself.</p><button class="linkbtn" data-intro-ok="onboard">Not now</button></div>`;
 }
 function screenIntro() {
   const st = S.settings, text = INTROS[S.view];
@@ -4215,8 +4215,8 @@ function onboardHtml() {
   if (!o) { if (o !== false) { S.onboard = false; api('GET', '/api/onboard').then((x) => { S.onboard = x; if (S.view === 'onboard') renderMain(); }).catch((e) => { S.onboard = { turns: [], error: e.message }; renderMain(); }); } return '<div class="empty">…</div>'; }
   const voice = S.data?.voice !== false;
   const intro = o.turns.length ? '' : `<div class="ob-intro"><h2>Let’s load your system</h2>
-    <p>Set aside <b>15–20 minutes</b> somewhere you can talk. ${voice ? 'Press the mic and tell me' : 'Tell me'} whatever comes to mind, in any order, as much as you like. I’ll pick out what matters and put it straight into your system. You can change anything later.</p>
-    <ul><li>Who you are, who’s in your life, what you do</li><li>What’s on your mind: projects, to-dos, dates you can’t miss</li><li>What you’re hoping for in the next year or so</li></ul></div>`;
+    <p>Think of me as your new assistant, on day one. Set aside <b>about 10 minutes</b> somewhere you can talk, ${voice ? 'press the mic and tell me' : 'and tell me'} about yourself, in any order, as much as you like. I’ll keep track of what matters. You can change anything later.</p>
+    <ul><li>Who you are, who’s in your life, what you look after</li><li>What you can’t let slip, and what you’re hoping for this year</li><li>What’s on your plate right now</li></ul></div>`;
   const bubbles = o.turns.map((t) => `<div class="ob-t ob-${t.from}">${t.from === 'agent' ? md(t.text) : esc(t.text)}</div>`).join('');
   const working = S.onboardBusy ? '<div class="ob-t ob-agent ob-working">Putting this into your system…</div>' : '';
   if (o.connecting?.running && !S.onboardPoll) S.onboardPoll = setTimeout(async () => { S.onboardPoll = null; try { S.onboard = await api('GET', '/api/onboard'); } catch { /* next time */ } if (S.view === 'onboard') renderMain(); }, 1500);

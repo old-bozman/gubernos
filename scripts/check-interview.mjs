@@ -3,7 +3,8 @@
 // recorded talk going through the real mic path (Chrome's fake microphone → recorder → the Mac's speech model). It answers until
 // the interview ends, opens Today and checks what's on it. Spends a little of the owner's model plan, touches none of their files,
 // and the model doesn't see their personal instructions. Screenshots, the talk and the resulting vault go to the printed folder.
-//   node scripts/check-interview.mjs            exit 1 if a check failed
+//   node scripts/check-interview.mjs [--persona sam|family|solo|pro]     exit 1 if a check failed
+// A persona (tests/fixtures/personas/<name>.json): who talks, what they say, their answer to "What's important now" and the habit they pick.
 import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -23,7 +24,10 @@ const check = (ok, text, detail = '') => { if (!ok) failed++; say(`${ok ? '✓' 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // the talk, as speech
-const talk = fs.readFileSync(path.join(ROOT, 'tests/fixtures/interview-talk.txt'), 'utf8');
+const personaArg = process.argv.includes('--persona') ? process.argv[process.argv.indexOf('--persona') + 1] : 'sam';
+const P = JSON.parse(fs.readFileSync(path.join(ROOT, `tests/fixtures/personas/${personaArg}.json`), 'utf8'));
+const talk = P.talk;
+console.log(`persona: ${P.who}`);
 const wav = path.join(OUT, 'talk.wav');
 execFileSync('say', ['-v', 'Samantha', '-r', '220', '-o', wav, '--file-format=WAVE', '--data-format=LEI16@48000', talk]);
 const seconds = Number(execFileSync('afinfo', [wav], { encoding: 'utf8' }).match(/estimated duration: ([\d.]+)/)[1]);
@@ -43,7 +47,7 @@ try {
   await s.patch('/api/settings', { screenIntros: true });
   await page.resize(1280, 900);
   await page.goto(`${s.url}/#/onboard`);
-  check(await page.waitFor('document.querySelector(".ob-intro")?.innerText.includes("15–20 minutes")'), 'the screen says to set aside 15–20 minutes');
+  check(await page.waitFor('document.querySelector(".ob-intro")?.innerText.includes("about 10 minutes")'), 'the screen says to set aside about 10 minutes');
   await shot('intro');
 
   // 1. the talk: tap the mic, speak, Done
@@ -68,7 +72,7 @@ try {
   const dictated = await page.eval('document.querySelector("#ob-msg").value');
   fs.writeFileSync(path.join(OUT, 'heard.txt'), dictated);
   say(`  transcribed in ${Math.round((Date.now() - t1) / 1000)} s, ${dictated.split(/\s+/).length} of ${talk.split(/\s+/).length} words`);
-  const keywords = ['Utrecht', 'physio', 'mortgage', 'accountant', 'Japan'].filter((w) => !new RegExp(w, 'i').test(dictated));
+  const keywords = P.keywords.filter((w) => !new RegExp(w, 'i').test(dictated));
   check(keywords.length <= 1, 'the transcript has the talk in it', `missing: ${keywords.join(', ')}`);
   await shot('dictated');
   if (dictated.length < 200) throw new Error('nothing to talk to the model with');
@@ -91,7 +95,8 @@ try {
     convo.push({ you: msg, agent: reply });
     await sleep(600);
     await shot(`turn-${i + 1}`);
-    msg = /\b(today|tomorrow)\b/i.test(reply) && /\?/.test(reply) ? 'Yes, that is it.' : FOLLOW_UPS[Math.min(followUp++, FOLLOW_UPS.length - 1)];
+    msg = /important now/i.test(reply) ? P.now
+      : /\bhabit\b/i.test(reply) && /\?/.test(reply) ? P.habit : FOLLOW_UPS[Math.min(followUp++, FOLLOW_UPS.length - 1)];
   }
   fs.writeFileSync(path.join(OUT, 'conversation.md'), convo.map((c) => `**You:** ${c.you}\n\n**Gubernos:** ${c.agent}\n`).join('\n'));
   say(`  ${convo.length} turns, ${Math.round((Date.now() - started) / 1000)} s with the model`);
@@ -99,12 +104,15 @@ try {
   const replies = convo.map((c) => c.agent);
   const long = replies.filter((r) => r.split(/\s+/).length > MAX_WORDS);
   check(!long.length, `every reply is short (up to ${MAX_WORDS} words)`, long[0]);
+  const asked = replies.reduce((n, r) => n + (r.match(/\?/g) || []).length, 0) + 1; // + the screen's opening question
+  check(asked <= 5, `five questions at most (${asked}, the screen's first one included)`, replies.join('\n---\n'));
   const jargon = replies.map((r) => r.match(JARGON)?.[0]).filter(Boolean);
   check(!jargon.length, 'no system words in what it says', jargon.join(', '));
   check(!replies.some((r) => /\b(confirm|is that (right|correct)|shall i|should i (save|add|file))\b/i.test(r)), 'it asks nobody to confirm what it filed', replies.find((r) => /\b(confirm|is that (right|correct)|shall i|should i (save|add|file))\b/i.test(r)));
   check(!replies.some((r) => /\|.*\|/.test(r) || /^\s*[-*] /m.test(r)), 'it talks: no tables or lists', replies.find((r) => /\|.*\|/.test(r) || /^\s*[-*] /m.test(r)));
-  const lastQ = replies.slice(0, -1).findLast((r) => /\?/.test(r)) || '';
-  check(/\b(today|tomorrow)\b/i.test(lastQ), 'its last question is about today', lastQ);
+  const nowQ = replies.findIndex((r) => /what.s important now for you\?/i.test(r)), habitQ = replies.findIndex((r) => /\bhabit\b/i.test(r) && /\?/.test(r));
+  check(nowQ >= 0, 'it asks “What’s important now for you?”', replies.join('\n---\n'));
+  check(habitQ > nowQ && habitQ === replies.length - 2, 'then, last, about one habit', replies.join('\n---\n'));
 
   // 3. what it filed
   const dailyFile = path.join(s.vault, `50_reviews/daily/${TODAY}.md`);
@@ -119,13 +127,22 @@ try {
   });
   const dueToday = tasks.filter((t) => t.due === TODAY);
   check(!!one?.[2] && dueToday.some((t) => t.id === one[2]), 'the #1 is a task due today', `${one?.[2]} of ${tasks.map((t) => `${t.id}:${t.due}`).join(', ')}`);
-  check(dueToday.length >= 2, 'more of what was said is due today', dueToday.map((t) => t.title).join(', '));
-  check(tasks.length >= 4, `what was said became tasks (${tasks.length})`, tasks.map((t) => t.title).join(', '));
+  check(dueToday.length <= 4, `today isn't overloaded (${dueToday.length} due)`, dueToday.map((t) => t.title).join(', '));
+  check(tasks.length >= 3, `what was said became tasks (${tasks.length})`, tasks.map((t) => t.title).join(', '));
+  const names = new Set(fs.readdirSync(s.vault, { recursive: true }).filter((f) => String(f).endsWith('.md')).map((f) => path.basename(String(f), '.md')));
+  const linked = ['05_model', '10_tasks', '20_projects', '30_goals', '50_reviews'].flatMap((d) => (fs.existsSync(path.join(s.vault, d)) ? fs.readdirSync(path.join(s.vault, d), { recursive: true }) : []).filter((f) => String(f).endsWith('.md')).flatMap((f) => [...fs.readFileSync(path.join(s.vault, d, String(f)), 'utf8').replace(/<!--[\s\S]*?-->/g, '').matchAll(/\[\[([^\]|#]+)/g)].map((m) => m[1])));
+  const broken = [...new Set(linked.filter((l) => !names.has(l)))];
+  check(!broken.length, 'every link points at a file', broken.join(', '));
   const notes = fs.readdirSync(path.join(s.vault, '10_tasks')).map((f) => fs.readFileSync(path.join(s.vault, '10_tasks', f), 'utf8').split(/^---$/m).pop());
-  const stiff = notes.find((b) => /\bRelated:|\bSam (keeps|has|wants|needs|is)\b/.test(b));
+  const name = P.who.split(',')[0];
+  const stiff = notes.find((b) => /\bRelated:/.test(b) || new RegExp(`\\b${name} (keeps|has|wants|needs|is)\\b`).test(b));
   check(!stiff, 'task notes speak to the person', stiff);
+  const habits = fs.existsSync(path.join(s.vault, '05_model/habits')) ? fs.readdirSync(path.join(s.vault, '05_model/habits')).map((f) => fs.readFileSync(path.join(s.vault, '05_model/habits', f), 'utf8')) : [];
+  const keystone = habits.find((h) => /^keystone: *true/m.test(h));
+  check(habits.length === 1 && !!keystone && new RegExp(P.habitWord, 'i').test(keystone), `the habit they picked is their one habit (${P.habitWord})`, habits.join('\n---\n') || 'no habit');
+  if (P.perWeek) check(new RegExp(`^per_week: *${P.perWeek}`, 'm').test(keystone || ''), `${P.perWeek} times a week, as they said`, keystone);
   const count = (d) => { const p = path.join(s.vault, d); return fs.existsSync(p) ? fs.readdirSync(p).filter((f) => f.endsWith('.md')).length : 0; };
-  say(`  filed: ${tasks.length} tasks, ${count('20_projects')} projects, ${count('30_goals')} goals, ${count('05_model/people')} people, ${count('05_model/responsibilities')} areas, ${count('05_model/commitments')} commitments, ${count('05_model/wants')} wants, ${count('05_model/decisions')} decisions`);
+  say(`  filed: ${tasks.length} tasks, ${count('20_projects')} projects, ${count('30_goals')} goals, ${count('05_model/people')} people, ${count('05_model/responsibilities')} areas, ${count('05_model/commitments')} commitments, ${count('05_model/wants')} wants, ${count('05_model/decisions')} decisions, ${habits.length} habit`);
 
   // 4. the way out: Today, ready
   check(await page.waitFor('document.querySelector(".onboard a.btn.primary[href=\\"#/today\\"]")'), 'it ends with Open Today');

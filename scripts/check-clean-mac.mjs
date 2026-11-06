@@ -231,7 +231,7 @@ async function run() {
   const t3 = Date.now();
   const went = await until(async () => (await page.eval('location.href').catch(() => '')).includes('#/onboard'), 480000, 1000);
   if (!check(!!went, `it sets up and hands over to the interview, in ${seconds(t3)}`, await page.eval('(document.querySelector("#status")?.innerText || "") + " " + (document.querySelector("#log")?.innerText || "")').catch(() => ''))) throw new Error('setup failed');
-  check(await page.waitFor('document.querySelector(".ob-intro")?.innerText.includes("15–20 minutes") || document.querySelector(".onboard")', 30000), 'the interview screen shows', page.errors.join(' | '));
+  check(await page.waitFor('document.querySelector(".ob-intro")?.innerText.includes("about 10 minutes") || document.querySelector(".onboard")', 30000), 'the interview screen shows', page.errors.join(' | '));
   await sleep(1500);
   await shot('interview');
   if (SIGN_IN) {
@@ -250,7 +250,7 @@ async function run() {
     await screen('signin-from-the-app');
     await shot('interview-signing-in');
     await page.eval('document.querySelector("[data-act=onboard-cancel]").click()');
-    check(await page.waitFor('/finish signing in/i.test(document.querySelector(".onboard").innerText) && !document.querySelector("[data-act=onboard-connect]").disabled', 15000), 'giving up there says so too and can be tried again', await page.eval('document.querySelector(".onboard").innerText'));
+    check(await page.waitFor('/Didn.t finish signing in/i.test(document.querySelector(".onboard").innerText) && !document.querySelector("[data-act=onboard-connect]").disabled', 15000), 'giving up there says so too and can be tried again', await page.eval('document.querySelector(".onboard").innerText'));
   }
 
   // what's on the machine now

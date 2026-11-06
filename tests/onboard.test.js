@@ -49,7 +49,8 @@ process.exit(1);
     assert.match(await p.eval('document.querySelector("[data-act=onboard-connect][data-val=claude]").innerText'), /Sign in to Claude/);
     // giving up: said in words, not the CLI's output
     await p.eval('document.querySelector("[data-act=onboard-connect][data-val=claude]").click()');
-    assert.ok(await p.waitFor('/finish signing in/i.test(document.querySelector(".onboard").innerText)'), 'no error shown');
+    // "Didn't finish…", not "finish signing in in your browser" (still waiting): only then the button works again
+    assert.ok(await p.waitFor('/Didn.t finish signing in/i.test(document.querySelector(".onboard").innerText) && !document.querySelector("[data-act=onboard-connect][data-val=claude]").disabled'), 'no error shown');
     assert.ok(await p.eval('!document.querySelector(".onboard").innerText.includes("Paste code")'));
     // signing in: the interview opens by itself
     fs.rmSync(`${flag}.fail`);
@@ -78,7 +79,7 @@ esac
     assert.ok(await p.waitFor('document.querySelector("[data-act=onboard-cancel]")', 10000), 'no way out of a lost sign-in');
     assert.ok(await p.eval('document.querySelector("[data-act=onboard-connect][data-val=claude]").disabled'));
     await p.eval('document.querySelector("[data-act=onboard-cancel]").click()');
-    assert.ok(await p.waitFor('/finish signing in/i.test(document.querySelector(".onboard").innerText) && !document.querySelector("[data-act=onboard-connect][data-val=claude]").disabled', 10000), await p.eval('document.querySelector(".onboard").innerText'));
+    assert.ok(await p.waitFor('/Didn.t finish signing in/i.test(document.querySelector(".onboard").innerText) && !document.querySelector("[data-act=onboard-connect][data-val=claude]").disabled', 10000), await p.eval('document.querySelector(".onboard").innerText'));
     assert.ok(await p.eval('!document.querySelector("[data-act=onboard-cancel]")'));
   } finally { await p.close(); await srv.stop(); fs.rmSync(d, { recursive: true, force: true }); }
 });
@@ -123,7 +124,7 @@ test('in the interview a long press on the mic starts the talk: letting go does 
 
 test('it says what it takes and waits; a talk in, the answer in the chat, to the end', { timeout: 60000 }, async () => {
   await page.goto(`${s.url}/#/onboard`);
-  assert.ok(await page.waitFor('document.querySelector(".ob-intro")?.innerText.includes("15–20 minutes")'), `no intro: ${page.errors.join(' | ')}`);
+  assert.ok(await page.waitFor('document.querySelector(".ob-intro")?.innerText.includes("about 10 minutes")'), `no intro: ${page.errors.join(' | ')}`);
   assert.ok(!fs.existsSync(path.join(dir, 'calls')), 'the model was called before the person said anything');
   // it offers the mic, and what's dictated lands in the answer box (the same [data-dictate] path as Daily reflection)
   assert.equal(await page.eval('document.querySelector(".ob-input [data-voice][data-dictate=ob-msg]")?.dataset.dictate'), 'ob-msg');

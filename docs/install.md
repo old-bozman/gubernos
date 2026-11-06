@@ -9,7 +9,7 @@ Two steps: the Mac, then the iPhone.
 **The easiest way (no Terminal):** download **[Gubernos.dmg](https://github.com/old-bozman/gubernos/releases/latest/download/Gubernos.dmg)** (macOS 13 or later), open it and double-click
 **Gubernos**; macOS asks whether to open an app downloaded from the Internet: **Open**. A page in your browser asks your
 name, where your files live and your AI model (it gets it for you, you sign in), sets everything up and hands over to a
-15–20 minute interview that fills your system. Then go to [2. iPhone](#2-iphone-5-minutes). The rest of this part is the
+10-minute interview that fills your system. Then go to [2. iPhone](#2-iphone-5-minutes). The rest of this part is the
 same setup done by your AI agent or by hand, for those who prefer it.
 
 **Or skip the reading:** on the Mac, open your AI agent (Claude Code or Codex) and paste
@@ -40,7 +40,7 @@ That model reads your inbox and voice notes, answers in the app's chat and runs 
    - asks your name and language and **where your files live**: a folder on the Mac (`~/Gubernos`, the default), or in iCloud Drive / Obsidian if you want the files on other devices too. The app keeps a daily copy of them in `~/.gubernos/backups/` (the last 14 days and 8 weeks);
    - starts Gubernos on the Mac as a background service;
    - connects your calendar (the ones in the Calendar app: one **Allow** in a macOS dialog), and optionally voice (Whisper), Obsidian and Google for agents (Gmail, Drive; see [google.md](google.md));
-   - ends with a short interview, 15–20 minutes: you talk, and what matters goes straight into your system. After it you can bring an export from Todoist, Things or Reminders.
+   - ends with a short interview, about 10 minutes: you talk, and what matters goes straight into your system. After it you can bring an export from Todoist, Things or Reminders.
 
 On the Mac the app is at http://127.0.0.1:4747 (Safari → File → Add to Dock opens it in its own window).
 
