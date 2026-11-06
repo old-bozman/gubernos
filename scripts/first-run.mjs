@@ -31,7 +31,8 @@ const MODELS = Object.entries(MODEL_SETUP).map(([id, m]) => ({ id, ...m }));
 const modelState = () => MODELS.map((m) => { const installed = has(m.id); return { id: m.id, name: m.name, plan: m.plan, installed, signedIn: installed && SIGNED_IN[m.id]() }; });
 
 function folders() {
-  const list = [{ id: 'local', path: '~/Gubernos', label: 'On this Mac', note: 'A plain folder. Your iPhone gets a copy from this Mac.' }];
+  const here = process.platform === 'darwin' ? 'this Mac' : 'this computer';
+  const list = [{ id: 'local', path: '~/Gubernos', label: `On ${here}`, note: `A plain folder. Your phone gets a copy from ${here}.` }];
   if (fs.existsSync(path.join(HOME, 'Library/Mobile Documents/com~apple~CloudDocs'))) list.push({ id: 'icloud', path: '~/Library/Mobile Documents/com~apple~CloudDocs/Gubernos', label: 'In iCloud Drive', note: 'Also opens on your other Apple devices.' });
   if (fs.existsSync(path.join(HOME, 'Library/Mobile Documents/iCloud~md~obsidian/Documents'))) list.push({ id: 'obsidian', path: '~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Gubernos', label: 'In Obsidian', note: 'A new vault in Obsidian’s iCloud folder.', args: ['--obsidian-vault', 'Gubernos'] });
   return list;
@@ -83,7 +84,7 @@ const server = http.createServer((req, res) => {
   const code = url.searchParams.get('code') || req.headers['x-first-run'];
   if (code !== CODE) return json(res, 403, { error: 'open this page from Gubernos' });
   if (req.method === 'GET' && url.pathname === '/') return res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }).end(PAGE.replace('__CODE__', CODE));
-  if (req.method === 'GET' && url.pathname === '/state') return json(res, 200, { name: quiet('id', ['-F']).out.trim(), folders: folders(), models: modelState(), job });
+  if (req.method === 'GET' && url.pathname === '/state') return json(res, 200, { name: quiet('id', ['-F']).out.trim(), folders: folders(), models: modelState(), job, mac: process.platform === 'darwin' });
   if (req.method === 'GET' && url.pathname === '/job') return json(res, 200, job);
   if (req.method !== 'POST') return json(res, 404, { error: 'not found' });
   if (url.pathname === '/cancel') { if (job.quiet && !job.done) current?.kill(); return json(res, 200, { ok: true }); } // sign-ins only, never the setup itself
