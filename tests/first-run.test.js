@@ -46,7 +46,7 @@ test('filled in the browser, it sets everything up and hands over to the intervi
   assert.ok(await page.waitFor('document.querySelector("input[name=folder]")'), `no form: ${page.errors.join(' | ')}`);
   assert.match(await page.eval('document.querySelector("#models").innerText'), /Get it and sign in/); // no model on this "Mac"
   // nobody fills all this in to learn afterwards that a free plan won't do: it's above the form, and on screen
-  assert.match(await page.eval('document.querySelector("#need").innerText'), /paid AI subscription[\s\S]*Free plans aren’t supported/);
+  assert.match(await page.eval('document.querySelector("#need").innerText'), /You need an AI subscription[\s\S]*Claude with Claude Code \(Pro or higher\), or any ChatGPT subscription/);
   assert.ok(await page.eval('document.querySelector("#need").getBoundingClientRect().bottom <= innerHeight && document.querySelector("#need").getBoundingClientRect().top < document.querySelector("#name").getBoundingClientRect().top'), 'the requirement is below the form or off screen');
   assert.ok(!/Gemini/.test(await page.eval('document.body.innerText')));
   assert.equal(await page.eval('document.querySelectorAll("input[name=folder]").length'), 1); // no iCloud here: only the Mac

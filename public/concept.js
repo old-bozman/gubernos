@@ -169,7 +169,7 @@ export const archHtml = () => `<div class="cpt-arch">
       ${box('folder', 'Your files', 'One folder of Markdown: tasks, projects, goals, habits, days, reviews. Readable in any editor, today and in twenty years.', 'files')}
       ${link('the same<br>folder')}
       <div class="cpt-stack">${box('mac', 'Your Mac', 'Gubernos for Mac: planning with your calendar, voice, the chat. Your phone reaches it from anywhere through Cloudflare, once paired with it.')}
-        ${box('agent', 'Your agents', 'Claude Code or Codex on your Mac, with your own paid subscription. They work in the same files.')}</div>
+        ${box('agent', 'Your agents', 'Claude Code or Codex on your Mac, with your own AI subscription. They work in the same files.')}</div>
     </div></div>
   <div class="cpt-zone cpt-theirs"><div class="zl"><b>Services you already use</b><span>with your own accounts, only when you turn them on</span></div>
     <div class="cpt-svc">

@@ -12,7 +12,7 @@ Gubernos is not affiliated with any of them.
 
 ### Install the beta
 
-**Before you install: you need a paid AI subscription.** Gubernos runs on your own plan: Claude (Pro or higher) or ChatGPT (Plus or higher). The first interview, the chat and the agents all need it, and free plans aren't supported. Don't have one? Get it first: [Claude plans](https://claude.com/pricing) · [ChatGPT plans](https://chatgpt.com/pricing).
+**Before you install: you need an AI subscription.** Claude with Claude Code (Pro or higher), or any ChatGPT subscription. Gubernos runs on it: the first interview, the chat and the agents all need it. Don't have one? Get it first: [Claude plans](https://claude.com/pricing) · [ChatGPT plans](https://chatgpt.com/pricing).
 
 **On your Mac** (macOS 13 or later), no Terminal needed:
 
@@ -150,7 +150,7 @@ phone URL, Obsidian vault) and the vault's `profile.md` (name, language, categor
 - **One-at-a-time modes** (full screen): **Focus** (the most important task + a 25/5 sprint timer, Why this one?,
   Break down; every finished sprint is logged to the vault's `50_reviews/pomodoros.csv`, "⚡ N today" in Focus and on Today), **Process inbox**, **Review agents** (Accept = back to you, Accept & close, Send back).
 - **The model** (Settings → Your Mac → Model; `scripts/setup.sh model …`): the app's model calls go through one CLI on the
-  Mac, on the owner's own plan — Claude Code (Claude Pro or higher) or Codex (ChatGPT Plus or higher). Free plans aren't supported.
+  Mac, on the owner's own subscription — Claude Code (a Claude plan with Claude Code, Pro or higher) or Codex (any ChatGPT subscription).
   `lib/llm.js` has the three kinds of call: one-shot structured answers (Codex: strict `--output-schema`), the read-only resumable chat and agent runs, each with gubernos-tools plugged in. `GUBERNOS_CLAUDE_BIN`,
   `GUBERNOS_CODEX_BIN` point at a CLI elsewhere.
 - **Which agent**: a task for agents can name one — `agent: claude | codex | <assistant>` (task card → Agent, or `@<assistant>` /

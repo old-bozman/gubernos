@@ -63,11 +63,11 @@ check() {
 
 # the model CLIs here, and whether each is signed in (as far as it can be told without calling the model)
 models() {
-  if command -v claude >/dev/null; then ok "Claude Code $(claude --version 2>/dev/null | head -1) — a Claude plan, Pro or higher"
+  if command -v claude >/dev/null; then ok "Claude Code $(claude --version 2>/dev/null | head -1) — a Claude plan with Claude Code (Pro or higher)"
   else no "Claude Code — curl -fsSL https://claude.ai/install.sh | bash, then: ~/.local/bin/claude (sign in)"; fi
   if command -v codex >/dev/null; then
     codex login status >/dev/null 2>&1 && ok "Codex (ChatGPT) — signed in" || no "Codex is installed, not signed in: codex login"
-  else no "Codex (ChatGPT Plus or higher) — npm install -g @openai/codex, then: codex login"; fi
+  else no "Codex (any ChatGPT subscription) — npm install -g @openai/codex, then: codex login"; fi
   local cur; cur=$(cd "$APP" && node -e "import('./lib/llm.js').then((m) => console.log(m.providers().chosen || ''))" 2>/dev/null || true)
   [[ -n "$cur" ]] && ok "the app uses: $cur" || true
 }

@@ -2,7 +2,7 @@
 
 **Gubernos** (Gubern OS, from Latin *gubernare*, to steer) is a personal operating system: tasks, projects, goals, habits and your day, with agents that take part of the work off your hands. Everything stays yours: plain Markdown files on your Mac (or in your iCloud, if you like), your Mac as the "server", agents on your own Claude subscription. No third-party server, no one else's database.
 
-**Before you install: you need a paid AI subscription.** Gubernos runs on your own plan: Claude (Pro or higher) or ChatGPT (Plus or higher). The first interview, the chat and the agents all need it, and free plans aren't supported. Don't have one? Get it first: [Claude plans](https://claude.com/pricing) · [ChatGPT plans](https://chatgpt.com/pricing).
+**Before you install: you need an AI subscription.** Claude with Claude Code (Pro or higher), or any ChatGPT subscription. Gubernos runs on it: the first interview, the chat and the agents all need it. Don't have one? Get it first: [Claude plans](https://claude.com/pricing) · [ChatGPT plans](https://chatgpt.com/pricing).
 
 Two steps: the Mac, then the iPhone.
 
@@ -17,12 +17,12 @@ same setup done by your AI agent or by hand, for those who prefer it.
 
 ## 1. Mac (about 30 minutes, mostly your agent working)
 
-**You need:** a Mac (ideally one that is usually on) and a **paid AI plan** — whichever you already have:
+**You need:** a Mac (ideally one that is usually on) and an **AI subscription** — whichever you already have:
 
 | You have | Its agent for the Terminal | Install | Sign in |
 |---|---|---|---|
-| **Claude** Pro or higher | Claude Code | `curl -fsSL https://claude.ai/install.sh \| bash` | `~/.local/bin/claude` |
-| **ChatGPT** Plus or higher | Codex | `npm install -g @openai/codex` | `codex login` |
+| **Claude** with Claude Code (Pro or higher) | Claude Code | `curl -fsSL https://claude.ai/install.sh \| bash` | `~/.local/bin/claude` |
+| **ChatGPT**, any subscription | Codex | `npm install -g @openai/codex` | `codex login` |
 
 That model reads your inbox and voice notes, answers in the app's chat and runs agents on tasks. You can switch later (Settings → Your Mac → Model), or install a second one as another agent.
 

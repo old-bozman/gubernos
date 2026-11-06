@@ -116,8 +116,8 @@ if [[ -n "$agent" ]]; then
   say "Next: open your agent in the app's folder and say \"run SETUP.md\":"
   echo "  cd $DIR && $agent"
 else
-  say "Next: install one AI agent, then open it in the app's folder and say \"run SETUP.md\". It needs a paid plan; free plans aren't supported:"
-  echo "  Claude (Pro or higher):  curl -fsSL https://claude.ai/install.sh | bash   then: cd $DIR && ~/.local/bin/claude"
-  echo "  ChatGPT (Plus or higher):  npm install -g @openai/codex && codex login     then: cd $DIR && codex"
+  say "Next: install one AI agent, then open it in the app's folder and say \"run SETUP.md\". It needs an AI subscription:"
+  echo "  Claude with Claude Code (Pro or higher):  curl -fsSL https://claude.ai/install.sh | bash   then: cd $DIR && ~/.local/bin/claude"
+  echo "  ChatGPT (any subscription):  npm install -g @openai/codex && codex login     then: cd $DIR && codex"
 fi
 echo "It asks a few questions, connects the folder you made on your iPhone and starts Gubernos in the background."

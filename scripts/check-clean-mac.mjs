@@ -135,7 +135,7 @@ async function run() {
   check(await page.waitFor('document.querySelector("input[name=folder]")', 20000), 'the form shows', page.errors.join(' | '));
   await shot('setup');
   check(/Get it and sign in/.test(await page.eval('document.querySelector("#models").innerText')), 'it offers to get a model');
-  check(/paid AI subscription/.test(await page.eval('document.querySelector("#need").innerText')), 'it says a paid plan is needed, above the form');
+  check(/You need an AI subscription/.test(await page.eval('document.querySelector("#need").innerText')), 'it says a subscription is needed, above the form');
 
   // getting a model: it installs, then stops at the sign-in page, which is the person's
   const t2 = Date.now();

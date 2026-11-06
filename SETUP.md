@@ -10,12 +10,12 @@ That's the whole instruction: the agent fetches the app, installs it, sets up th
 onboards you. You answer its questions and do what only you can: sign in to Tailscale (for the phone), click Allow in a
 few macOS dialogs, scan the pairing code and tap on your phone when it asks.
 
-**You (the person):** you need a Mac and **a paid AI subscription**, Claude (Pro or higher) or ChatGPT (Plus or higher); free plans aren't supported. Don't have one? Get it first: [Claude plans](https://claude.com/pricing) · [ChatGPT plans](https://chatgpt.com/pricing). Then install its command-line agent and sign in:
+**You (the person):** you need a Mac and **an AI subscription**: Claude with Claude Code (Pro or higher), or any ChatGPT subscription. Don't have one? Get it first: [Claude plans](https://claude.com/pricing) · [ChatGPT plans](https://chatgpt.com/pricing). Then install its command-line agent and sign in:
 
 | You have | Install | Sign in |
 |---|---|---|
-| **Claude** Pro or higher | `curl -fsSL https://claude.ai/install.sh \| bash` | `~/.local/bin/claude` (on a new Mac `claude` alone isn't found until Gubernos' installer adds that folder to your PATH) |
-| **ChatGPT** Plus or higher | `npm install -g @openai/codex` | `codex login` |
+| **Claude** with Claude Code (Pro or higher) | `curl -fsSL https://claude.ai/install.sh \| bash` | `~/.local/bin/claude` (on a new Mac `claude` alone isn't found until Gubernos' installer adds that folder to your PATH) |
+| **ChatGPT**, any subscription | `npm install -g @openai/codex` | `codex login` |
 
 ```
 curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash
@@ -55,7 +55,7 @@ The iPhone app comes from TestFlight; step 3b walks them through it.
 
 Run `scripts/setup.sh check`. Every "Required" line must be ✓:
 - node missing or older than 20 → run `install.sh` again (step 0): it puts Node in `~/.gubernos/node`. No Homebrew needed.
-The "Model" lines show which AI CLIs are here and signed in: at least one must be ✓ (if none is, help them install and sign in to the one their plan covers — the table above; with no paid plan, say so and stop until they have one: free plans aren't supported). Note the optional lines; they decide which later steps to offer.
+The "Model" lines show which AI CLIs are here and signed in: at least one must be ✓ (if none is, help them install and sign in to the one their plan covers — the table above; with no such subscription, say so and stop until they have one). Note the optional lines; they decide which later steps to offer.
 
 ### 2. Ask the person (all six are required; ask them together)
 

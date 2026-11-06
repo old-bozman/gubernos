@@ -72,7 +72,7 @@ esac
   try {
     await p.goto(`${srv.url}/#/onboard`);
     assert.ok(await p.waitFor('document.querySelector("[data-act=onboard-connect][data-val=claude]")'));
-    assert.match(await p.eval('document.querySelector(".ob-connect").innerText'), /paid plan/);
+    assert.match(await p.eval('document.querySelector(".ob-connect").innerText'), /AI subscription: Claude with Claude Code/);
     assert.ok(!/Gemini/.test(await p.eval('document.querySelector(".onboard").innerText')));
     await p.eval('document.querySelector("[data-act=onboard-connect][data-val=claude]").click()');
     assert.ok(await p.waitFor('document.querySelector("[data-act=onboard-cancel]")', 10000), 'no way out of a lost sign-in');
