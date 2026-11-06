@@ -30,6 +30,10 @@ Gubernos is not affiliated with any of them.
 3. On the Mac, Gubernos → **Connect your iPhone** → **Set up**, then point the iPhone's Camera at the code. The phone
    keeps a copy of your files from the Mac, so it works when the Mac is away too.
 
+**On Android:** open Gubernos in Chrome and install it as an app ([how](docs/install.md#android)).
+
+**On Linux, or Windows (in WSL):** `curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash -s -- --wizard`, then the same page in your browser ([more](docs/install.md#linux-or-windows-in-wsl)).
+
 **Or let your AI agent do the setup.** On your Mac, open Claude Code or Codex (the table in [SETUP.md](SETUP.md) shows
 how to get one) and paste:
 

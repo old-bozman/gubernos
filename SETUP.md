@@ -53,6 +53,8 @@ The iPhone app comes from TestFlight; step 3b walks them through it.
 
 ### 1. Check the Mac
 
+(On Linux, or Windows in WSL, the steps are the same: `scripts/setup.sh` runs Gubernos as a systemd user service there. Skip what's Mac-only and say so plainly: the Mac's calendar (Google instead), voice (Whisper), keeping the Mac awake, Obsidian's iCloud folder.)
+
 Run `scripts/setup.sh check`. Every "Required" line must be ✓:
 - node missing or older than 20 → run `install.sh` again (step 0): it puts Node in `~/.gubernos/node`. No Homebrew needed.
 The "Model" lines show which AI CLIs are here and signed in: at least one must be ✓ (if none is, help them install and sign in to the one their plan covers — the table above; with no such subscription, say so and stop until they have one). Note the optional lines; they decide which later steps to offer.

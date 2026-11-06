@@ -70,6 +70,18 @@ Compared with the iPhone app it has no offline copy, widgets, Health or phone-si
 
 **No Mac?** The iPhone app also works on its own over a folder in iCloud Drive (first screen → Or use the phone on its own): tasks, habits, reminders, widgets, the watch, without agents, chat or the calendar.
 
+## Linux, or Windows (in WSL)
+
+Gubernos also runs on Linux, and on Windows inside WSL (Windows' own Linux: in PowerShell, `wsl --install`). In a terminal there:
+
+```
+curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash -s -- --wizard
+```
+
+It gets Node and the app into `~/.gubernos` (no sudo), then opens the same setup page in your browser (on WSL, the Windows one; on a machine without a screen it prints the link). Without `--wizard` it hands over to your AI agent instead, as on the Mac. Gubernos then runs as a background service of your user (systemd), also after a restart. You need `curl`, `tar` and `rsync` (Debian / Ubuntu: `sudo apt install rsync` if it's missing); on WSL, systemd on, which new Ubuntu installs have (else `systemd=true` under `[boot]` in `/etc/wsl.conf`).
+
+What's different from the Mac: the calendar comes from Google (Settings → Your Mac → Calendar), voice is off for now (type instead), and there's nothing to keep awake. The phone connects the same way (Settings → Your Mac → iPhone and other devices).
+
 ## Keep the Mac awake
 
 If the Mac sits at home on power, tell your agent **"keep my Mac awake"**: that's `scripts/setup.sh awake on` (`caffeinate -s` as a login item: on power the Mac doesn't sleep, the screen still turns off as usual; on battery it sleeps as always). A laptop with the lid closed still sleeps: keep the lid open or use an external display.
