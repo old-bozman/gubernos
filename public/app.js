@@ -4187,7 +4187,9 @@ function devicesHtml() {
   const p = S.pair;
   if (!p) { if (p !== false) { S.pair = false; api('GET', '/api/pair').then((x) => { S.pair = x; if (S.view === 'settings') renderMain(); }).catch(() => {}); } return ''; }
   const connect = '<a class="btn" href="#/phone">Connect your iPhone</a>';
-  if (!p.publicUrl) return `<div class="set-row"><div class="set-l">iPhone and other devices<small>the iPhone app from TestFlight, then the pairing code: a few minutes, step by step</small></div><span class="set-btns">${connect}</span></div>`;
+  // no address yet: Android or another browser gets one here, without the iPhone's TestFlight step; the code then opens by itself
+  const other = p.local ? `<button class="btn" data-act="set-pair-other" ${S.phoneSetup ? 'disabled' : ''}>${S.phoneSetup ? 'Setting up…' : 'Android or a browser'}</button>` : '';
+  if (!p.publicUrl) return `<div class="set-row"><div class="set-l">iPhone and other devices<small>iPhone: the app from TestFlight, then a code to scan. Android, an iPad or another computer: a link opened once in its browser. ${S.phoneSetup ? 'Getting an https address for this Mac, about a minute…' : 'Both reach this Mac through an https address from Cloudflare, under our account: the traffic passes through it, we don’t store it.'}</small></div><span class="set-btns">${connect}${other}</span></div>`;
   const seg = (act, cur, opts, dis) => `<span class="seg">${opts.map(([v, l]) => `<button data-act="${act}" data-val="${v}" class="${String(cur) === String(v) ? 'on' : ''}"${dis ? ' disabled' : ''}>${l}</button>`).join('')}</span>`;
   const code = S.pairShow ? `<div class="pair-box"><div class="pair-qr">${pairQr()}</div>
       <div class="set-note"><b>iPhone:</b> point the Camera at the code → Open in ${esc(APP_NAME)}.<br><b>Android, or another browser</b> (an iPad, a second Mac): open this link there once (Android: in Chrome, then ⋮ → Install app) —
@@ -4196,6 +4198,15 @@ function devicesHtml() {
       ${p.local ? ' · <button class="linkbtn" data-act="set-pair-rotate">New code — unpairs every device</button>' : ' · changed on the Mac itself'}<br><small>off: anyone who reaches this address · the Mac itself always gets in</small></div>`;
   return `<div class="set-row"><div class="set-l">iPhone and other devices<small>they reach this Mac through ${esc(p.publicUrl.replace(/^https?:\/\//, ''))} once they have the code</small>${code}${require}</div>
       <span class="set-btns">${connect}<button class="btn" data-act="set-pair-show">${S.pairShow ? 'Hide code' : 'Show code'}</button></span></div>`;
+}
+// Settings → Android or a browser: ask every 3 s until setup.sh phone has given the Mac its address (the server restarts on the way)
+function pairWait(since) {
+  setTimeout(async () => {
+    const x = await api('GET', '/api/pair').catch(() => null);
+    if (x?.publicUrl) { S.pair = x; S.phoneSetup = false; return S.view === 'settings' && renderMain(); }
+    if (Date.now() - since < 180e3) return pairWait(since);
+    S.phoneSetup = false; toast('No address yet — try again in a minute'); if (S.view === 'settings') renderMain();
+  }, 3000);
 }
 // a QR code as SVG (public/vendor/qrcode.js, loaded the first time one is shown, then the page is drawn again)
 function qrSvg(text) {
@@ -4412,6 +4423,10 @@ document.addEventListener('click', (e) => {
   if (b.dataset.act === 'set-provider') return saveSetting({ provider: v }).then(() => { S.ai = null; return load(); });
   if (b.dataset.act === 'set-simple') return saveSetting({ simple: v === 'on' });
   if (b.dataset.act === 'set-pair-show') { S.pairShow = !S.pairShow; return renderMain(); }
+  if (b.dataset.act === 'set-pair-other') {
+    S.phoneSetup = true; S.pairShow = true; renderMain();
+    return api('POST', '/api/phone/setup').then(() => pairWait(Date.now())).catch((err) => { S.phoneSetup = false; toast(err.message); renderMain(); });
+  }
   if (b.dataset.act === 'set-pair-copy') return navigator.clipboard?.writeText(S.pair.webLink).then(() => toast('Link copied — open it on the other device'), () => prompt('The pairing link', S.pair.webLink));
   if (b.dataset.act === 'set-pair-required') return api('POST', '/api/pair/required', { on: v === 'on' }).then((x) => { S.pair = x; renderMain(); toast(v === 'on' ? 'Only paired devices get in now' : 'Pairing not required'); });
   if (b.dataset.act === 'set-pair-rotate') { if (!confirm('Make a new code? Every paired phone and browser has to scan it again.')) return; return api('POST', '/api/pair/rotate').then((x) => { S.pair = x; renderMain(); toast('New code — pair your devices again'); }); }

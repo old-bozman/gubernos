@@ -82,6 +82,26 @@ test('in the iPhone app: This iPhone holds the app’s own settings, changed rig
   } finally { await page.close(); }
 });
 
+test('no address yet: Android or a browser gets one right there, without the iPhone steps, and its link shows', { timeout: 60000 }, async () => {
+  // the setup script itself is tested in phone.test.js; here it's stubbed: POST /api/phone/setup counted, then /api/pair has an address
+  const page = await settingsOn((p) => p.onNewDocument(`window.__setup = 0; const f = window.fetch;
+    const reply = (o) => Promise.resolve(new Response(JSON.stringify(o), { headers: { 'content-type': 'application/json' } }));
+    window.fetch = (u, o = {}) => String(u).endsWith('/api/phone/setup') ? (window.__setup++, reply({ ok: true }))
+      : window.__setup && String(u).endsWith('/api/pair') ? reply({ local: true, required: true, publicUrl: 'https://m-test.gubernos.dev', appLink: 'gubernos://pair?url=x&token=t', webLink: 'https://m-test.gubernos.dev/pair?t=t' })
+      : f(u, o);`));
+  try {
+    const r = row('iPhone and other devices');
+    assert.deepEqual(await page.eval(`[...${r}.querySelectorAll(".set-btns .btn")].map((b) => b.textContent)`), ['Connect your iPhone', 'Android or a browser']);
+    assert.ok(await page.eval(`${r}.innerText.includes("Cloudflare")`), 'says where the traffic goes before the click');
+    await page.eval(`${r}.querySelector('[data-act=set-pair-other]').click()`);
+    assert.ok(await page.waitFor(`${r}.innerText.includes("Setting up")`), 'no sign that it is working');
+    assert.equal(await page.eval('window.__setup'), 1);
+    assert.ok(await page.waitFor(`!!${r}.querySelector("[data-act=set-pair-copy]") && !!${r}.querySelector(".pair-qr svg")`, 10000), await page.eval(`${r}.innerText`));
+    assert.ok(await page.eval(`${r}.innerText.includes("m-test.gubernos.dev")`));
+    assert.deepEqual(page.errors, []);
+  } finally { await page.close(); }
+});
+
 test('a reminder doesn’t ring twice on an iPhone whose app rings it itself', () => {
   const subs = [{ endpoint: 'a', ua: IPHONE_UA.slice(0, 80) }, { endpoint: 'b', ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' }];
   const rings = [{ local: { reminders: true, checkins: false } }];
