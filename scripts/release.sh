@@ -11,7 +11,10 @@ cd "$(dirname "$0")/.."
 git fetch -q origin
 [[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/dev)" ]] || { echo "error: push dev first (git push)" >&2; exit 1; }
 git merge-base --is-ancestor origin/main HEAD || { echo "error: main has commits dev doesn't: merge origin/main into dev first" >&2; exit 1; }
-echo "tests…"; npm test --silent >/dev/null 2>&1 || { npm test; echo "✗ not released: the tests failed" >&2; exit 1; }
+# the failing run's own output is kept and shown (running again would hide a flaky test)
+log="$(mktemp -t gubernos-release-tests)"
+echo "tests…"; npm test --silent >"$log" 2>&1 || { grep -E "^✖|^not ok|Error|expected|actual|still going" "$log" | head -40 >&2; echo "✗ not released: the tests failed (full output: $log)" >&2; exit 1; }
+rm -f "$log"
 echo "✓ tests"
 before=$(git rev-parse --short origin/main)
 git push -q origin HEAD:main
