@@ -1708,3 +1708,7 @@ button.dc-ev:hover, .dc-ev.cal-hl { box-shadow: 0 0 0 2px var(--accent); z-index
 .imp .imp-ls { margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .imp .imp-lc { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
 .imp select { font: inherit; font-size: 13px; padding: 3px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); }
+
+/* the icon rail's names (public/app.js railTip) */
+.rail-tip { position: fixed; z-index: 60; transform: translateY(-50%); background: var(--ink); color: var(--bg); font-size: 12.5px; padding: 4px 8px; border-radius: 6px; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .08s; }
+.rail-tip.on { opacity: 1; }

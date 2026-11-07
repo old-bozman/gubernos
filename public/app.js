@@ -250,13 +250,25 @@ function render() {
   renderDrawer();
 }
 
-// Menu: New · Tasks (filters) · Focus. On a wide screen it folds into an icon rail (body.rail; the toggle at the bottom,
-// remembered per device); projects and goals live in the menus above the page (renderTop). The phone slides it in.
+// Menu: New · Tasks (filters) · Focus. On a wide screen it can fold into an icon rail (body.rail; the toggle at the top
+// left, remembered per device; labels by default: 2026-11-07 a tester couldn't tell the icons apart); projects and goals live in the menus above the page (renderTop). The phone slides it in.
 const SIDE_GROUPS = { tasks: ['inbox', 'today', 'upcoming', 'agent', 'waiting', 'someday', 'logbook'], focus: ['day', 'plan', 'week', 'decisions', 'reflect', 'weekly'] };
 // the G-wheel: a wheel with the G cut out of it (palette colours: --tile-*), the same drawing as public/icons/icon.svg
 const LOGO = '<svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" fill="var(--tile-bg)"/><g transform="translate(50 50) scale(.84) translate(-50 -50)" stroke-linecap="round" stroke-linejoin="round"><circle cx="50" cy="50" r="31" fill="var(--tile-fg)"/><path d="M80 50L94 50M71.21 71.21L81.11 81.11M50 80L50 94M28.79 71.21L18.89 81.11M20 50L6 50M28.79 28.79L18.89 18.89M50 20L50 6M71.21 28.79L81.11 18.89" stroke="var(--tile-fg)" stroke-width="8"/><path d="M61.31 38.69A16 16 0 1 0 66 50H51" fill="none" stroke="var(--tile-bg)" stroke-width="8.5"/></g></svg>';
-const railOn = () => { try { return localStorage.getItem('side') !== 'wide'; } catch { return true; } };
+const railOn = () => { try { return localStorage.getItem('side') === 'rail'; } catch { return false; } };
 document.body.classList.toggle('rail', railOn());
+// the icon rail: each icon's name beside it as soon as the pointer is on it (the browser's own tooltip comes after a second)
+const railTip = document.createElement('div');
+railTip.className = 'rail-tip';
+document.body.append(railTip);
+document.addEventListener('mouseover', (e) => {
+  const a = document.body.classList.contains('rail') && matchMedia('(min-width: 801px)').matches && e.target.closest?.('.side .nav, .side .add-btn');
+  if (!a) return railTip.classList.remove('on');
+  const r = a.getBoundingClientRect();
+  railTip.textContent = a.dataset.tip || a.getAttribute('aria-label') || '';
+  railTip.style.top = `${r.top + r.height / 2}px`; railTip.style.left = `${r.right + 8}px`;
+  railTip.classList.add('on');
+});
 function toggleRail() {
   const rail = !document.body.classList.contains('rail');
   try { localStorage.setItem('side', rail ? 'rail' : 'wide'); } catch { /* private mode */ }
@@ -267,7 +279,7 @@ function navLink(k) {
   const v = VIEWS[k];
   if (!v || v.hidden?.()) return '';
   const c = v.count?.(), hot = v.hot?.();
-  return `<a class="nav ${S.view === k ? 'on' : ''}" href="#/${k}" title="${esc(v.title)}"><span class="ic">${TAB_ICONS[k](fromIso(S.data.today).getDate())}</span><span class="lbl">${v.title}</span>
+  return `<a class="nav ${S.view === k ? 'on' : ''}" href="#/${k}" aria-label="${esc(v.title)}"><span class="ic">${TAB_ICONS[k](fromIso(S.data.today).getDate())}</span><span class="lbl">${v.title}</span>
     ${hot ? `<span class="n hot" title="needs attention">${hot} ●</span>` : c ? `<span class="n">${c}</span>` : ''}</a>`;
 }
 function renderSide() {
@@ -275,10 +287,10 @@ function renderSide() {
   const focus = SIDE_GROUPS.focus.map(navLink).join('');
   $('#side').innerHTML = `
     <div class="brand">${LOGO}<span class="bname">${esc(APP_NAME)}</span><small>${esc(new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }))}</small></div>
-    <button class="add-btn" data-act="quick" title="New (q)"><span class="ic">${TAB_ICONS.compose()}</span><span class="lbl">New</span></button>
+    <button class="add-btn" data-act="quick" aria-label="New" data-tip="New · q"><span class="ic">${TAB_ICONS.compose()}</span><span class="lbl">New</span></button>
     <h4>Tasks</h4>${SIDE_GROUPS.tasks.map(navLink).join('')}
     ${focus ? `<h4>Focus</h4><span class="side-sep"></span>${focus}` : ''}
-    <div class="side-end">${navLink('settings')}<a class="nav" href="#" data-act="report" title="Report bug / idea"><span class="ic">${TAB_ICONS.report()}</span><span class="lbl">Report bug / idea</span></a></div>
+    <div class="side-end">${navLink('settings')}<a class="nav" href="#" data-act="report" aria-label="Report bug / idea"><span class="ic">${TAB_ICONS.report()}</span><span class="lbl">Report bug / idea</span></a></div>
     <div class="foot"><kbd>?</kbd> all shortcuts · <kbd>g</kbd> <kbd>t</kbd> Today · <kbd>g</kbd> <kbd>d</kbd> Protocol · <kbd>q</kbd> add · <kbd>e</kbd> done · <kbd>t</kbd> schedule · <kbd>/</kbd> search · <kbd>⌘K</kbd> commands</div>`;
 }
 
