@@ -143,7 +143,11 @@ document.addEventListener('click', async (e) => {
     } catch (err) { $('#status').className = 'err'; $('#status').textContent = err.message; busy(false); }
   }
 });
-refresh().catch((err) => { $('#status').className = 'err'; $('#status').textContent = err.message; });
+// a sign-in under way when the page (re)opens — reloaded, or opened in another browser to sign in there: show it and follow it
+refresh().then(async () => {
+  const j = await call('GET', '/job');
+  if (j.quiet && !j.done) { busy(true); await follow(async () => { busy(false); await refresh(); }); }
+}).catch((err) => { $('#status').className = 'err'; $('#status').textContent = err.message; busy(false); });
 </script>
 </body>
 </html>

@@ -146,6 +146,9 @@ esac
     assert.ok(await p.waitFor('!document.querySelector("#signin").hidden', 10000), 'no sign-in link on the page');
     assert.equal(await p.eval('document.querySelector("#signin .code").textContent'), '5593-R6552');
     assert.equal(await p.eval('document.querySelector("#signin a").href'), 'https://auth.openai.com/codex/device');
+    // the same page opened elsewhere (another browser, to sign in there) shows the sign-in under way
+    const q = await openPage();
+    try { await q.goto(l); assert.ok(await q.waitFor('document.querySelector("#signin .code")?.textContent === "5593-R6552"', 8000), 'a page opened during the sign-in doesn’t show it'); } finally { await q.close(); }
     assert.ok(await p.waitFor('/Ready/.test(document.querySelector("#models").innerText) && document.querySelector("#signin").hidden', 15000), await p.eval('document.querySelector("#models").innerText'));
     assert.deepEqual(p.errors.filter((e) => !/favicon/.test(e)), []); // the page has no icon of its own
   } finally { c.kill(); await p.close(); fs.rmSync(dd, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); }
