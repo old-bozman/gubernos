@@ -3817,6 +3817,7 @@ document.addEventListener('click', async (e) => {
     case 'tour': return tourOpen(0);
     case 'phone-setup': S.phoneSetup = true; renderMain(); return api('POST', '/api/phone/setup').catch((err) => { S.phoneSetup = false; toast(err.message); renderMain(); });
     case 'onboard-send': return onboardSend();
+    case 'onboard-code': { const code = (S.obCode || '').trim(); if (!code) return $('#ob-code')?.focus(); S.obCode = ''; return api('POST', '/api/onboard/connect/code', { code }).then((x) => { S.onboard = x; renderMain(); }).catch(() => {}); }
     case 'onboard-cancel': return api('POST', '/api/onboard/connect/cancel').then((x) => { S.onboard = x; renderMain(); }).catch((err) => toast(err.message));
     case 'onboard-connect': return api('POST', '/api/onboard/connect', { id: a.dataset.val }).then((x) => { S.onboard = x; renderMain(); }).catch((err) => toast(err.message));
     case 'native-settings': return window.webkit?.messageHandlers?.gubernos?.postMessage({ op: 'settings' });
@@ -4310,11 +4311,11 @@ function onboardHtml() {
     <p class="muted">Your tasks in another app (Todoist, Things, Reminders) don’t need retelling: bring them in after this, from Settings → General → Import tasks.</p></div>`;
   const bubbles = o.turns.map((t) => `<div class="ob-t ob-${t.from}">${t.from === 'agent' ? md(t.text) : esc(t.text)}</div>`).join('');
   const working = S.onboardBusy ? '<div class="ob-t ob-agent ob-working">Putting this into your system…</div>' : '';
-  if (o.connecting?.running && !S.onboardPoll) S.onboardPoll = setTimeout(async () => { S.onboardPoll = null; try { S.onboard = await api('GET', '/api/onboard'); } catch { /* next time */ } if (S.view === 'onboard') renderMain(); }, 1500);
+  if (o.connecting?.running && !S.onboardPoll) S.onboardPoll = setTimeout(async () => { S.onboardPoll = null; try { S.onboard = await api('GET', '/api/onboard'); } catch { /* next time */ } if (S.view === 'onboard' && document.activeElement?.id !== 'ob-code') renderMain(); else if (S.view === 'onboard') S.onboardPoll = setTimeout(function typing() { S.onboardPoll = null; if (document.activeElement?.id === 'ob-code') S.onboardPoll = setTimeout(typing, 1500); else renderMain(); }, 1500); }, 1500); // the code being typed isn't redrawn away
   const connecting = o.connecting?.running;
   const foot = !o.model ? `<div class="ob-connect"><p>First, connect the AI that will listen. It runs on your own AI subscription: Claude with Claude Code (Pro or higher), or any ChatGPT subscription.</p>
       ${(o.models || []).map((m) => `<p><button class="btn" data-act="onboard-connect" data-val="${esc(m.id)}" ${connecting ? 'disabled' : ''}>${m.installed ? `Sign in to ${esc(m.name)}` : `Get ${esc(m.name)} and sign in`}</button> <span class="ph-text">${esc(m.plan)}</span></p>`).join('')}
-      ${connecting ? `<p class="ph-text">${esc(o.connecting.name)}: finish signing in in your browser, then come back here.${o.connecting.signingIn ? ' <button class="linkbtn" data-act="onboard-cancel">Can’t find that page? Start again</button>' : ''}</p>` : ''}${!connecting && o.connecting?.error ? `<p class="d-over">${esc(o.connecting.error)}</p>` : ''}</div>`
+      ${connecting ? `<p class="ph-text">${esc(o.connecting.name)}: ${signInHelp(o.connecting.login)}${o.connecting.signingIn ? ' <button class="linkbtn" data-act="onboard-cancel">Can’t find that page? Start again</button>' : ''}</p>` : ''}${!connecting && o.connecting?.error ? `<p class="d-over">${esc(o.connecting.error)}</p>` : ''}</div>`
     : `<div class="ob-input"><span class="rf-in"><textarea id="ob-msg" rows="3" placeholder="${voice ? 'Press the mic and talk, or type' : 'Answer here'}" ${S.onboardBusy ? 'disabled' : ''}>${S.onboardBusy ? '' : esc(S.onboardDraft || '')}</textarea><button type="button" class="rf-mic" data-voice data-dictate="ob-msg" aria-label="Dictate">${MIC_SVG}</button></span><button class="btn primary" data-act="onboard-send" ${S.onboardBusy ? 'disabled' : ''}>Send</button></div>`;
   return `<div class="onboard">${intro}${bubbles}${working}${o.error ? `<p class="d-over">${esc(o.error)}</p>` : ''}${o.finished ? '<p class="ph-text"><b>That’s the setup.</b></p><p><a class="btn primary" href="#/today">Open Today</a> <a class="btn" href="#/phone">Connect your iPhone</a></p><p class="ph-text">Your tasks are in Todoist, Things or Reminders? <button class="linkbtn" data-act="import-open">Bring them in</button> — now or later, from Settings → General → Import tasks.</p>' : foot}</div>`;
 }
@@ -4333,6 +4334,18 @@ async function onboardSend() {
   S.onboardBusy = false;
   if (S.view === 'onboard') { renderMain(); toLatest(); }
 }
+// The model's sign-in, said on the page: on Linux / WSL / a machine without a screen no browser opens by itself, so the
+// link the CLI printed is here, with ChatGPT's one-time code, or a box for the code Claude's page shows (lib/model-setup.js)
+function signInHelp(l) {
+  const open = (t) => `<a href="${esc(l.url)}" target="_blank" rel="noopener">${t}</a>`;
+  if (!l) return 'finish signing in in your browser, then come back here.';
+  if (l.code) return `${open('open the sign-in page')}, sign in, and enter this code there: <b class="ob-code">${esc(l.code)}</b>. Then come back here.`;
+  if (l.sent) return 'checking the code…';
+  if (l.paste) return `finish signing in in your browser (no page opened? ${open('open it')}). If it shows you a code, paste it here:
+    <span class="ob-paste"><input id="ob-code" autocomplete="off" placeholder="the code" value="${esc(S.obCode || '')}"><button class="btn" data-act="onboard-code">Continue</button></span>`;
+  return `finish signing in in your browser, then come back here (no page opened? ${open('open it')}).`;
+}
+document.addEventListener('input', (e) => { if (e.target.id === 'ob-code') S.obCode = e.target.value; });
 // a long answer survives the page redrawing itself while the agent or anything else writes to the vault
 document.addEventListener('input', (e) => { if (e.target.id === 'ob-msg') S.onboardDraft = e.target.value; });
 // #/phone, on the Mac: get the iPhone app (TestFlight), connect it (the pairing code), ✓ when it has reached the Mac.

@@ -84,7 +84,9 @@ On Windows, Linux stops when its last window closes and doesn't start with Windo
 
 Voice: ask your agent "set up voice", or run `~/.gubernos/app/scripts/setup.sh voice`: Whisper, on the computer itself (faster-whisper; on an NVIDIA graphics card, also in WSL, it's quicker). On the processor a talk takes about as long to read as it took to say.
 
-What's different from the Mac: the calendar comes from Google (Settings → Your Mac → Calendar), and there's nothing to keep awake. The phone connects the same way (Settings → Your Mac → iPhone and other devices).
+Signing in to Claude or ChatGPT happens on the setup page, as on the Mac. When no browser opens by itself (WSL, or a machine without a screen), the page shows the sign-in link: ChatGPT gives a one-time code to enter there; Claude's page shows a code at the end, which you paste back on the setup page. Any browser on any device will do.
+
+What's different from the Mac: the calendar comes from Google (Settings → Your Mac → Calendar). Keeping it awake while plugged in works too (the box on the setup page, or `scripts/setup.sh awake on`); on Ubuntu it needs one admin step, which the setup prints. Other devices connect the same way (Settings → Your Mac → iPhone and other devices: the iPhone app, or Android and any browser).
 
 ## Keep the Mac awake
 

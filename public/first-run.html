@@ -32,6 +32,8 @@
   #status { margin-top: 14px; font-size: 14px; color: var(--ink-2); min-height: 20px; }
   #status.err { color: var(--accent); }
   pre { font-size: 12px; white-space: pre-wrap; color: var(--ink-2); margin: 8px 0 0; max-height: 140px; overflow: auto; }
+  #signin .code { font-family: ui-monospace, Menlo, monospace; font-size: 16px; letter-spacing: .04em; user-select: all; }
+  #signin .paste { display: flex; gap: 6px; margin-top: 6px; } #signin .paste input { flex: 1; min-width: 0; }
 </style>
 </head>
 <body>
@@ -58,6 +60,7 @@
   </section>
   <button class="primary" id="go">Set up Gubernos</button>
   <div id="status"></div>
+  <div class="note" id="signin" hidden></div>
   <p class="note" id="lost" hidden>Can’t find the sign-in page? <button id="cancel">Start again</button></p>
   <pre id="log" hidden></pre>
 </main>
@@ -97,6 +100,7 @@ async function follow(after) {
     const lost = j.quiet && !j.done; // a sign-in under way: its way out, on screen (the model buttons are higher up)
     if (lost && $('#lost').hidden) { $('#lost').hidden = false; $('#lost').scrollIntoView({ block: 'center' }); } else if (!lost) $('#lost').hidden = true;
     $('#log').hidden = !!j.quiet; $('#log').textContent = j.lines.join('\n'); $('#log').scrollTop = 1e6;
+    paintSignIn(j.done ? null : j.login);
     if (j.done) {
       if (j.error) { $('#status').className = 'err'; $('#status').textContent = `That didn’t work: ${j.error}`; busy(false); return; }
       $('#log').hidden = true; $('#status').textContent = '';
@@ -105,10 +109,26 @@ async function follow(after) {
     await new Promise((r) => setTimeout(r, 700));
   }
 }
-const busy = (on) => { document.querySelectorAll('button:not(#cancel)').forEach((b) => { b.disabled = on; }); };
+// no browser opened by itself (Linux, WSL, no screen): the link the sign-in printed, ChatGPT's one-time code, or a box for
+// the code Claude's page shows (lib/model-setup.js loginPrompt); drawn only when it changes, so typing isn't lost
+let signInShown = '';
+function paintSignIn(l) {
+  const key = l ? JSON.stringify(l) : '';
+  if (key === signInShown) return;
+  signInShown = key;
+  $('#signin').hidden = !l;
+  if (!l) return;
+  const open = (t) => `<a href="${esc(l.url)}" target="_blank" rel="noopener">${t}</a>`;
+  $('#signin').innerHTML = l.code ? `${open('Open the sign-in page')}, sign in, and enter this code there: <b class="code">${esc(l.code)}</b>`
+    : l.sent ? 'Checking the code…'
+    : l.paste ? `No sign-in page opened? ${open('Open it')}. If it shows you a code, paste it here: <span class="paste"><input id="code" autocomplete="off" placeholder="the code"><button id="send-code">Continue</button></span>`
+    : `No sign-in page opened? ${open('Open it')}.`;
+}
+const busy = (on) => { document.querySelectorAll('button:not(#cancel):not(#send-code)').forEach((b) => { b.disabled = on; }); };
 document.addEventListener('change', (e) => { if (e.target.name === 'model') chosen = e.target.value; });
 document.addEventListener('click', async (e) => {
   if (e.target.id === 'cancel') return call('POST', '/cancel').catch(() => {});
+  if (e.target.id === 'send-code') { const c = $('#code').value.trim(); if (!c) return $('#code').focus(); return call('POST', '/code', { code: c }).catch((err) => { $('#status').className = 'err'; $('#status').textContent = err.message; }); }
   const id = e.target.dataset?.model;
   if (id) {
     busy(true);

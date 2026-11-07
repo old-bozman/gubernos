@@ -1712,3 +1712,8 @@ button.dc-ev:hover, .dc-ev.cal-hl { box-shadow: 0 0 0 2px var(--accent); z-index
 /* the icon rail's names (public/app.js railTip) */
 .rail-tip { position: fixed; z-index: 60; transform: translateY(-50%); background: var(--ink); color: var(--bg); font-size: 12.5px; padding: 4px 8px; border-radius: 6px; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .08s; }
 .rail-tip.on { opacity: 1; }
+
+/* the model's sign-in code on the interview screen (signInHelp) */
+.ob-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 15px; letter-spacing: .04em; user-select: all; }
+.ob-paste { display: flex; gap: 6px; margin-top: 6px; }
+.ob-paste input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; background: transparent; color: var(--ink); font: inherit; }

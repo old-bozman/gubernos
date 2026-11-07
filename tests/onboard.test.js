@@ -84,6 +84,47 @@ esac
   } finally { await p.close(); await srv.stop(); fs.rmSync(d, { recursive: true, force: true }); }
 });
 
+test('no browser on this machine (Linux, WSL): the sign-in link is on the page, and Claude’s code is pasted there', { timeout: 40000 }, async () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'gubernos-model-'));
+  const fake = path.join(d, 'claude'), flag = path.join(d, 'in');
+  // like the real CLI with no browser: a link, then it waits for the code its page shows
+  fs.writeFileSync(fake, `#!/usr/bin/env node
+const fs = require('fs'), a = process.argv.slice(2).join(' ');
+if (a === 'auth status --json') { console.log(JSON.stringify({ loggedIn: fs.existsSync(${JSON.stringify(flag)}) })); process.exit(0); }
+if (a === 'auth login') {
+  process.stdout.write("Opening browser to sign in…\\nIf the browser didn't open, visit: https://claude.example/oauth/authorize?code=true&state=AB12-CD34xy\\nPaste code here if prompted > ");
+  let got = ''; process.stdin.on('data', (x) => { got += x; if (got.includes('\\n')) { if (got.trim() === 'good-code#st') { fs.writeFileSync(${JSON.stringify(flag)}, ''); console.log('Login successful'); process.exit(0); } console.log('Login failed'); process.exit(1); } });
+} else process.exit(1);
+`, { mode: 0o755 });
+  const srv = await startServer({ GUBERNOS_CLAUDE_BIN: fake });
+  const p = await openPage();
+  try {
+    await p.goto(`${srv.url}/#/onboard`);
+    assert.ok(await p.waitFor('document.querySelector("[data-act=onboard-connect][data-val=claude]")'));
+    await p.eval('document.querySelector("[data-act=onboard-connect][data-val=claude]").click()');
+    assert.ok(await p.waitFor('!!document.querySelector("#ob-code")', 10000), await p.eval('document.querySelector(".onboard").innerText'));
+    assert.equal(await p.eval('document.querySelector(".ob-connect a[target=_blank]").href'), 'https://claude.example/oauth/authorize?code=true&state=AB12-CD34xy');
+    assert.ok(!await p.eval('!!document.querySelector(".ob-code")'), 'a piece of the link was taken for a code to type');
+    // typing isn't lost while the page keeps asking how the sign-in goes
+    await p.eval('document.querySelector("#ob-code").focus(); document.querySelector("#ob-code").value = "good-code#st"; document.querySelector("#ob-code").dispatchEvent(new Event("input", { bubbles: true }))');
+    await p.sleep(3500);
+    assert.equal(await p.eval('document.querySelector("#ob-code")?.value'), 'good-code#st', 'the code being typed was redrawn away');
+    await p.eval('document.querySelector("[data-act=onboard-code]").click()');
+    assert.ok(await p.waitFor('!document.querySelector(".ob-connect")', 15000), `not connected: ${await p.eval('document.querySelector(".onboard").innerText')}`);
+    assert.ok(fs.existsSync(flag));
+    assert.deepEqual(p.errors, []);
+  } finally { await p.close(); await srv.stop(); fs.rmSync(d, { recursive: true, force: true }); }
+});
+
+test('sign-in on Linux: ChatGPT with a one-time code (any browser will do); what the CLIs print is read right', async () => {
+  const { loginCommand, loginPrompt } = await import('../lib/model-setup.js');
+  assert.deepEqual(loginCommand('codex', 'linux'), ['codex', ['login', '--device-auth']]);
+  assert.deepEqual(loginCommand('codex', 'darwin'), ['codex', ['login']]);
+  assert.deepEqual(loginCommand('claude', 'linux'), ['claude', ['auth', 'login']]);
+  assert.deepEqual(loginPrompt('\x1b[94mhttps://auth.openai.com/codex/device\x1b[0m\n2. Enter this one-time code\n   \x1b[94m5593-R6552\x1b[0m'), { url: 'https://auth.openai.com/codex/device', code: '5593-R6552', paste: false });
+  assert.equal(loginPrompt('Opening browser…'), null);
+});
+
 test('someone who left before the interview finds the way back on Today, until it is done or dismissed', { timeout: 40000 }, async () => {
   const srv = await startServer({ GUBERNOS_CLAUDE_BIN: path.join(dir, 'claude') });
   const p = await openPage();

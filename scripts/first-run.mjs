@@ -12,7 +12,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { MODEL_SETUP, setupPath, signInFailed, getFailed } from '../lib/model-setup.js';
+import { loginCommand, loginPrompt, MODEL_SETUP, setupPath, signInFailed, getFailed } from '../lib/model-setup.js';
 
 const APP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const HOME = os.homedir();
@@ -41,11 +41,17 @@ function folders() {
 // one long job at a time; the page polls it
 const job = { name: null, lines: [], done: false, error: null, next: null, quiet: false };
 let current = null; // the running process: a sign-in can be given up on (its browser page can get lost)
-function start(name, cmd, args, then, { fail, quiet = false } = {}) { // fail: what to say instead of the tool's last line; quiet: its output isn't for people
-  Object.assign(job, { name, lines: [], done: false, error: null, quiet });
-  const child = spawn(cmd, args, { cwd: APP, env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
+function start(name, cmd, args, then, { fail, quiet = false, login = false } = {}) { // fail: what to say instead of the tool's last line; quiet: its output isn't for people; login: a sign-in, its link shown (lib/model-setup.js loginPrompt)
+  Object.assign(job, { name, lines: [], done: false, error: null, quiet, login: null });
+  const child = spawn(cmd, args, { cwd: APP, env: process.env, stdio: ['pipe', 'pipe', 'pipe'] });
+  child.stdin.on('error', () => {});
+  if (!login) child.stdin.end(); // only a sign-in waits for input (a pasted code); anything else gets nothing, as before
   current = child;
-  const take = (d) => { job.lines.push(...String(d).split('\n').filter((l) => l.trim())); job.lines = job.lines.slice(-30); };
+  let out = '';
+  const take = (d) => {
+    job.lines.push(...String(d).split('\n').filter((l) => l.trim())); job.lines = job.lines.slice(-30);
+    if (login) { out = (out + d).slice(-4000); job.login = loginPrompt(out) || job.login; }
+  };
   child.stdout.on('data', take); child.stderr.on('data', take);
   child.on('error', (e) => { job.done = true; job.error = fail || e.message; });
   child.on('close', (code) => {
@@ -57,7 +63,7 @@ function start(name, cmd, args, then, { fail, quiet = false } = {}) { // fail: w
 function setUpModel(id) {
   const m = MODELS.find((x) => x.id === id);
   if (!m) throw new Error('unknown model');
-  const login = () => start(`${m.name}: sign in, in the browser`, ...m.login, null, { fail: `${signInFailed(m)} Or skip it: you can sign in after this.`, quiet: true });
+  const login = () => start(`${m.name}: sign in, in the browser`, ...loginCommand(m.id), null, { fail: `${signInFailed(m)} Or skip it: you can sign in after this.`, quiet: true, login: true });
   if (has(m.id)) login(); else start(`Getting ${m.name}…`, ...m.install, login, { fail: getFailed(m) });
 }
 
@@ -87,6 +93,16 @@ const server = http.createServer((req, res) => {
   if (req.method === 'GET' && url.pathname === '/state') return json(res, 200, { name: quiet('id', ['-F']).out.trim(), folders: folders(), models: modelState(), job, mac: process.platform === 'darwin' });
   if (req.method === 'GET' && url.pathname === '/job') return json(res, 200, job);
   if (req.method !== 'POST') return json(res, 404, { error: 'not found' });
+  if (url.pathname === '/code') { // Claude's sign-in page shows a code to paste back: it goes to the CLI waiting for it
+    let body = '';
+    return req.on('data', (d) => { body += d; }).on('end', () => {
+      const c = String(JSON.parse(body || '{}').code || '').trim();
+      if (!job.login?.paste || job.done || !current) return json(res, 409, { error: 'no sign-in is waiting for a code' });
+      if (!c || c.length > 2000 || /\s/.test(c)) return json(res, 400, { error: 'paste the code from the sign-in page' });
+      current.stdin.write(`${c}\n`); job.login = { ...job.login, paste: false, sent: true };
+      json(res, 200, { ok: true });
+    });
+  }
   if (url.pathname === '/cancel') { if (job.quiet && !job.done) current?.kill(); return json(res, 200, { ok: true }); } // sign-ins only, never the setup itself
   let body = '';
   req.on('data', (d) => { body += d; if (body.length > 10000) req.destroy(); }).on('end', () => {
