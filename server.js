@@ -26,6 +26,7 @@ import { ask } from './lib/chat.js';
 import * as Triage from './lib/triage.js';
 import * as Backup from './lib/backup.js';
 import * as Onboarding from './lib/onboarding.js';
+import * as Import from './lib/import.js';
 import { mirror } from './lib/mirror.js';
 import { saveAttachment, attachmentFile, attachmentByName } from './lib/attachments.js';
 import { PORT, PROXY_PORT, PUBLIC_URL, APP_NAME, profile, clientConfig } from './lib/config.js';
@@ -189,6 +190,10 @@ route('POST', '/api/gmail/draft', async (_, __, b) => {
   return r;
 });
 // Notifications (Web Push to the home-screen app).
+// Settings → General → Import tasks (lib/import.js): read → look → apply
+route('GET', '/api/import', () => ({ sources: Import.sources() }));
+route('POST', '/api/import/read', (_, __, b) => Import.read(b));
+route('POST', '/api/import/apply', (_, __, b) => Import.apply(b));
 route('GET', '/api/onboard', () => Onboarding.state());
 route('POST', '/api/onboard', (_, __, b) => Onboarding.turn(b.message));
 route('POST', '/api/onboard/connect', (_, __, b) => Onboarding.connect(b.id));

@@ -77,9 +77,11 @@ Whatever they pick goes in `05_model/habits/<slug>.md` (template `habit.md`): `k
 Then finish, in no more than three short lines, with no lists, and without repeating what you already told them:
 - that their most important thing today is waiting at the top of Today, with the rest of today's tasks under it, and their habit on the Protocol screen;
 - that each screen explains itself the first time, and anything can be changed;
-- if they mentioned another task app, that they can bring it in later by asking their agent to import their tasks.
+- if they mentioned another task app, that they can bring those tasks in right after this: Settings → General → Import tasks (Reminders, Things, Todoist or any app's export). Don't retell or re-ask those tasks in the interview.
 
 ## Importing tasks from another app (when asked, in a terminal; not during the interview)
+
+In the app: Settings → General → Import tasks does all of this by itself (it reads the app, shows each list and where it goes, and writes nothing before Import). Point people there; what follows is for when you are asked in a terminal.
 
 `<app>` = the Gubernos folder, `~/.gubernos/app` by default.
 

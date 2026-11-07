@@ -145,6 +145,7 @@ phone URL, Obsidian vault) and the vault's `profile.md` (name, language, categor
   task's Repeat field, or by voice. Stored as cron when cron can say it, else `every N days|weeks|months|years`
   (`public/recur.js`, shared by browser and server); shown back in words ("Every Monday"). Completing rolls `due` forward.
 - **Swipes** (phone): right → complete (with Undo); left → Move to: Tomorrow · Weekend · Next week · pick a date (with Undo).
+- **Import tasks** (Settings → General; `lib/import.js`): from Apple Reminders or Things 3 on the Mac, Todoist (its API token, used once, not kept) or any app's export / a pasted list (read by the model). Each list is shown with where it goes (a new project with its area, the project of the same name, no project, or left out); done tasks, tasks already there and past due dates stay out; nothing is written before Import. The end of the first interview points to it.
 - **Completing**: 5 s grace (Settings) with Undo in the row; nothing is written until it ends. **Drop** = abandon (`dropped: true`).
 - **Voice** (one floating mic on every screen; hold = push-to-talk, tap = hands-free with pause detection):
   local Whisper on the Mac (MLX: `whisper-small` for short commands, `large-v3-turbo` for dictation), then

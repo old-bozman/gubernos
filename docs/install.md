@@ -40,7 +40,7 @@ That model reads your inbox and voice notes, answers in the app's chat and runs 
    - asks your name and language and **where your files live**: a folder on the Mac (`~/Gubernos`, the default), or in iCloud Drive / Obsidian if you want the files on other devices too. The app keeps a daily copy of them in `~/.gubernos/backups/` (the last 14 days and 8 weeks);
    - starts Gubernos on the Mac as a background service;
    - connects your calendar (the ones in the Calendar app: one **Allow** in a macOS dialog), and optionally voice (Whisper), Obsidian and Google for agents (Gmail, Drive; see [google.md](google.md));
-   - ends with a short interview, about 10 minutes: you talk, and what matters goes straight into your system. After it you can bring an export from Todoist, Things or Reminders.
+   - ends with a short interview, about 10 minutes: you talk, and what matters goes straight into your system. After it, bring your tasks from Todoist, Things, Reminders or any app's export: Settings → General → Import tasks.
 
 On the Mac the app is at http://127.0.0.1:4747 (Safari → File → Add to Dock opens it in its own window).
 

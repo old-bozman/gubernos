@@ -1669,6 +1669,71 @@ function reportModal(kind = 'bug', text = '') {
   };
 }
 
+// ---------- Import tasks (Settings → General; lib/import.js): pick the app → read → look at the lists → Import ----------
+// Nothing is written before Import; each list can go to a new project, an existing one of the same name, no project, or stay out.
+async function importModal() {
+  const I = { sources: [] };
+  const draw = (inner) => { $('#modal').innerHTML = `<div class="overlay" data-act="qa-close"><div class="qa pm imp"><div class="bd-h">Import tasks</div>${inner}</div></div>`; };
+  draw('<p class="imp-note">…</p>');
+  try { I.sources = (await api('GET', '/api/import')).sources; } catch { return closeModal(); }
+  const choose = () => {
+    draw(`<p class="imp-note">From which app? It’s only read: nothing changes there.</p>
+      <div class="imp-src">${I.sources.map((x) => `<button class="btn" data-src="${x.id}">${esc(x.name)}</button>`).join('')}</div>
+      <div id="imp-form"></div>
+      <div class="foot"><span class="sp"></span><button class="btn" data-act="qa-close">Cancel</button></div>`);
+    $$('.imp-src [data-src]').forEach((b) => { b.onclick = () => form(b.dataset.src); });
+  };
+  const form = (id) => {
+    const x = I.sources.find((y) => y.id === id);
+    $$('.imp-src [data-src]').forEach((b) => b.classList.toggle('primary', b.dataset.src === id));
+    $('#imp-form').innerHTML = `<p class="imp-note">${esc(x.name)}: ${esc(x.hint)}</p>
+      ${x.token ? '<input id="imp-token" type="password" autocomplete="off" placeholder="Todoist API token">' : ''}
+      ${x.text ? '<label class="btn ghost">Choose a file…<input type="file" id="imp-file" accept=".csv,.json,.txt,.md,.tsv,.xml,text/*" hidden></label> <span id="imp-fname" class="imp-note"></span><textarea id="imp-text" rows="5" placeholder="…or paste the list here"></textarea>' : ''}
+      <p><button class="btn primary" id="imp-read">Read ${esc(x.name)}</button></p>`;
+    if (x.text) $('#imp-file').onchange = async (e) => { const f = e.target.files[0]; if (!f) return; if (f.size > 2e6) return toast('That file is too big (2 MB max)'); $('#imp-text').value = await f.text(); $('#imp-fname').textContent = f.name; };
+    (x.token ? $('#imp-token') : x.text ? $('#imp-text') : $('#imp-read')).focus();
+    $('#imp-read').onclick = () => read({ source: id, token: $('#imp-token')?.value.trim(), text: $('#imp-text')?.value }, x.name);
+  };
+  const read = async (body, name) => {
+    if (body.source === 'todoist' && !body.token) return $('#imp-token').focus();
+    if (body.source === 'file' && !body.text?.trim()) return $('#imp-text').focus();
+    draw(`<p class="imp-note">Reading ${esc(name)}…${body.source === 'file' ? ' The model goes through it: up to a few minutes for a long export.' : ' macOS may ask once whether Gubernos may read it: Allow.'}</p>`);
+    try { I.p = await api('POST', '/api/import/read', body); } catch { return choose(); }
+    look();
+  };
+  const look = () => {
+    const p = I.p, sk = p.skipped;
+    if (!p.lists.length) { draw(`<p class="imp-note">Nothing to bring in${sk.done || sk.dup ? `: ${[sk.done && `${sk.done} done`, sk.dup && `${sk.dup} already in ${esc(APP_NAME)}`].filter(Boolean).join(', ')}` : ''}.</p><div class="foot"><span class="sp"></span><button class="btn" data-act="qa-close">Close</button></div>`); return; }
+    const opt = (v, l, cur) => `<option value="${esc(v)}"${v === cur ? ' selected' : ''}>${esc(l)}</option>`;
+    draw(`<p class="imp-note">Each list, and where it goes. ${[sk.done && `${sk.done} done left out`, sk.dup && `${sk.dup} already in ${esc(APP_NAME)}`, sk.cleared && `${sk.cleared} past due date${sk.cleared > 1 ? 's' : ''} cleared, so Today doesn’t fill up with old dates`].filter(Boolean).join(' · ')}</p>
+      <div class="imp-lists">${p.lists.map((l) => `<div class="imp-l" data-key="${esc(l.key)}">
+        <div class="imp-lh"><b>${esc(l.name)}</b> <span class="imp-n">${l.count} task${l.count > 1 ? 's' : ''}</span></div>
+        <div class="imp-ls">${l.sample.map(esc).join(' · ')}${l.count > l.sample.length ? ' …' : ''}</div>
+        <div class="imp-lc"><select class="imp-target">${l.existing ? opt(`project:${l.existing}`, `Into the project ${l.name}`, l.target) : opt('new', 'A new project', l.target)}${opt('none', 'No project', l.target)}${opt('skip', 'Leave it out', l.target)}</select>
+        <select class="imp-cat"${l.target === 'new' ? '' : ' hidden'}>${p.categories.map((c) => opt(c, `Area: ${c}`, l.category)).join('')}</select></div></div>`).join('')}</div>
+      <div class="foot"><span class="sp" id="imp-sum"></span><button class="btn" data-act="qa-close">Cancel</button><button class="btn primary" id="imp-apply">Import</button></div>`);
+    const sum = () => {
+      const on = $$('.imp-l').filter((r) => r.querySelector('.imp-target').value !== 'skip');
+      const n = on.reduce((a, r) => a + p.lists.find((l) => l.key === r.dataset.key).count, 0);
+      $('#imp-apply').textContent = `Import ${n} task${n === 1 ? '' : 's'}`; $('#imp-apply').disabled = !n;
+      $$('.imp-l').forEach((r) => { r.querySelector('.imp-cat').hidden = r.querySelector('.imp-target').value !== 'new'; });
+    };
+    $$('.imp-target').forEach((x) => { x.onchange = sum; });
+    sum();
+    $('#imp-apply').onclick = async () => {
+      $('#imp-apply').disabled = true;
+      const lists = $$('.imp-l').map((r) => ({ key: r.dataset.key, target: r.querySelector('.imp-target').value, category: r.querySelector('.imp-cat').value }));
+      try {
+        const r = await api('POST', '/api/import/apply', { id: p.id, lists });
+        closeModal();
+        toast(`Imported ${r.tasks} task${r.tasks === 1 ? '' : 's'}${r.projects.length ? `, ${r.projects.length} new project${r.projects.length > 1 ? 's' : ''}` : ''}`);
+        await load();
+      } catch { $('#imp-apply').disabled = false; }
+    };
+  };
+  choose();
+}
+
 // ---------- daily reflection: three short answers at the end of the day (lib/reflection.js → 50_reviews/daily/) ----------
 const REFLECT_FORMATS = {
   esp: [['effort', 'Effort', 'Your moment of honest, hard work today — what you could control and the energy you put in.'],
@@ -3602,6 +3667,7 @@ document.addEventListener('click', async (e) => {
     case 'pin': e.preventDefault(); return togglePin(a.dataset.key);
     case 'quick': return quickAdd(a.dataset.defaults ? JSON.parse(a.dataset.defaults) : {});
     case 'qa-close': if (e.target === a) closeModal(); return;
+    case 'import-open': return importModal(); // the end of the first interview; Settings has its own (set-import)
     case 'qa-save': return S.qaSave?.();
     case 'qa-note': return S.qaNote?.();
     case 'qa-mic': return S.qaMic?.();
@@ -4107,6 +4173,7 @@ function settingsHtml() {
     <div class="set-row"><div class="set-l">Time format<small>how times show everywhere in the app</small></div><span data-noclock>${seg('set-clock', st.clock === '12h' ? '12h' : '24h', [['24h', '24h · 16:30'], ['12h', 'am / pm · 4:30pm']])}</span></div>
     <div class="set-row"><div class="set-l">Week starts on<small>this week’s wins, the weekly review, habits this week, sprints this week</small></div>${seg('set-week-start', st.weekStart === 'sunday' ? 'sunday' : 'monday', [['sunday', 'Sunday'], ['monday', 'Monday']])}</div>
     <div class="set-row"><div class="set-l">Focus sprint<small>its length by default; the Focus screen changes it for one sprint · break: a fifth, at least 5 min</small></div><span class="set-btns">${seg('set-sprint', [15, 25, 30, 50, 60].includes(st.sprintMinutes || 25) ? st.sprintMinutes || 25 : 'x', [...[15, 25, 30, 50, 60].map((m) => [m, `${m}`]), ['x', [15, 25, 30, 50, 60].includes(st.sprintMinutes || 25) ? 'Other' : `${st.sprintMinutes} min`]])}</span></div>
+    <div class="set-row"><div class="set-l">Import tasks<small>from Apple Reminders, Things, Todoist, or any app’s export — you see what comes in before it’s added</small></div><button class="btn" data-act="set-import">Import…</button></div>
     ${g('Your day')}
     <div class="set-row"><div class="set-l">Focus view<small>Today shows only the #1 and your tasks for today, each a tap from Focus · also the toggle at the top of Today</small></div>${seg('set-simple', st.simple ? 'on' : 'off', [['off', 'Off'], ['on', 'On']])}</div>
     ${timeRow('Lunch', 'Plan the day keeps it free — at this time, or the nearest free slot within an hour of it. A “Lunch” event in your calendar counts instead. For one day: Move or Skip today on its row in Plan the day', 'lunchAt', '12:00', () => seg('set-lunch-min', st.lunchMinutes || 60, [[30, '30m'], [45, '45m'], [60, '1h'], [90, '1.5h']]))}
@@ -4227,7 +4294,8 @@ function onboardHtml() {
   const voice = S.data?.voice !== false;
   const intro = o.turns.length ? '' : `<div class="ob-intro"><h2>Let’s load your system</h2>
     <p>Think of me as your new assistant, on day one. Set aside <b>about 10 minutes</b> somewhere you can talk, ${voice ? 'press the mic and tell me' : 'and tell me'} about yourself, in any order, as much as you like. I’ll keep track of what matters. You can change anything later.</p>
-    <ul><li>Who you are, who’s in your life, what you look after</li><li>What you can’t let slip, and what you’re hoping for this year</li><li>What’s on your plate right now</li></ul></div>`;
+    <ul><li>Who you are, who’s in your life, what you look after</li><li>What you can’t let slip, and what you’re hoping for this year</li><li>What’s on your plate right now</li></ul>
+    <p class="muted">Your tasks in another app (Todoist, Things, Reminders) don’t need retelling: bring them in after this, from Settings → General → Import tasks.</p></div>`;
   const bubbles = o.turns.map((t) => `<div class="ob-t ob-${t.from}">${t.from === 'agent' ? md(t.text) : esc(t.text)}</div>`).join('');
   const working = S.onboardBusy ? '<div class="ob-t ob-agent ob-working">Putting this into your system…</div>' : '';
   if (o.connecting?.running && !S.onboardPoll) S.onboardPoll = setTimeout(async () => { S.onboardPoll = null; try { S.onboard = await api('GET', '/api/onboard'); } catch { /* next time */ } if (S.view === 'onboard') renderMain(); }, 1500);
@@ -4236,7 +4304,7 @@ function onboardHtml() {
       ${(o.models || []).map((m) => `<p><button class="btn" data-act="onboard-connect" data-val="${esc(m.id)}" ${connecting ? 'disabled' : ''}>${m.installed ? `Sign in to ${esc(m.name)}` : `Get ${esc(m.name)} and sign in`}</button> <span class="ph-text">${esc(m.plan)}</span></p>`).join('')}
       ${connecting ? `<p class="ph-text">${esc(o.connecting.name)}: finish signing in in your browser, then come back here.${o.connecting.signingIn ? ' <button class="linkbtn" data-act="onboard-cancel">Can’t find that page? Start again</button>' : ''}</p>` : ''}${!connecting && o.connecting?.error ? `<p class="d-over">${esc(o.connecting.error)}</p>` : ''}</div>`
     : `<div class="ob-input"><span class="rf-in"><textarea id="ob-msg" rows="3" placeholder="${voice ? 'Press the mic and talk, or type' : 'Answer here'}" ${S.onboardBusy ? 'disabled' : ''}>${S.onboardBusy ? '' : esc(S.onboardDraft || '')}</textarea><button type="button" class="rf-mic" data-voice data-dictate="ob-msg" aria-label="Dictate">${MIC_SVG}</button></span><button class="btn primary" data-act="onboard-send" ${S.onboardBusy ? 'disabled' : ''}>Send</button></div>`;
-  return `<div class="onboard">${intro}${bubbles}${working}${o.error ? `<p class="d-over">${esc(o.error)}</p>` : ''}${o.finished ? '<p class="ph-text"><b>That’s the setup.</b></p><p><a class="btn primary" href="#/today">Open Today</a> <a class="btn" href="#/phone">Connect your iPhone</a></p>' : foot}</div>`;
+  return `<div class="onboard">${intro}${bubbles}${working}${o.error ? `<p class="d-over">${esc(o.error)}</p>` : ''}${o.finished ? '<p class="ph-text"><b>That’s the setup.</b></p><p><a class="btn primary" href="#/today">Open Today</a> <a class="btn" href="#/phone">Connect your iPhone</a></p><p class="ph-text">Your tasks are in Todoist, Things or Reminders? <button class="linkbtn" data-act="import-open">Bring them in</button> — now or later, from Settings → General → Import tasks.</p>' : foot}</div>`;
 }
 async function onboardSend() {
   if (S.onboardBusy) return;
@@ -4422,6 +4490,7 @@ document.addEventListener('click', (e) => {
   if (b.dataset.act === 'set-habits') return saveSetting({ habits: v === 'on' }).then(() => load());
   if (b.dataset.act === 'set-provider') return saveSetting({ provider: v }).then(() => { S.ai = null; return load(); });
   if (b.dataset.act === 'set-simple') return saveSetting({ simple: v === 'on' });
+  if (b.dataset.act === 'set-import') return importModal();
   if (b.dataset.act === 'set-pair-show') { S.pairShow = !S.pairShow; return renderMain(); }
   if (b.dataset.act === 'set-pair-other') {
     S.phoneSetup = true; S.pairShow = true; renderMain();

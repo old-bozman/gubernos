@@ -125,6 +125,7 @@ test('in the interview a long press on the mic starts the talk: letting go does 
 test('it says what it takes and waits; a talk in, the answer in the chat, to the end', { timeout: 60000 }, async () => {
   await page.goto(`${s.url}/#/onboard`);
   assert.ok(await page.waitFor('document.querySelector(".ob-intro")?.innerText.includes("about 10 minutes")'), `no intro: ${page.errors.join(' | ')}`);
+  assert.ok(await page.eval('document.querySelector(".ob-intro").innerText.includes("Settings → General → Import tasks")'), 'the intro doesn’t say tasks can be brought in');
   assert.ok(!fs.existsSync(path.join(dir, 'calls')), 'the model was called before the person said anything');
   // it offers the mic, and what's dictated lands in the answer box (the same [data-dictate] path as Daily reflection)
   assert.equal(await page.eval('document.querySelector(".ob-input [data-voice][data-dictate=ob-msg]")?.dataset.dictate'), 'ob-msg');
@@ -158,6 +159,10 @@ test('it says what it takes and waits; a talk in, the answer in the chat, to the
   assert.equal(await page.eval('document.querySelector(".onboard a.btn.primary")?.getAttribute("href")'), '#/today');
   await page.sleep(200);
   assert.ok(await page.eval('(() => { const r = document.querySelector(".onboard a.btn.primary").getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; })()'), 'after a long talk the way on is off the screen');
+  // tasks in another app: the way to bring them in is right there
+  await page.eval('document.querySelector(".onboard [data-act=import-open]").click()');
+  assert.ok(await page.waitFor('!!document.querySelector(".imp [data-src=todoist]")'), 'Bring them in opens nothing');
+  await page.eval('document.querySelector(".imp [data-act=qa-close].btn").click()');
   const second = calls()[1];
   assert.equal(flag(second, '--resume'), 'sess-1');
   assert.ok(second.includes('--permission-mode'));
