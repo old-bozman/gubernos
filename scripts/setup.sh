@@ -131,14 +131,17 @@ wsl_keepalive() {
   is_wsl || return 0
   [[ -n "${GUBERNOS_NO_LAUNCHD:-}" ]] && return 0
   local appdata startup vbs win distro="${WSL_DISTRO_NAME:-Ubuntu}"
-  appdata=$(cmd.exe /c 'echo %APPDATA%' 2>/dev/null | tr -d '\r'); [[ "$appdata" == *:\\* ]] || { no "couldn't reach Windows to start Gubernos with it: open your Linux window after each restart"; return 0; }
+  appdata=$(cmd.exe /c 'echo %APPDATA%' </dev/null 2>/dev/null | tr -d '\r'); [[ "$appdata" == *:\\* ]] || { no "couldn't reach Windows to start Gubernos with it: open your Linux window after each restart"; return 0; }
   startup="$(wslpath -u "$appdata\\Microsoft\\Windows\\Start Menu\\Programs\\Startup")"
   vbs="$startup/Gubernos.vbs"
   printf '%s\r\n' "' Gubernos: keeps Linux ($distro, in WSL) running so Gubernos works; made by scripts/setup.sh" \
     "CreateObject(\"WScript.Shell\").Run \"wsl.exe -d $distro --exec /bin/sleep infinity\", 0, False" > "$vbs" || { no "couldn't write $vbs"; return 0; }
   win="$(wslpath -w "$vbs")"
-  pgrep -f '^/bin/sleep infinity' >/dev/null || cmd.exe /c start "" wscript.exe "$win" >/dev/null 2>&1
-  ok "starts with Windows and keeps running when this window closes (Startup: Gubernos.vbs)"
+  # wscript.exe itself, not through `cmd.exe /c start` (that failed with "Invalid argument" on a Windows 11 machine,
+  # 2026-11-08); it returns at once. stdin closed: a Windows program reads it and would eat this script's input
+  if pgrep -f '^/bin/sleep infinity' >/dev/null || wscript.exe "$win" </dev/null >/dev/null 2>&1; then
+    ok "starts with Windows and keeps running when this window closes (Startup: Gubernos.vbs)"
+  else no "starts with Windows (Startup: Gubernos.vbs); until the next restart, keep this window open"; fi
 }
 
 # Windows (WSL): Linux can't keep Windows awake, so a small PowerShell script does (deploy/gubernos-awake.ps1: Windows'
@@ -154,7 +157,7 @@ wsl_awake() {
     on) mkdir -p "$(dirname "$ps1")" && cp "$APP/deploy/gubernos-awake.ps1" "$ps1"
       printf '%s\r\n' "' Gubernos: keeps Windows awake while plugged in (deploy/gubernos-awake.ps1); made by scripts/setup.sh awake on" \
         "CreateObject(\"WScript.Shell\").Run \"powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File \"\"$(wslpath -w "$ps1")\"\"\", 0, False" > "$vbs"
-      powershell.exe -NoProfile -Command "$stop" >/dev/null 2>&1; cmd.exe /c start "" wscript.exe "$(wslpath -w "$vbs")" >/dev/null 2>&1
+      powershell.exe -NoProfile -Command "$stop" </dev/null >/dev/null 2>&1; wscript.exe "$(wslpath -w "$vbs")" </dev/null >/dev/null 2>&1 || true
       ok "Windows stays awake while plugged in (the screen still turns off; Startup: GubernosAwake.vbs)";;
     off) rm -f "$vbs"; powershell.exe -NoProfile -Command "$stop" >/dev/null 2>&1; ok "normal sleep again";;
     status) [[ -f "$vbs" ]] && ok "Windows stays awake while plugged in" || no "Windows sleeps as usual (scripts/setup.sh awake on)";;
