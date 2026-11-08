@@ -7,7 +7,8 @@ import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
-import { startServer } from './helpers.js';
+import { execFileSync } from 'node:child_process';
+import { startServer, ROOT } from './helpers.js';
 import { openPage } from './chrome.js';
 
 const TOKEN = 'tok-import-test-123';
@@ -36,7 +37,7 @@ if (a[0] === 'auth') { console.log('{"loggedIn":true}'); process.exit(0); }
 require('fs').appendFileSync(${JSON.stringify(path.join(dir, 'calls'))}, sys.slice(0, 40) + '\\n');
 const out = /life area/.test(sys) ? { categories: ['energy'] }
   : { lists: [{ name: 'Running', kind: 'project', items: [{ title: 'Buy shoes', due: '2099-02-02', time: '09:30' }, { title: 'Track runs', repeat: 'every 2 weeks' }, { title: 'Old race', done: true }] }] };
-console.log(JSON.stringify({ structured_output: out }));
+console.log(JSON.stringify({ structured_output: out, total_cost_usd: 0.0125 }));
 `, { mode: 0o755 });
   s = await startServer({ GUBERNOS_TODOIST_API: `http://127.0.0.1:${api.address().port}`, GUBERNOS_CLAUDE_BIN: fake });
 }, { timeout: 40000 });
@@ -98,4 +99,11 @@ test('an export file: the model reads it, the category is its guess, plain-word 
   assert.ok(!task('Old race'), 'a done item came in');
   assert.equal((await s.post('/api/import/apply', { id: r.body.id, lists: [] })).status, 409, 'the same import applied twice');
   assert.equal((await s.post('/api/import/read', { source: 'todoist', token: 'wrong' })).status, 400);
+  // what the model cost is logged per call, under the module that asked: the bill on an API key, from real use
+  const costs = fs.readFileSync(path.join(s.dir, 'data', 'costs.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l)).filter((r) => r.job === 'import');
+  assert.ok(costs.length >= 2, `the model calls weren't logged: ${JSON.stringify(costs)}`);
+  assert.ok(costs.every((r) => r.cost === 0.0125), 'a price got lost');
+  assert.deepEqual([...new Set(costs.map((r) => r.model))].sort(), ['haiku', 'sonnet'], 'reading the file (sonnet) and the categories (haiku)');
+  const sum = execFileSync(process.execPath, [path.join(ROOT, 'scripts/costs.mjs')], { env: { ...process.env, GUBERNOS_DATA_DIR: path.join(s.dir, 'data') }, encoding: 'utf8' });
+  assert.match(sum, /import · sonnet/);
 });
