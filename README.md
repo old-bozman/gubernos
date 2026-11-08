@@ -32,7 +32,7 @@ Gubernos is not affiliated with any of them.
 
 **On Android:** open Gubernos in Chrome and install it as an app ([how](docs/install.md#android)).
 
-**On Linux, or Windows (in WSL):** `curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash -s -- --wizard`, then the same page in your browser ([more](docs/install.md#linux-or-windows-in-wsl)).
+**On Windows:** in PowerShell, `irm https://gubernos.app/install.ps1 | iex` (it gets WSL and Ubuntu when they're missing). **On Linux:** `curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash -s -- --wizard`. Then the same setup page in your browser ([more](docs/install.md#linux-or-windows-in-wsl)).
 
 **Or let your AI agent do the setup.** On your Mac, open Claude Code or Codex (the table in [SETUP.md](SETUP.md) shows
 how to get one) and paste:

@@ -72,7 +72,17 @@ Compared with the iPhone app it has no offline copy, widgets, Health or phone-si
 
 ## Linux, or Windows (in WSL)
 
-Gubernos also runs on Linux, and on Windows inside WSL (Windows' own Linux: in PowerShell, `wsl --install`). In a terminal there:
+Gubernos also runs on Linux, and on Windows inside WSL (Windows' own Linux).
+
+**Windows:** open PowerShell (Start → type PowerShell) and paste:
+
+```
+irm https://gubernos.app/install.ps1 | iex
+```
+
+It installs WSL with Ubuntu if they aren't there (Windows asks for an administrator's OK; then restart, choose a Linux user name and password in the Ubuntu window, and run the same line again), then does the Linux install below inside Ubuntu.
+
+**Linux** (or by hand inside WSL), in a terminal:
 
 ```
 curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash -s -- --wizard
