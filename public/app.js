@@ -4271,8 +4271,10 @@ function devicesHtml() {
   const other = p.local ? `<button class="btn" data-act="set-pair-other" ${S.phoneSetup ? 'disabled' : ''}>${S.phoneSetup ? 'Setting up…' : 'Android or a browser'}</button>` : '';
   if (!p.publicUrl) return `<div class="set-row"><div class="set-l">iPhone and other devices<small>iPhone: the app from TestFlight, then a code to scan. Android, an iPad or another computer: a link opened once in its browser. ${S.phoneSetup ? 'Getting an https address for this Mac, about a minute…' : 'Both reach this Mac through an https address from Cloudflare, under our account: the traffic passes through it, we don’t store it.'}</small></div><span class="set-btns">${connect}${other}</span></div>`;
   const seg = (act, cur, opts, dis) => `<span class="seg">${opts.map(([v, l]) => `<button data-act="${act}" data-val="${v}" class="${String(cur) === String(v) ? 'on' : ''}"${dis ? ' disabled' : ''}>${l}</button>`).join('')}</span>`;
-  const code = S.pairShow ? `<div class="pair-box"><div class="pair-qr">${pairQr()}</div>
-      <div class="set-note"><b>iPhone:</b> point the Camera at the code → Open in ${esc(APP_NAME)}.<br><b>Android, or another browser</b> (an iPad, a second Mac): open this link there once (Android: in Chrome, then ⋮ → Install app) —
+  // two codes: the iPhone's opens the app (gubernos://), Android's is the plain link, which its camera opens in Chrome
+  const code = S.pairShow ? `<div class="pair-box"><figure class="pair-qr" data-for="iphone">${pairQr()}<figcaption>iPhone</figcaption></figure>
+      <figure class="pair-qr" data-for="android" data-link="${esc(p.webLink)}">${qrSvg(p.webLink)}<figcaption>Android</figcaption></figure>
+      <div class="set-note"><b>iPhone:</b> point the Camera at its code → Open in ${esc(APP_NAME)}.<br><b>Android:</b> point the camera at its code → open in Chrome, then ⋮ → Install app.<br><b>Another browser</b> (an iPad, a second computer): open this link there once —
       <button class="linkbtn" data-act="set-pair-copy">Copy link</button></div></div>` : '';
   const require = `<div class="set-mf">Only paired devices get in ${seg('set-pair-required', p.required ? 'on' : 'off', [['off', 'Off'], ['on', 'On']], !p.local)}
       ${p.local ? ' · <button class="linkbtn" data-act="set-pair-rotate">New code — unpairs every device</button>' : ' · changed on the Mac itself'}<br><small>off: anyone who reaches this address · the Mac itself always gets in</small></div>`;

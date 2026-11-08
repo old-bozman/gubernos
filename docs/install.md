@@ -61,8 +61,8 @@ The phone keeps a copy of your files from the Mac: when the Mac is asleep or awa
 
 There's no Android app yet, but Gubernos works in Chrome as an installed web app, with notifications. You need the Mac's phone address (step 1 above: "connect my phone", or Connect your iPhone on the Mac, which sets it up).
 
-1. On the Mac: Settings → Your Mac → iPhone and other devices → **Show code** → **Copy link**, and send the link to your phone (a message to yourself).
-2. Open it in **Chrome** on the phone: it pairs the phone and opens Gubernos.
+1. On the computer running Gubernos: Settings → Your Mac → iPhone and other devices → **Android or a browser** (or **Show code** once it has an address).
+2. Point the phone's camera at the code marked **Android** and open it in **Chrome**: it pairs the phone and opens Gubernos. (No camera handy: **Copy link** and send it to the phone.)
 3. Chrome menu **⋮** → **Install app** (or Add to Home screen): it gets its own icon and window.
 4. In Gubernos: Settings → This device → Notifications **On**.
 

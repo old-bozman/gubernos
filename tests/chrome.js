@@ -59,7 +59,7 @@ async function start(args) {
     return r.result.value;
   };
   const page = {
-    errors, sleep, eval: evaluate,
+    errors, sleep, eval: evaluate, send,
     goto: (url) => send('Page.navigate', { url }),
     onNewDocument: (source) => send('Page.addScriptToEvaluateOnNewDocument', { source }), // runs before the page's own scripts (the iPhone app's window.gubernosNative)
     userAgent: (userAgent) => send('Emulation.setUserAgentOverride', { userAgent }),

@@ -98,6 +98,9 @@ test('no address yet: Android or a browser gets one right there, without the iPh
     assert.equal(await page.eval('window.__setup'), 1);
     assert.ok(await page.waitFor(`!!${r}.querySelector("[data-act=set-pair-copy]") && !!${r}.querySelector(".pair-qr svg")`, 10000), await page.eval(`${r}.innerText`));
     assert.ok(await page.eval(`${r}.innerText.includes("m-test.gubernos.dev")`));
+    // Android's camera can't open the iPhone code (gubernos://): it gets its own, the plain link
+    assert.equal(await page.eval(`${r}.querySelector(".pair-qr[data-for=android]")?.dataset.link`), 'https://m-test.gubernos.dev/pair?t=t');
+    assert.ok(await page.eval(`!!${r}.querySelector(".pair-qr[data-for=android] svg") && !!${r}.querySelector(".pair-qr[data-for=iphone] svg")`), 'not both codes');
     assert.deepEqual(page.errors, []);
   } finally { await page.close(); }
 });
