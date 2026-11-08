@@ -11,6 +11,8 @@
 //   {op: 'write', path, text, created}  → {ok: true}   path is /vault/… or /data/… (the shell maps them to disk)
 //   {op: 'move', from, to}              → {ok: true}   /vault paths (completing → 80_archive/)
 //   {op: 'listen', free} / 'listenMode' / 'listenStop' / 'listenCancel' → voice on the phone; text comes via window.gubernosSpeech
+//   {op: 'claude', body, timeoutMs}     → a Claude API response (body and reply: JSON text): the shell sends it with the key from the iPhone's Keychain
+//                                          (local/llm.js); the chat, ✦ steps and inbox triage work without the Mac
 // A test page sets window.gubernosMockBridge with the same call().
 const native = window.webkit?.messageHandlers?.gubernos;
 const bridge = native ? { call: (m) => native.postMessage(m) } : window.gubernosMockBridge;
@@ -62,6 +64,15 @@ const routes = [];
 const route = (method, pattern, handler) => routes.push({ method, re: new RegExp(`^${pattern.replace(/:(\w+)/g, '(?<$1>[^/]+)')}$`), handler });
 const { registerCore, routeParams } = await import('/lib/core-routes.js');
 registerCore(route, { stateExtras: () => ({ local: true, ...(native && window.gubernosNative?.speech ? { voice: 'device' } : {}) }) }); // device: the shell recognizes speech (app.js deviceVoiceCapture)
+// a shell that can send to the Claude API (gubernos-ios Gubernos/Claude.swift): what needs a model runs here too, on the owner's key
+const claude = !native || window.gubernosNative?.claude;
+let Triage = null;
+if (claude) {
+  const [Chat, Assist] = await Promise.all([import('/lib/chat.js'), import('/lib/assist.js')]);
+  Triage = await import('/lib/triage.js');
+  route('POST', '/api/chat', (_, __, b) => Chat.ask(b));
+  route('POST', '/api/tasks/:id/breakdown', ({ id }) => Assist.breakdown(id));
+}
 
 // Changes go straight to the phone's iCloud copy (the shim writes; this refreshes first so the change applies to the
 // fresh files). If the shell can't write, the request waits in /data/outbox.json and is sent to the Mac when it is
@@ -120,6 +131,26 @@ function badge() {
 badge();
 
 await import('/app.js');
+
+// inbox triage, as the Mac does it (lib/triage.js), for captures with no proposal yet: a minute after start, then every minute.
+// A shared link's page is left to the Mac (the phone can't fetch other sites). No key: one quick refusal from the shell a minute.
+if (Triage && native) {
+  const { listInbox } = await import('/lib/vault.js');
+  const failed = new Map();
+  let busy = false;
+  const sweep = async () => {
+    if (busy) return;
+    busy = true;
+    try {
+      await refresh();
+      for (const it of listInbox().filter((x) => !x.triage && !(x.url && !x.fetched) && (failed.get(x.id) || 0) < 2).reverse()) {
+        try { await Triage.triage(it); } catch (e) { if (e.status === 503) break; failed.set(it.id, (failed.get(it.id) || 0) + 1); console.warn('[triage]', it.id, e.message); }
+      }
+    } finally { busy = false; }
+  };
+  setTimeout(sweep, 5000);
+  setInterval(sweep, 60000);
+}
 
 // files iCloud is still bringing: look again every 10 s; reload once they're all here (or a good part of them)
 if (boot.pending && native) {

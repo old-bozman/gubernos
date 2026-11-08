@@ -12,14 +12,17 @@ if (!out) { console.error('usage: build-local.mjs OUT_DIR [--mock VAULT_DIR]'); 
 const mock = rest[0] === '--mock' ? rest[1] : null;
 const CORE = ['core-routes.js', 'vault.js', 'model.js', 'review.js', 'config.js', 'settings.js', 'pomodoros.js', 'cron.js', 'dates.js', 'commitments.js', 'reflection.js', 'daily.js', 'habits.js', 'clock.js', 'macfocus.js', 'wins.js', 'done-today.js'];
 
-// every lib/ file a CORE file imports must be in CORE, or the offline app hangs on "Reading your system folder"
-for (const f of CORE) for (const [, dep] of fs.readFileSync(path.join(ROOT, 'lib', f), 'utf8').matchAll(/from '\.\/([\w-]+\.js)'/g)) {
-  if (!CORE.includes(dep)) { console.error(`build-local: lib/${f} imports ./${dep}, which is not in CORE (scripts/build-local.mjs)`); process.exit(1); }
+// what needs a model, with Claude through the API sent by the shell (the key in the iPhone's Keychain): chat, ✦ steps, inbox
+// triage. Their ./llm.js is local/llm.js (the import map below).
+const MODEL = ['claude-loop.js', 'chat.js', 'assist.js', 'triage.js', 'article.js'];
+// every lib/ file a bundled file imports must be bundled, or the offline app hangs on "Reading your system folder"
+for (const f of [...CORE, ...MODEL]) for (const [, dep] of fs.readFileSync(path.join(ROOT, 'lib', f), 'utf8').matchAll(/from '\.\/([\w-]+\.js)'/g)) {
+  if (![...CORE, ...MODEL, 'llm.js'].includes(dep)) { console.error(`build-local: lib/${f} imports ./${dep}, which is not bundled (CORE or MODEL in scripts/build-local.mjs)`); process.exit(1); }
 }
 fs.rmSync(out, { recursive: true, force: true });
 fs.cpSync(path.join(ROOT, 'public'), out, { recursive: true });
 fs.mkdirSync(path.join(out, 'lib'), { recursive: true });
-for (const f of CORE) fs.copyFileSync(path.join(ROOT, 'lib', f), path.join(out, 'lib', f));
+for (const f of [...CORE, ...MODEL]) fs.copyFileSync(path.join(ROOT, 'lib', f), path.join(out, 'lib', f));
 fs.cpSync(path.join(ROOT, 'local'), path.join(out, 'local'), { recursive: true });
 fs.cpSync(path.join(ROOT, 'node_modules', 'yaml', 'browser'), path.join(out, 'vendor', 'yaml'), { recursive: true }); // index.js adds the default export
 fs.copyFileSync(path.join(ROOT, 'node_modules', 'yaml', 'LICENSE'), path.join(out, 'vendor', 'yaml', 'LICENSE'));
@@ -28,6 +31,7 @@ const importmap = { imports: {
   'node:fs': '/local/shims/fs.js', 'node:path': '/local/shims/path.js', 'node:child_process': '/local/shims/child_process.js',
   yaml: '/vendor/yaml/index.js',
   '/public/recur.js': '/recur.js', // lib/cron.js imports ../public/recur.js; in the bundle public/ is the root
+  '/lib/llm.js': '/local/llm.js', // the model on the phone: the API through the shell
 } };
 let html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8')
   .replace('<link rel="manifest" href="/manifest.webmanifest">', '')
@@ -64,6 +68,8 @@ if (mock) {
   fs.writeFileSync(path.join(out, 'mock-bridge.js'), `window.gubernosWrites = [];
 window.gubernosMockBridge = { call: async (m) => {
   if (m.op === 'load') { const b = await (await fetch('/vault.json')).json(); b.data = JSON.parse(localStorage.getItem('gubernos-data') || '{}'); return b; }
+  // the shell's Claude API call: the page that serves this bundle answers it (a test stands in for the API there)
+  if (m.op === 'claude') { const r = await fetch('/claude', { method: 'POST', body: m.body }); const t = await r.text(); if (!r.ok) throw new Error(t || 'claude failed'); return t; }
   window.gubernosWrites.push(m);
   if (m.op === 'write' && m.path.startsWith('/data/')) { const d = JSON.parse(localStorage.getItem('gubernos-data') || '{}'); d[m.path.slice(6)] = m.text; localStorage.setItem('gubernos-data', JSON.stringify(d)); }
   return { ok: true };
