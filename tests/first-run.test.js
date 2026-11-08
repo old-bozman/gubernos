@@ -135,13 +135,14 @@ esac
 
 test('no browser here (Linux, WSL): the setup page shows the sign-in link and the one-time code', { timeout: 60000 }, async () => {
   const dd = fs.mkdtempSync(path.join(os.tmpdir(), 'gubernos-first-'));
-  const h = path.join(dd, 'home'), bin = path.join(dd, 'bin'), flag = path.join(dd, 'in');
+  const h = path.join(dd, 'home'), bin = path.join(dd, 'bin'), flag = path.join(dd, 'in'), go = path.join(dd, 'go');
   fs.mkdirSync(h); fs.mkdirSync(bin);
-  // like codex login --device-auth: a link and a code, then it waits until the browser is done
+  // like codex login --device-auth: a link and a code, then it waits until the browser is done (here: until the test says so,
+  // not a fixed few seconds, which a busy machine outran: the sign-in was over before the second page looked)
   fs.writeFileSync(path.join(bin, 'codex'), `#!/bin/sh
 case "$*" in
   "login status") [ -f ${JSON.stringify(flag)} ] && exit 0; exit 1;;
-  login*) printf '1. Open this link\\n   \\033[94mhttps://auth.openai.com/codex/device\\033[0m\\n2. Enter this one-time code\\n   \\033[94m5593-R6552\\033[0m\\n'; sleep 4; touch ${JSON.stringify(flag)}; exit 0;;
+  login*) printf '1. Open this link\\n   \\033[94mhttps://auth.openai.com/codex/device\\033[0m\\n2. Enter this one-time code\\n   \\033[94m5593-R6552\\033[0m\\n'; i=0; while [ ! -f ${JSON.stringify(go)} ] && [ $i -lt 300 ]; do sleep 0.1; i=$((i+1)); done; touch ${JSON.stringify(flag)}; exit 0;;
 esac
 `, { mode: 0o755 });
   const port = await freePort();
@@ -158,6 +159,7 @@ esac
     // the same page opened elsewhere (another browser, to sign in there) shows the sign-in under way
     const q = await openPage();
     try { await q.goto(l); assert.ok(await q.waitFor('document.querySelector("#signin .code")?.textContent === "5593-R6552"', 8000), 'a page opened during the sign-in doesn’t show it'); } finally { await q.close(); }
+    fs.writeFileSync(go, ''); // signed in, in the browser
     assert.ok(await p.waitFor('/Ready/.test(document.querySelector("#models").innerText) && document.querySelector("#signin").hidden', 15000), await p.eval('document.querySelector("#models").innerText'));
     assert.deepEqual(p.errors.filter((e) => !/favicon/.test(e)), []); // the page has no icon of its own
   } finally { c.kill(); await p.close(); fs.rmSync(dd, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); }
