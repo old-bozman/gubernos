@@ -11,7 +11,7 @@ import * as Cal from '../lib/calendar.js';
 import * as Contacts from '../lib/contacts.js';
 import * as Drive from '../lib/drive.js';
 
-const TOOLS = [
+export const TOOLS = [ // also the Claude API's tools (lib/anthropic.js), called directly
   {
     name: 'gmail_search',
     description: "Search the owner's Gmail (Gmail search syntax: from:, to:, subject:, newer_than:30d, has:attachment, is:unread …). Returns threads: id, subject, last sender, date, snippet, link.",

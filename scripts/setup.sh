@@ -21,6 +21,8 @@
 #   scripts/setup.sh calendar                    Plan the day reads this Mac's calendars (asks macOS for access: a dialog)
 #   scripts/setup.sh awake on|off|status         keep the computer awake on power so the phone app works (Mac: caffeinate -s;
 #                                                Linux: systemd-inhibit; Windows in WSL: SetThreadExecutionState from PowerShell)
+#   scripts/setup.sh key on|off|status           Claude through the Anthropic API on your own key, no Claude Code needed (Mac: the key
+#                                                goes into the Keychain from a hidden prompt); then Settings → Your Mac → Model → Claude API
 #   scripts/setup.sh restart | status
 set -euo pipefail
 
@@ -449,6 +451,27 @@ calendar() {
   else no "no calendar access ($out): System Settings → Privacy & Security → Calendars → Gubernos Calendar → Full Access"; fi
 }
 
+# The Anthropic API key for the Claude API model (lib/anthropic.js reads it from the Keychain): typed into security's hidden
+# prompt, so it is never on a command line, in a file or in shell history
+KEY_ITEM=gubernos-anthropic-key
+key_works() { # GET /v1/models costs nothing; the key reaches curl on stdin (-H @-), not in its arguments
+  [[ "$(security find-generic-password -a "$USER" -s "$KEY_ITEM" -w 2>/dev/null | sed 's/^/x-api-key: /' |
+    curl -s -o /dev/null -w '%{http_code}' -H @- -H 'anthropic-version: 2023-06-01' https://api.anthropic.com/v1/models)" == 200 ]]
+}
+key() {
+  [[ $OS == Linux ]] && die "key: a Mac feature for now"
+  case "${1:-status}" in
+    on) echo "  Paste your Anthropic API key (console.anthropic.com → API keys), twice. It doesn't show while you type."
+        security add-generic-password -U -a "$USER" -s "$KEY_ITEM" -l "Gubernos: Anthropic API key" -T /usr/bin/security -w || die "the key wasn't saved"
+        if ! key_works; then security delete-generic-password -a "$USER" -s "$KEY_ITEM" >/dev/null 2>&1 || true; die "the Anthropic API didn't accept this key: nothing saved"; fi
+        restart; ok "the key works: Settings → Your Mac → Model → Claude API uses it";;
+    off) security delete-generic-password -a "$USER" -s "$KEY_ITEM" >/dev/null 2>&1 || true; restart; ok "no API key here any more";;
+    status) if ! security find-generic-password -a "$USER" -s "$KEY_ITEM" >/dev/null 2>&1; then no "no API key (scripts/setup.sh key on)"
+            elif key_works; then ok "an Anthropic API key is set and works"; else no "an API key is set, but the Anthropic API doesn't accept it"; fi;;
+    *) die "key on|off|status";;
+  esac
+}
+
 restart() {
   [[ -n "${GUBERNOS_NO_LAUNCHD:-}" ]] && return 0
   if [[ $OS == Linux ]]; then if systemd_ok; then systemctl --user restart gubernos.service; else unit_up gubernos "$APP/deploy/gubernos.service.template"; fi
@@ -458,4 +481,4 @@ restart() {
 status() { if [[ $OS == Linux ]]; then systemd_ok && echo "  service: $(systemctl --user is-active gubernos.service 2>/dev/null)"; else launchctl print "gui/$(id -u)/$LABEL" 2>/dev/null | grep -E "state|pid" | head -2; fi; curl -sf "http://127.0.0.1:$(port)/api/state" >/dev/null && ok "answering on $(port)" || no "not answering on $(port)"; }
 
 cmd="${1:-check}"; shift || true
-case "$cmd" in check|install|model|voice-language|get-tailscale|get-cloudflared|stop-tunnel|phone|voice|obsidian|awake|calendar|restart|status) "$cmd" "$@";; *) die "unknown command $cmd";; esac
+case "$cmd" in check|install|model|voice-language|get-tailscale|get-cloudflared|stop-tunnel|phone|voice|obsidian|awake|calendar|key|restart|status) "$cmd" "$@";; *) die "unknown command $cmd";; esac

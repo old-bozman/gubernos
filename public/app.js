@@ -2741,7 +2741,7 @@ const agentReady = (a) => !(MODEL_CLI[a.run] && S.data.agents?.[a.run] === false
 const agentNames = () => Object.fromEntries(agentList().map((a) => [a.id, a.name]));
 const agentName = (id) => agentOf(id)?.name || (id ? id[0].toUpperCase() + id.slice(1) : 'agent');
 // the model the app uses (Settings → Your Mac → Model, lib/llm.js): a task with no agent runs with it
-const MODEL_CLI = { claude: 'Claude Code', codex: 'Codex' };
+const MODEL_CLI = { claude: 'Claude Code', codex: 'Codex', api: 'the Claude API' };
 const appModel = () => S.data.agents?.provider || 'claude';
 // started here (when that model's CLI is on this Mac) or not: then it takes its own queue
 const agentRun = (id) => { const r = agentOf(id)?.run || appModel(); return MODEL_CLI[r] && S.data.agents?.[r] === false ? 'queue' : r; };
