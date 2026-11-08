@@ -66,6 +66,8 @@ test('the Claude API instead of Claude Code: answers, chat with tools, an agent 
     const chatCall = api.seen.find((x) => x.body.tools?.some((tl) => tl.name === 'read_file')).body;
     assert.equal(chatCall.thinking, undefined, 'Haiku with thinking off and a schema never calls a tool');
     assert.equal(chatCall.output_config.effort, 'low');
+    assert.equal(chatCall.output_config.format, undefined, 'the API refuses the chat schema as too complex: it goes in the prompt');
+    assert.match(JSON.stringify(chatCall.system), /add_subtasks/);
     const c2 = await s.post('/api/chat', { message: 'And now?', session: c1.body.session });
     assert.equal(c2.body.reply, 'Still here.');
     assert.equal(api.seen.at(-1).body.messages.length, 5, 'the first turn, its tool round and the new question');
