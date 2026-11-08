@@ -23,6 +23,12 @@ process.env.PATH = setupPath(process.env.PATH);
 
 const has = (cmd) => spawnSync('/bin/sh', ['-c', `command -v ${cmd}`], { stdio: 'ignore' }).status === 0;
 const quiet = (cmd, args) => { const r = spawnSync(cmd, args, { encoding: 'utf8', timeout: 15000 }); return { ok: r.status === 0, out: `${r.stdout || ''}${r.stderr || ''}` }; };
+// the user's full name to start the form with: the Mac's (id -F), else the account's on Linux (getent passwd, the part
+// before the first comma); never an error message (Linux's id has no -F and says so on stderr)
+const fullName = () => {
+  const out = (cmd, args) => { const r = spawnSync(cmd, args, { encoding: 'utf8', timeout: 5000 }); return r.status === 0 ? (r.stdout || '').trim() : ''; };
+  return out('id', ['-F']) || (out('getent', ['passwd', os.userInfo().username]).split(':')[4] || '').split(',')[0].trim();
+};
 const SIGNED_IN = {
   claude: () => { try { return JSON.parse(quiet('claude', ['auth', 'status', '--json']).out).loggedIn === true; } catch { return false; } },
   codex: () => quiet('codex', ['login', 'status']).ok,
@@ -90,7 +96,7 @@ const server = http.createServer((req, res) => {
   const code = url.searchParams.get('code') || req.headers['x-first-run'];
   if (code !== CODE) return json(res, 403, { error: 'open this page from Gubernos' });
   if (req.method === 'GET' && url.pathname === '/') return res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }).end(PAGE.replace('__CODE__', CODE));
-  if (req.method === 'GET' && url.pathname === '/state') return json(res, 200, { name: quiet('id', ['-F']).out.trim(), folders: folders(), models: modelState(), job, mac: process.platform === 'darwin' });
+  if (req.method === 'GET' && url.pathname === '/state') return json(res, 200, { name: fullName(), folders: folders(), models: modelState(), job, mac: process.platform === 'darwin' });
   if (req.method === 'GET' && url.pathname === '/job') return json(res, 200, job);
   if (req.method !== 'POST') return json(res, 404, { error: 'not found' });
   if (url.pathname === '/code') { // Claude's sign-in page shows a code to paste back: it goes to the CLI waiting for it

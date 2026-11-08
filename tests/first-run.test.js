@@ -15,6 +15,10 @@ let child, page, d, home, base, link;
 before(async () => {
   d = fs.mkdtempSync(path.join(os.tmpdir(), 'gubernos-first-'));
   home = path.join(d, 'home'); fs.mkdirSync(home);
+  // a Linux box's id (no -F; it says so on stderr) and its account list, so the name comes from there and never from the error
+  const bin = path.join(home, '.local/bin'); fs.mkdirSync(bin, { recursive: true });
+  fs.writeFileSync(path.join(bin, 'id'), `#!/bin/sh\n[ "$1" = -F ] && { echo "id: invalid option -- 'F'" >&2; echo "Try 'id --help' for more information." >&2; exit 1; }\nexec /usr/bin/id "$@"\n`, { mode: 0o755 });
+  fs.writeFileSync(path.join(bin, 'getent'), `#!/bin/sh\necho "$2:x:1000:1000:Sam Example,,,:/home/$2:/bin/bash"\n`, { mode: 0o755 });
   // a copy of the app, so npm ci and setup touch nothing here
   const app = path.join(d, 'app');
   fs.cpSync(ROOT, app, { recursive: true, filter: (f) => !/\/(node_modules|data|\.git|\.venv|\.runs)(\/|$)|server\.log$/.test(f.slice(ROOT.length)) });
@@ -39,6 +43,11 @@ test('without its code, or under another host name, it refuses', async () => {
   assert.equal((await fetch(`${base}/install`, { method: 'POST', body: '{}' })).status, 403);
   const rebind = await new Promise((resolve) => { const s = net.connect(Number(new URL(base).port), '127.0.0.1', () => { s.write(`GET ${new URL(link).pathname}${new URL(link).search} HTTP/1.1\r\nHost: evil.example\r\nConnection: close\r\n\r\n`); }); let o = ''; s.on('data', (x) => { o += x; }).on('end', () => resolve(o)); });
   assert.match(rebind, /^HTTP\/1\.1 403/);
+});
+
+test('the name to start with is the account\'s full name, not what a failing command printed', async () => {
+  const s = await (await fetch(`${base}/state${new URL(link).search}`)).json();
+  assert.equal(s.name, 'Sam Example');
 });
 
 test('filled in the browser, it sets everything up and hands over to the interview', { timeout: 120000 }, async () => {
