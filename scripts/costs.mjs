@@ -10,7 +10,7 @@ const days = Number(process.argv[2]) || 30, since = Date.now() - days * 864e5;
 let rows = [];
 try { rows = fs.readFileSync(path.join(DATA, 'costs.jsonl'), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)).filter((r) => Date.parse(r.at) >= since); } catch { /* none yet */ }
 if (!rows.length) { console.log('No model calls logged yet.'); process.exit(0); }
-const $ = (n) => `$${n.toFixed(2)}`, sum = (xs) => xs.reduce((n, r) => n + (r.cost || 0), 0);
+const $ = (n) => `$${n.toFixed(n < 1 ? 3 : 2)}`, sum = (xs) => xs.reduce((n, r) => n + (r.cost || 0), 0);
 const by = (key) => Object.entries(rows.reduce((m, r) => ((m[key(r)] ||= []).push(r), m), {}));
 const span = Math.max(1, (Date.now() - Math.min(...rows.map((r) => Date.parse(r.at)))) / 864e5);
 console.log(`Last ${Math.round(span * 10) / 10} days: ${rows.length} calls, ${$(sum(rows))}; a month at this pace ≈ ${$(sum(rows) / span * 30)}${rows.some((r) => r.cost == null) ? ` (${rows.filter((r) => r.cost == null).length} calls without a price: Codex)` : ''}\n`);
