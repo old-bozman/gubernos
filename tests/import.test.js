@@ -35,7 +35,7 @@ const a = process.argv.slice(2), sys = a[a.indexOf('--system-prompt') + 1] || ''
 if (a[0] === 'auth') { console.log('{"loggedIn":true}'); process.exit(0); }
 require('fs').appendFileSync(${JSON.stringify(path.join(dir, 'calls'))}, sys.slice(0, 40) + '\\n');
 const out = /life area/.test(sys) ? { categories: ['energy'] }
-  : { lists: [{ name: 'Running', kind: 'project', items: [{ title: 'Buy shoes', due: '2099-02-02', time: '09:30' }, { title: 'Track runs', repeat: 'every 2 weeks' }] }] };
+  : { lists: [{ name: 'Running', kind: 'project', items: [{ title: 'Buy shoes', due: '2099-02-02', time: '09:30' }, { title: 'Track runs', repeat: 'every 2 weeks' }, { title: 'Old race', done: true }] }] };
 console.log(JSON.stringify({ structured_output: out }));
 `, { mode: 0o755 });
   s = await startServer({ GUBERNOS_TODOIST_API: `http://127.0.0.1:${api.address().port}`, GUBERNOS_CLAUDE_BIN: fake });
@@ -90,10 +90,12 @@ test('an export file: the model reads it, the category is its guess, plain-word 
   const r = await s.post('/api/import/read', { source: 'file', text: 'title,list\nBuy shoes,Running\nTrack runs,Running' });
   assert.equal(r.status, 200, JSON.stringify(r.body));
   assert.deepEqual(r.body.lists.map((l) => [l.name, l.count, l.target, l.category]), [['Running', 2, 'new', 'energy']]);
+  assert.equal(r.body.skipped.done, 1, 'a done item in the file isn’t counted as left out');
   const a = await s.post('/api/import/apply', { id: r.body.id, lists: [] });
   assert.deepEqual(a.body, { tasks: 2, projects: ['Running'] });
   assert.match(task('Buy shoes'), /reminder: 2099-02-02T09:30/);
   assert.match(task('Track runs'), /recurrence: every 2 weeks/);
+  assert.ok(!task('Old race'), 'a done item came in');
   assert.equal((await s.post('/api/import/apply', { id: r.body.id, lists: [] })).status, 409, 'the same import applied twice');
   assert.equal((await s.post('/api/import/read', { source: 'todoist', token: 'wrong' })).status, 400);
 });
