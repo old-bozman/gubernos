@@ -72,6 +72,9 @@ if (claude) {
   Triage = await import('/lib/triage.js');
   route('POST', '/api/chat', (_, __, b) => Chat.ask(b));
   route('POST', '/api/tasks/:id/breakdown', ({ id }) => Assist.breakdown(id));
+  // the Ask chat (hidden offline without a key: app.css)
+  const n = native ? await bridge.call({ op: 'native' }).catch(() => ({})) : { claudeKey: true };
+  if (n.claudeKey) document.documentElement.classList.add('local-claude');
 }
 
 // Changes go straight to the phone's iCloud copy (the shim writes; this refreshes first so the change applies to the

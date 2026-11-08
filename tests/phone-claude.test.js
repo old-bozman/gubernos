@@ -42,6 +42,7 @@ test('without the Mac, with a key on the phone: chat reads the vault, ✦ steps 
     let ready = false;
     for (let i = 0; i < 50 && !ready; i++) { ready = await page.eval('!!window.gubernosLocal'); if (!ready) await new Promise((ok) => setTimeout(ok, 200)); }
     assert.ok(ready, 'the offline page started');
+    assert.equal(await page.eval(`getComputedStyle(document.getElementById('ask')).display`) !== 'none', true, 'the Ask chat is there offline with a key');
     const chat = await page.eval(`fetch('/api/chat', { method: 'POST', body: JSON.stringify({ message: 'What is due?' }) }).then(async (r) => ({ status: r.status, body: await r.json() }))`);
     assert.equal(chat.status, 200, JSON.stringify(chat.body));
     assert.match(chat.body.reply, /20261108-120000-call-the-dentist\.md/);

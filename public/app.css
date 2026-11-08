@@ -1160,7 +1160,7 @@ body.no-voice #mic, body.no-voice [data-voice] { display: none !important; }
 @media (max-width: 800px) { .fb textarea { font-size: 16px; } }
 
 /* iOS offline mode (gubernos-ios, local/boot.js): the phone works from its copy of the vault, without the Mac */
-html.local-mode #ask { display: none !important; }
+html.local-mode:not(.local-claude) #ask { display: none !important; } /* local-claude: a Claude API key on the phone (local/boot.js) */
 html.local-mode body::after { content: attr(data-offline); position: fixed; left: 50%; transform: translateX(-50%);
   top: calc(env(safe-area-inset-top) + 2px); z-index: 50; font-size: 11px; padding: 2px 8px; border-radius: 9px;
   background: color-mix(in srgb, var(--muted) 18%, var(--bg)); color: var(--muted); pointer-events: none; white-space: nowrap;
