@@ -5813,6 +5813,7 @@ async function chatSend(text) {
       body: JSON.stringify({ message: msg, context: S.chat.context, session: S.chat.session, deep: S.chat.deep, attachments }) }).finally(() => clearTimeout(timer));
     const r = await res.json();
     if (!res.ok) throw new Error(r.error || `error ${res.status}`);
+    if (typeof r.reply !== 'string') throw new Error('no answer came back'); // never a chat left "typing" for ever
     S.chat.session = r.session;
     S.chat.msgs.push({ role: 'ai', text: r.reply, actions: r.actions });
   } catch (e) {
@@ -6001,6 +6002,7 @@ async function taskChatSend(opts = {}) {
       body: JSON.stringify({ message: msg, context: { taskId: id, ...(opts.woop ? { woop: true } : {}) }, session: st.session || null, persist: true, attachments }) }).finally(() => clearTimeout(timer));
     const r = await res.json();
     if (!res.ok) throw new Error(r.error || `error ${res.status}`);
+    if (typeof r.reply !== 'string') throw new Error('no answer came back');
     st.session = r.session; st.actions = r.actions;
   } catch (e) {
     clog(`task chat error: ${e.name} ${e.message}`);

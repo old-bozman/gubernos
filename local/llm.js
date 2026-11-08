@@ -10,9 +10,21 @@ import { httpError } from '/lib/vault.js';
 const native = window.webkit?.messageHandlers?.gubernos;
 const call = (m) => (native ? native.postMessage(m) : window.gubernosMockBridge.call(m));
 export const NO_KEY = 'no Claude API key on this iPhone';
+// each step into /data/claude.log (the last 200 lines): what happened on the phone can be read on the Mac
+// (xcrun devicectl device copy from … --domain-type appDataContainer --domain-identifier app.gubernos)
+export function trace(...a) {
+  try {
+    const line = `${new Date().toISOString()} ${a.join(' ')}`;
+    let old = ''; try { old = fs.readFileSync('/data/claude.log'); } catch { /* new */ }
+    fs.writeFileSync('/data/claude.log', `${old.split('\n').filter(Boolean).slice(-199).join('\n')}\n${line}\n`);
+  } catch { /* never in the way */ }
+}
 const send = async (body, { timeoutMs } = {}) => {
-  try { return JSON.parse(await call({ op: 'claude', body: JSON.stringify(body), timeoutMs: timeoutMs || 120000 })); } catch (e) {
+  const t0 = Date.now();
+  trace('send', body.model, `msgs=${body.messages.length}`);
+  try { const r = JSON.parse(await call({ op: 'claude', body: JSON.stringify(body), timeoutMs: timeoutMs || 120000 })); trace('got', r.stop_reason, `${Date.now() - t0}ms`); return r; } catch (e) {
     const m = String(e?.message || e);
+    trace('failed', `${Date.now() - t0}ms`, m.slice(0, 200));
     throw m.includes(NO_KEY) ? httpError(503, 'Offline on the phone — this needs the Mac, or a Claude API key (Settings → This iPhone)') : new Error(m);
   }
 };
@@ -60,6 +72,7 @@ export async function ask({ system, prompt, schema, timeoutMs, deep = false }) {
 }
 export async function chatTurn({ system, prompt, schema, session = null, deep = false, write = false }) {
   const t0 = Date.now();
+  trace('chat turn', session ? 'follow-up' : 'new');
   const r = await L.turn({ send, ops, store, system, prompt, schema: L.apiSchema(schema), session, deep, write, timeoutMs: 120000 });
   logCost('chat', r.model, r.cost, Date.now() - t0);
   return { output: r.output, session: r.session, cost: r.cost };

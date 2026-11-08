@@ -66,8 +66,9 @@ const { registerCore, routeParams } = await import('/lib/core-routes.js');
 registerCore(route, { stateExtras: () => ({ local: true, ...(native && window.gubernosNative?.speech ? { voice: 'device' } : {}) }) }); // device: the shell recognizes speech (app.js deviceVoiceCapture)
 // a shell that can send to the Claude API (gubernos-ios Gubernos/Claude.swift): what needs a model runs here too, on the owner's key
 const claude = !native || window.gubernosNative?.claude;
-let Triage = null;
+let Triage = null, Llm = null;
 if (claude) {
+  Llm = await import('/lib/llm.js');
   const [Chat, Assist] = await Promise.all([import('/lib/chat.js'), import('/lib/assist.js')]);
   Triage = await import('/lib/triage.js');
   route('POST', '/api/chat', (_, __, b) => Chat.ask(b));
@@ -100,6 +101,7 @@ async function handle(method, url, body, { replay = false } = {}) {
     const input = body ? JSON.parse(body) : {};
     try { out = r.handler(routeParams(r.re.exec(u.pathname).groups), Object.fromEntries(u.searchParams), input); } finally { vfs.mode = 'direct'; vfs.capture = null; }
     out = await out;
+    if (u.pathname === '/api/chat') Llm?.trace('chat answered', `writes=${writes.length}`);
     if (change && !replay && writes.length) {
       const why = (await Promise.allSettled(writes)).filter((x) => x.status === 'rejected').map((x) => String(x.reason?.message || x.reason)).join('; ');
       // the reason goes with it: the Mac logs it when the queue arrives (server.log "[offline]"). The body is the one the
@@ -107,8 +109,10 @@ async function handle(method, url, body, { replay = false } = {}) {
       // links the same task instead of making it again.
       if (why && !/^\/api\/(settings|pomodoros)/.test(u.pathname)) { outbox.push({ method, url: u.pathname + u.search, body: body ? JSON.stringify(input) : null, at: new Date().toISOString(), why: why.slice(0, 500) }); saveOutbox(); badge(); }
     }
+    if (u.pathname === '/api/chat') Llm?.trace('chat returned');
     return json(200, out ?? { ok: true });
   } catch (e) {
+    if (u.pathname === '/api/chat') Llm?.trace('chat failed', e.status || '', e.message);
     console.warn('[local]', method, u.pathname, e.message);
     return json(e.status || 500, { error: e.message });
   }
@@ -120,7 +124,14 @@ window.fetch = (input, init = {}) => {
   const path = new URL(url, location.href).pathname;
   if (!path.startsWith('/api/')) return realFetch(input, init);
   if (typeof init.body !== 'string' && init.body != null) return Promise.resolve(json(503, { error: 'Offline on the phone — this needs the Mac' })); // audio, uploads
-  return handle((init.method || 'GET').toUpperCase(), url, init.body);
+  const done = handle((init.method || 'GET').toUpperCase(), url, init.body);
+  // the page's own time limit (the chat gives up after 100 s): honoured here too, or a slow model call hangs it for ever
+  if (!init.signal) return done;
+  return new Promise((ok, no) => {
+    if (init.signal.aborted) return no(new DOMException('aborted', 'AbortError'));
+    init.signal.addEventListener('abort', () => no(new DOMException('aborted', 'AbortError')), { once: true });
+    done.then(ok, no);
+  });
 };
 // no live stream offline: an EventSource that never connects (app.js re-reads on focus anyway)
 window.EventSource = class { constructor() { this.readyState = 2; } addEventListener() {} close() {} };
