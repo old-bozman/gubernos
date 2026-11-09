@@ -1,16 +1,17 @@
-# Setting up Gubernos on your Mac
+# Setting up Gubernos
 
-**The short way: let your AI agent do all of it.** Open your agent on the Mac (below, if you have none yet) and paste:
+**The short way: let your AI agent do all of it**, on a Mac, Linux or Windows. Open your agent on the computer (below, if you have none yet) and paste:
 
 ```
 Install Gubernos for me: read https://raw.githubusercontent.com/old-bozman/gubernos/main/SETUP.md and do the part "For the agent".
 ```
 
 That's the whole instruction: the agent fetches the app, installs it, sets up the folder and the phone connection, and
-onboards you. You answer its questions and do what only you can: sign in to Tailscale (for the phone), click Allow in a
-few macOS dialogs, scan the pairing code and tap on your phone when it asks.
+onboards you. You answer its questions and do what only you can: sign in to your AI plan, click Allow in a few dialogs on a
+Mac, scan the pairing code with your phone when it asks. The phone connects through Cloudflare: nothing to sign in to.
+On Windows the agent installs Windows' own Linux (WSL) first, which takes an administrator's OK and a restart.
 
-**You (the person):** you need a Mac and **an AI subscription**: Claude with Claude Code (Pro or higher), or any ChatGPT subscription. Don't have one? Get it first: [Claude plans](https://claude.com/pricing) · [ChatGPT plans](https://chatgpt.com/pricing). Then install its command-line agent and sign in:
+**You (the person):** you need a computer (a Mac, a Linux PC, or a Windows PC with WSL, which the Windows install sets up) and **an AI subscription**: Claude with Claude Code (Pro or higher), or any ChatGPT subscription. Don't have one? Get it first: [Claude plans](https://claude.com/pricing) · [ChatGPT plans](https://chatgpt.com/pricing). Then install its command-line agent and sign in:
 
 | You have | Install | Sign in |
 |---|---|---|
@@ -23,7 +24,10 @@ cd ~/.gubernos/app
 claude        # or: codex
 ```
 
-The first line gets Node (when the Mac has none) and the app into `~/.gubernos/app`, without sudo, Homebrew or Apple's Command
+On Windows, run these inside Ubuntu (WSL), or skip them: in PowerShell, `irm https://gubernos.app/install.ps1 | iex` gets WSL
+and Ubuntu when they're missing, installs Gubernos inside, and opens a setup page in your browser that does the rest.
+
+The first line gets Node (when the computer has none) and the app into `~/.gubernos/app`, without sudo, Homebrew or Apple's Command
 Line Tools (the app comes as a download; `scripts/update.sh` updates it). A clone works too, for developers: `git clone
 https://github.com/old-bozman/gubernos.git ~/.gubernos/app`.
 
@@ -44,16 +48,25 @@ You (Claude Code or Codex) are installing Gubernos for the person in front of yo
 
 If you aren't in a Gubernos checkout (no `scripts/setup.sh` here): look for `~/.gubernos/app` (`~/gubernos` on an older install); if it's missing, tell the person
 what it does and run `curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash` (Node
-when the Mac has none, the app into `~/.gubernos/app`; no sudo, no Homebrew, no Command Line Tools). Run it right away: don't
+when the computer has none, the app into `~/.gubernos/app`; no sudo, no Homebrew, no Command Line Tools). Run it right away: don't
 probe with `git`, `python3` or `make` first — on a clean Mac each is a stub that opens Apple's Command Line Tools dialog
 (which asks for ~19 GB free), and Gubernos doesn't need them. Then work in `~/.gubernos/app` and read this
 file from there (it may be newer than the copy you fetched).
 
-The iPhone app comes from TestFlight; step 3b walks them through it.
+**On Windows itself** (you are running in PowerShell or cmd, not inside WSL: `$env:OS` is `Windows_NT`, or `uname` isn't there):
+Gubernos runs inside WSL, not on Windows directly. Tell the person, then run in PowerShell
+`irm https://gubernos.app/install.ps1 | iex`. When WSL or Ubuntu is missing it asks Windows for an administrator's OK to install
+them and stops: the person restarts, chooses a Linux user name and password in the Ubuntu window that opens, and runs the same
+line again (it is safe to repeat). Once Ubuntu is ready, it installs Gubernos there and opens a setup page in the Windows browser,
+which covers steps 2–3 here (name, folder, model sign-in, keep awake) and then the onboarding interview in the app. Let the person
+finish there; offer the extras of step 4 afterwards, from inside Ubuntu (`wsl -d Ubuntu`, then `cd ~/.gubernos/app`). To run this
+whole file instead, the agent has to run inside Ubuntu: install its CLI there (the table above) and start over in `~/.gubernos/app`.
 
-### 1. Check the Mac
+The iPhone app comes from TestFlight; step 3b walks them through it. Android installs it from Chrome.
 
-(On Linux, or Windows in WSL, the steps are the same: `scripts/setup.sh` runs Gubernos as a systemd user service there. Skip what's Mac-only and say so plainly: the Mac's calendar (Google instead), keeping the Mac awake, Obsidian's iCloud folder. Voice works there too (`scripts/setup.sh voice`: faster-whisper). On Windows the install also makes Gubernos start with Windows (a starter in the Startup folder).)
+### 1. Check the computer
+
+(On Linux, or Windows in WSL, the steps are the same: `scripts/setup.sh` runs Gubernos as a systemd user service there. Skip what's Mac-only and say so plainly: the Mac's calendar (Google instead), iCloud Drive and Obsidian's iCloud folder. Keeping it awake works there too: systemd-inhibit on Linux (some systems need one admin step, which `awake on` prints), Windows' own setting from WSL. Voice works there too (`scripts/setup.sh voice`: faster-whisper). On Windows the install also makes Gubernos start with Windows (a starter in the Startup folder).)
 
 Run `scripts/setup.sh check`. Every "Required" line must be ✓:
 - node missing or older than 20 → run `install.sh` again (step 0): it puts Node in `~/.gubernos/node`. No Homebrew needed.
@@ -62,15 +75,15 @@ The "Model" lines show which AI CLIs are here and signed in: at least one must b
 ### 2. Ask the person (all six are required; ask them together)
 
 1. **Name** to use, and the **language** for task titles and documents (default: the language they write to you in).
-2. **Where the files live.** A folder of plain Markdown files. Recommend A unless they want the files on other devices themselves. The iPhone app doesn't need iCloud: it gets its copy from this Mac. The app keeps a daily copy of the files in `~/.gubernos/backups/` (14 days and 8 weeks).
-   - **A. On this Mac** (default): `~/Gubernos`.
+2. **Where the files live.** A folder of plain Markdown files. Recommend A unless they want the files on other devices themselves. The iPhone app doesn't need iCloud: it gets its copy from this computer. The app keeps a daily copy of the files in `~/.gubernos/backups/` (14 days and 8 weeks).
+   - **A. On this computer** (default): `~/Gubernos`.
    - **B. In iCloud Drive**, to open the files on other devices too: `~/Library/Mobile Documents/com~apple~CloudDocs/Gubernos`.
    - **C. In Obsidian**, new vault (they use or want Obsidian, incl. on the iPhone): `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Gubernos` → options `--obsidian-vault Gubernos` (needs the Obsidian iCloud folder: `check` shows it); inside a vault they already have: `<that vault>/Gubernos` → `--obsidian-vault "<vault name>" --obsidian-path Gubernos`.
    - **D. An existing vault** made from this kit: its path (nothing is overwritten).
 3. **Which model** the app should use, when more than one is ✓ (default: the one running this setup). It reads their inbox and voice notes, answers in the app's chat and runs agents on tasks — on their own plan. They can switch later in Settings → Your Mac → Model.
-4. Is this Mac **always on** (a desktop, or a laptop that stays plugged in)? Then `--awake` keeps it from sleeping on power, so the phone app and notifications work all day. A laptop they carry around works too; the app is simply unavailable while it sleeps.
+4. Should this computer **stay awake on power**? Recommend yes (default): `--awake` keeps it from sleeping while plugged in, so the phone and notifications work all day; the screen still turns off, and on battery it sleeps as usual. They can switch it later in Settings → Your Mac → iPhone and other devices.
 5. **Voice**: which language will they speak to the app (the mic button)? Default: the language from question 1. One language that this Mac's own speech model knows (English, German, French, Spanish, Italian, Japanese, Korean, Chinese and more; `tools/voice/gubernos-voice locales` lists them; macOS 26+) works right away, nothing to install. **Russian**, **several languages mixed**, or a **strong accent** they want heard well: recommend Whisper (`scripts/setup.sh voice` in step 4, a ~1.6 GB download on first use, Apple Silicon); it is much better there. Pass `--voice-language <locale>` (`en-US`, `ru-RU`, …) or `mixed`.
-6. **iPhone**: do they have one? Then they get the Gubernos iPhone app and connect it to this Mac in step 3b (about 10 minutes: Tailscale on this Mac, two codes to scan). Without an iPhone, skip 3b; the app works in a browser too.
+6. **Phone**: iPhone, Android, or none? iPhone: the Gubernos app, connected in step 3b (about 10 minutes, two codes to scan). Android: installed from Chrome, also step 3b. None: skip 3b; the app works in any browser.
 
 ### 3. Install
 
@@ -78,33 +91,35 @@ The "Model" lines show which AI CLIs are here and signed in: at least one must b
 scripts/setup.sh install --vault "<path>" --name "<Name>" --language "<Language>" --model <claude|codex> --voice-language <en-US|ru-RU|…|mixed> [--obsidian-vault … --obsidian-path …] [--awake]
 ```
 
-It installs dependencies, creates the vault from `kit/vault` (folders, `CLAUDE.md`, `AGENTS.md`, `profile.md`, templates, views, `40_reference/system/`), writes `~/.config/gubernos/config.json`, and starts the app in the background (launchd, restarts on crash and at login). Port 4747 is the default; `--port` if it's taken.
+It installs dependencies, creates the vault from `kit/vault` (folders, `CLAUDE.md`, `AGENTS.md`, `profile.md`, templates, views, `40_reference/system/`), writes `~/.config/gubernos/config.json`, and starts the app in the background (launchd on a Mac, a systemd user service on Linux and in WSL; restarts on crash and at login). Port 4747 is the default; `--port` if it's taken.
 
 Then tell them:
 - Only for a folder in iCloud (B, C): **keep it downloaded**: Finder → iCloud Drive (or Obsidian) → right-click the system folder → **Keep Downloaded**. Otherwise macOS may offload files and the app can't read them.
 - **Open the app**: `open http://127.0.0.1:4747`. For a separate app window: Safari → File → **Add to Dock**.
 
-### 3b. iPhone (when they have one)
+### 3b. The phone (when they have one)
 
-Lead them through it; don't stop at a link. Open the guide on the Mac: `open "http://127.0.0.1:<port>/#/phone"` — it shows both codes and turns to ✓ when the phone has connected.
+**Android:** run point 2 below (an address for this computer), then in the app: Settings → Your Mac → iPhone and other devices → **Show code**. They point the phone's camera at the code marked **Android**, open it in **Chrome**, then Chrome menu ⋮ → **Install app**, and in Gubernos on the phone: Settings → This device → Notifications On.
+
+**iPhone:** lead them through it; don't stop at a link. Open the guide on the Mac: `open "http://127.0.0.1:<port>/#/phone"` — it shows both codes and turns to ✓ when the phone has connected.
 1. **The app**: they scan code 1 with the iPhone's Camera (TestFlight from the App Store if asked, then Accept → Install) and open Gubernos once (allow notifications).
-2. **An address for this Mac.** Say what happens, then run `scripts/setup.sh phone`: it downloads Cloudflare's `cloudflared` (checks it is signed by Cloudflare Inc.) into `~/.gubernos/bin`, gets this Mac an `https://m-….gubernos.dev` address from relay.gubernos.app and keeps the tunnel running in the background. Nothing to install by hand, no password, no account. Only paired devices get in (lib/pair.js; repeated wrong codes are turned away). Say plainly: the traffic goes through Cloudflare, on the developer's account, and HTTPS ends there (Cloudflare could see it). We don't store it; Cloudflare may keep request data, such as IP addresses and page addresses, under its own policy. Someone who wants HTTPS to end on this Mac: `scripts/setup.sh phone --tailscale` (Tailscale Funnel: its installer, their Mac password, a Tailscale account; the script waits for each step), or `--private` to keep the Mac off the internet (Tailscale on the iPhone too, same account, VPN On Demand on).
+2. **An address for this computer.** Say what happens, then run `scripts/setup.sh phone`: it downloads Cloudflare's `cloudflared` (checks it is signed by Cloudflare Inc.) into `~/.gubernos/bin`, gets this computer an `https://m-….gubernos.dev` address from relay.gubernos.app and keeps the tunnel running in the background. Nothing to install by hand, no password, no account. Only paired devices get in (lib/pair.js; repeated wrong codes are turned away). Say plainly: the traffic goes through Cloudflare, on the developer's account, and HTTPS ends there (Cloudflare could see it). We don't store it; Cloudflare may keep request data, such as IP addresses and page addresses, under its own policy. Someone who wants HTTPS to end on this Mac: `scripts/setup.sh phone --tailscale` (Tailscale Funnel: its installer, their Mac password, a Tailscale account; the script waits for each step), or `--private` to keep the Mac off the internet (Tailscale on the iPhone too, same account, VPN On Demand on).
 4. **Connect**: the guide's code 2 appears; they scan it with the Camera → Open in Gubernos. Wait for ✓ on the guide (or `curl -s 127.0.0.1:<port>/api/pair` shows `seenAt`), then ask them to check that the phone shows their tasks.
-5. Tell them: the Mac has to be awake for agents, chat and voice on the phone (offer `--awake` / `scripts/setup.sh awake on` if they didn't choose it).
+5. Tell them: the computer has to be awake for agents, chat and voice on the phone (if they didn't choose `--awake`: Settings → Your Mac → iPhone and other devices → Keep this computer awake on power, or `scripts/setup.sh awake on`).
 
 ### 4. Optional extras — offer each, do what they want
 
 - **Bug reports to the developer**: nothing to do — `install` turns it on (it says so). Reports from the app's Report button go to the developer privately through relay.gubernos.app (no GitHub account), and answers come back to their task.
 - **Pushes to the iPhone app** go through the same relay (tell them): Apple accepts pushes only signed with the app developer's key, so this Mac sends the alert (its title and text: a task, the agent's last message) to relay.gubernos.app, which signs it and passes it to Apple; nothing is stored there. Off: Settings → Your Mac → Pushes through the relay (then no pushes from the Mac; reminders and check-ins the phone schedules itself still ring).
 - **Phone later**: if they skipped 3b, it can be done any time the same way (Settings → Your Mac → iPhone and other devices → Connect your iPhone).
-- **Keep the Mac awake**: if this Mac should serve the phone all day, `scripts/setup.sh awake on` — a login item running `caffeinate -s`: no sleep while on power (on battery it sleeps as usual; a laptop with its lid closed still sleeps). `awake off` undoes it, `awake status` checks. Same as `--awake` at install.
+- **Keep the computer awake** (if they didn't choose it in step 2): Settings → Your Mac → iPhone and other devices → Keep this computer awake on power, or `scripts/setup.sh awake on`. On a Mac a login item runs `caffeinate -s`: no sleep while on power (on battery it sleeps as usual; a laptop with its lid closed still sleeps). On Linux, systemd-inhibit (some systems need one admin step, which it prints); in WSL, Windows' own setting. `awake off` undoes it, `awake status` checks. Same as `--awake` at install.
 - **Voice**: with one language the Mac's own model knows, the mic already works (install said so). Whisper (`scripts/setup.sh voice`, Apple Silicon): needed for Russian or mixed languages, better with accents; no Homebrew or Command Line Tools (it gets its own Python via `uv`), models ~1.6 GB on first use. Language later: the app → Settings → Voice.
 - **Obsidian** (option A or C with Obsidian installed): `scripts/setup.sh obsidian` installs the Dataview and Templater plugins into the vault; then in Obsidian: **Open folder as vault** → the system folder → trust the plugins when asked. (For option B their vault already has its own plugin setup — leave it.)
 - **Calendar** (Plan the day sees their meetings and puts time blocks in): `scripts/setup.sh calendar` — macOS shows a dialog "Gubernos Calendar would like full access to your calendars": they click **Allow**. It reads every account added in the Calendar app (iCloud, Google, Exchange…); if their work or Google calendar isn't there yet: Calendar → Settings → Accounts → add it. Which calendars count and where blocks go: the app → Settings → Your Mac → Calendar / Calendars. No Google Cloud setup needed.
 - **Google for agents** (Gmail, Contacts, Drive; or Google Calendar directly instead of the Mac's): walk them through `docs/google.md` (~15–20 minutes in Google Cloud). Only if they want agents to read their mail or documents. Ask first whether they have Google Workspace — then the Internal route (A) is the one: it never expires. Otherwise Testing (B) with a reconnect every 7 days. They can do it later.
 - **Tasks from another app** (Apple Reminders, Things 3 or Todoist): ask which app they used. The simplest way is in the app afterwards: Settings → General → Import tasks; the rest of this point is the terminal way. The import itself happens after the interview (step 5 here), with `node scripts/import-tasks.mjs reminders | things | todoist`: it only reads the other app (Reminders and Things: macOS asks once, they click **OK** / **Allow**; Todoist: they paste the API token from Todoist → Settings → Integrations → Developer when the script asks, never into the chat). They choose what comes over on a sheet; nothing is created before that. Other apps (TickTick, Google Tasks, OmniFocus…): their export file, read by the onboarding.
 - **Another model as a second agent**: any other CLI from the table above, installed and signed in, can take tasks too (Settings → Your Mac → Agents: Codex, Claude).
-- **A chat assistant** they already run (a bot that can read and write files on this Mac): set `assistant: <Name>` in `profile.md`, and point the bot at the vault's `AGENTS.md`. Tasks with `agent: <name>` are then left for it.
+- **A chat assistant** they already run (a bot that can read and write files on this computer): set `assistant: <Name>` in `profile.md`, and point the bot at the vault's `AGENTS.md`. Tasks with `agent: <name>` are then left for it.
 
 ### 5. Onboarding
 
@@ -138,5 +153,5 @@ Installs made while the app's folder was `~/gubernos` and the default vault `~/G
 - **The app doesn't open**: `scripts/setup.sh status`; the log is `server.log` in this folder; restart with `scripts/setup.sh restart`.
 - **"Resource deadlock avoided" / errno -11 / files missing**: a folder in iCloud whose files iCloud offloaded — Keep Downloaded on the system folder (step 3).
 - **Agents don't run, the chat doesn't answer**: the model's CLI must be signed in — `scripts/setup.sh check` shows it under "Model" (`claude` or `codex login`). Which one the app uses: Settings → Your Mac → Model, or `scripts/setup.sh model <claude|codex>`.
-- **No notifications on the iPhone**: only from the home-screen app (iOS 16.4+), with Notifications on in the app's Settings, and the Mac awake.
+- **No notifications on the iPhone**: only from the home-screen app (iOS 16.4+), with Notifications on in the app's Settings, and the computer awake. Android: the app installed from Chrome, Notifications on in its Settings → This device.
 - **Port in use**: `scripts/setup.sh install … --port 4748` (same vault; nothing is overwritten).
