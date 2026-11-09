@@ -10,7 +10,7 @@ Gubernos is not affiliated with any of them.
 > **Beta.** Gubernos is in beta: the iPhone and Apple Watch app is on TestFlight, the Mac app is a download from this
 > repository's Releases. Things change quickly, and your files stay yours whatever happens (plain Markdown on your own computer).
 
-### Install the beta
+### Install Gubernos
 
 **Before you install: you need an AI subscription.** Claude with Claude Code (Pro or higher), or any ChatGPT subscription. Gubernos runs on it: the first interview, the chat and the agents all need it. Don't have one? Get it first: [Claude plans](https://claude.com/pricing) · [ChatGPT plans](https://chatgpt.com/pricing).
 
