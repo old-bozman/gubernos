@@ -99,8 +99,8 @@ const noteErr = (m) => { ERRS.push(`${new Date().toTimeString().slice(0, 8)} ${S
 window.addEventListener('error', (e) => noteErr(e.message));
 window.addEventListener('unhandledrejection', (e) => noteErr(e.reason?.message || e.reason));
 
-async function api(method, url, body) {
-  const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+async function api(method, url, body, waitMs) {
+  const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined, signal: waitMs ? AbortSignal.timeout(waitMs) : undefined });
   const j = await r.json().catch(() => ({}));
   // not paired (another device, after the Mac turned pairing on): reload, and the Mac answers with its pairing page
   if (r.status === 401 && /^not paired/.test(j.error || '') && /^https?:$/.test(location.protocol) && !sessionStorage.getItem('unpaired')) {
@@ -112,8 +112,20 @@ async function api(method, url, body) {
   return j;
 }
 
+// AICODE-NOTE: the phone reaches the computer through a tunnel, where a request can stall and never end: 2026-11-09 the app
+// opened to its menu over an empty page and stayed so until restarted. The state has a time limit; when it doesn't come, the
+// page says so (the first time) and tries again by itself.
+const STATE_WAIT_MS = 12000, STATE_RETRY_MS = 5000;
+let loadRetry = null;
 async function load() {
-  S.data = await api('GET', '/api/state');
+  clearTimeout(loadRetry);
+  try { S.data = await api('GET', '/api/state', undefined, STATE_WAIT_MS); S.loaded = true; } catch (e) {
+    loadRetry = setTimeout(() => load().catch(() => {}), STATE_RETRY_MS);
+    if (S.loaded) throw e; // the last state stays on screen
+    S.unreachable = true;
+    return renderMain();
+  }
+  S.unreachable = false;
   syncNativeReminders();
   syncWidgetCounts();
   syncHealth();
@@ -581,6 +593,10 @@ function groupBar() {
 }
 
 function renderMain() {
+  if (S.unreachable) { // the first load didn't come (load()): no empty lists that look like everything is gone
+    $('#main').innerHTML = `<div class="empty" id="unreachable">Can’t reach your computer. Trying again…<br><br><button class="btn" data-act="load-retry">Try now</button></div>`;
+    return;
+  }
   if (wideUI() && $('#tb-tools')) $('#tb-tools').innerHTML = '';
   if (S.view === 'settings') { flat = []; $('#main').innerHTML = settingsHtml(); return; }
   if (S.view === 'today' && simpleOn()) return paintMain(simpleTodayHtml());
@@ -3679,6 +3695,7 @@ document.addEventListener('click', async (e) => {
     case 'pin': e.preventDefault(); return togglePin(a.dataset.key);
     case 'quick': return quickAdd(a.dataset.defaults ? JSON.parse(a.dataset.defaults) : {});
     case 'qa-close': if (e.target === a) closeModal(); return;
+    case 'load-retry': a.textContent = 'Trying…'; return load().catch(() => {});
     case 'import-open': return importModal(); // the end of the first interview; Settings has its own (set-import)
     case 'qa-save': return S.qaSave?.();
     case 'qa-note': return S.qaNote?.();
@@ -4114,7 +4131,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) { hiddenAt = Date.now(); return; }
   if (events) { try { events.close(); } catch { /* already closed */ } events = null; }
   listen();
-  load().then(() => { if (S.openId) renderDrawer(true); });
+  load().then(() => { if (S.openId) renderDrawer(true); }).catch(() => {});
   if (Date.now() - hiddenAt > 60e3) S.planInfoAt = 0; // free time has moved on too
 });
 window.addEventListener('pageshow', (e) => { if (e.persisted) load(); }); // back-forward cache (Safari)
@@ -4627,7 +4644,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) warm
 applyTheme(currentTheme());
 setInterval(pomoTick, 500);
 route();
-load().then(() => { for (const r of S.data.runs) if (r.state === 'running') follow(r.id);  });
+load().then(() => { for (const r of S.data.runs) if (r.state === 'running') follow(r.id); });
 
 
 // ---------- commands (voice + palette) ----------
