@@ -8,7 +8,7 @@ Allen's Getting Things Done®, Gabriele Oettingen's WOOP and Brian Johnson's Her
 Gubernos is not affiliated with any of them.
 
 > **Beta.** Gubernos is in beta: the iPhone and Apple Watch app is on TestFlight, the Mac app is a download from this
-> repository's Releases. Things change quickly, and your files stay yours whatever happens (plain Markdown on your own Mac).
+> repository's Releases. Things change quickly, and your files stay yours whatever happens (plain Markdown on your own computer).
 
 ### Install the beta
 
@@ -34,7 +34,7 @@ Gubernos is not affiliated with any of them.
 
 **On Windows:** in PowerShell, `irm https://gubernos.app/install.ps1 | iex` (it gets WSL and Ubuntu when they're missing). **On Linux:** `curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash -s -- --wizard`. Then the same setup page in your browser ([more](docs/install.md#linux-or-windows-in-wsl)).
 
-**Or let your AI agent do the setup.** On your Mac, open Claude Code or Codex (the table in [SETUP.md](SETUP.md) shows
+**Or let your AI agent do the setup**, on a Mac, Linux or Windows. Open Claude Code or Codex (the table in [SETUP.md](SETUP.md) shows
 how to get one) and paste:
 
 ```
@@ -68,10 +68,12 @@ and feeds them; an agent proposes what each item is, you decide.
 ```mermaid
 flowchart LR
   subgraph yours["Yours: your devices, your files, your accounts"]
-    mac["Your Mac<br/>Gubernos for Mac"] <--> files[("Your files<br/>plain Markdown")]
+    mac["Your computer<br/>a Mac, or a Linux or Windows PC"] <--> files[("Your files<br/>plain Markdown")]
     phone["iPhone and Watch<br/>(a copy for offline)"]
+    web["Android or a browser<br/>(live from your computer)"]
     agents["Your agents<br/>Claude Code · Codex"] <--> files
     phone <-. "HTTPS through Cloudflare, paired devices only" .-> mac
+    web <-. "HTTPS through Cloudflare, paired devices only" .-> mac
   end
   agents -. "the text a task needs, your account" .-> ai["Your AI provider"]
   mac -. "free time, blocks you apply" .-> cal["Your calendar"]
@@ -88,8 +90,8 @@ is `public/concept.js` (`node scripts/build-concept.mjs` refreshes the site and 
 The app over the vault of Markdown files: the files are the only store, no database. Obsidian and agents keep working on
 the same files.
 
-Runs on a Mac; the iPhone app (or a home-screen web app) reaches it over HTTPS through a Cloudflare Tunnel to the Mac (`cloudflared`; nothing to install on the phone), or Tailscale if you prefer.
-**New here? [SETUP.md](SETUP.md)** (the short version, iPhone first: [docs/install.md](docs/install.md)) — clone, open your AI agent (Claude Code or Codex), say "run SETUP.md": it installs the app, creates the vault from
+Runs on a Mac, Linux, or Windows (in WSL); the iPhone app, or Android and any browser as an installed web app, reaches it over HTTPS through a Cloudflare Tunnel to the computer (`cloudflared`; nothing to install on the phone), or Tailscale if you prefer.
+**New here? [SETUP.md](SETUP.md)** (the short version, phone first: [docs/install.md](docs/install.md)) — clone, open your AI agent (Claude Code or Codex), say "run SETUP.md": it installs the app, creates the vault from
 `kit/vault/` and onboards you. Working on the code? Read [AGENTS.md](AGENTS.md).
 
 Who and where come from two files, both written by `scripts/setup.sh`: `~/.config/gubernos/config.json` (vault path, port,
