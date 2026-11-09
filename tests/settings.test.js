@@ -126,3 +126,21 @@ test('a reminder doesn’t ring twice on an iPhone whose app rings it itself', (
   assert.deepEqual(webTargets(subs, { kind: 'agent' }, rings).map((x) => x.endpoint), ['a', 'b'], 'other pushes go everywhere');
   assert.deepEqual(webTargets(subs, { kind: 'reminder' }, []).map((x) => x.endpoint), ['a', 'b'], 'no iPhone app: the web app reminds');
 });
+
+test('no voice on this computer: Settings → Voice turns it on in one tap, then says it is on', { timeout: 60000 }, async () => {
+  // what such a computer reports (Linux, or a Mac before macOS 26): no engine yet, Whisper possible; after the setup, Whisper
+  const page = await settingsOn((p) => p.onNewDocument(`window.__on = false; const f = window.fetch;
+    const reply = (o) => Promise.resolve(new Response(JSON.stringify(o), { headers: { 'content-type': 'application/json' } }));
+    window.fetch = (u, o = {}) => String(u).endsWith('/api/voice/status') ? reply(window.__on ? { engine: 'whisper', language: 'ru-RU', canWhisper: true } : { engine: null, language: 'ru-RU', canWhisper: true })
+      : String(u).endsWith('/api/voice/setup') ? f(u, o).then((r) => { window.__on = true; return r; }) : f(u, o);`));
+  try {
+    const r = row('Voice');
+    assert.ok(await page.waitFor(`!!${r}?.querySelector("[data-act=set-voice-on]")`), await page.eval(`${r}?.innerText`));
+    assert.ok(await page.eval(`${r}.innerText.includes("nothing on this computer hears this language yet")`));
+    await page.eval(`${r}.querySelector("[data-act=set-voice-on]").click()`);
+    assert.ok(await page.waitFor(`${r}.innerText.includes("getting Whisper")`), 'no sign that it is working');
+    assert.match(fs.readFileSync(path.join(fakeDir, 'calls'), 'utf8'), /voice-auto /, 'setup.sh voice-auto wasn’t run');
+    assert.ok(await page.waitFor(`!${r}.querySelector("[data-act=set-voice-on]")`, 15000), 'it never saw voice turn on');
+    assert.deepEqual(page.errors, []);
+  } finally { await page.close(); }
+});

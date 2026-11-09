@@ -120,6 +120,15 @@ route('POST', '/api/habits/:slug/timer', ({ slug }, _, b) => Timers.start(slug, 
 route('POST', '/api/timers/:id/stop', ({ id }, _, b) => Timers.stop(id, b));
 route('POST', '/api/timers/:id/cancel', ({ id }) => Timers.cancel(id));
 route('POST', '/api/voice/warm', () => warm());
+const APP_DIR = path.dirname(new URL(import.meta.url).pathname), SETUP = process.env.GUBERNOS_SETUP || path.join(APP_DIR, 'scripts/setup.sh'); // GUBERNOS_SETUP: tests stand in
+// Settings → iPhone and other devices → Keep this computer awake on power: scripts/setup.sh awake on|off|status (caffeinate on a
+// Mac, systemd-inhibit on Linux, SetThreadExecutionState in WSL) → {on, text}. GUBERNOS_SETUP: tests stand in for the script.
+// on/off, then status: the state is what status says (an "on" that Linux refuses prints what an admin has to do: text)
+async function awake(cmd) {
+  const run = (c) => new Promise((resolve) => execFile('bash', [SETUP, 'awake', c], { timeout: 60000 }, (_, out = '', err = '') => resolve(`${out}${err}`.trim())));
+  const said = cmd === 'status' ? '' : await run(cmd), status = await run('status');
+  return { on: /✓/.test(status), text: (said || status).replace(/^\s*[✓✗]\s*/gm, '').slice(0, 1500) };
+}
 route('GET', '/api/voice/status', () => voiceStatus()); // Settings → Voice: which engine, which language, what the Mac's models hear
 // Client-side voice events and errors land in server.log, so phone issues can be diagnosed later.
 route('POST', '/api/log', (_, __, b) => { vlog('client', String(b.ua || '').slice(0, 40), '|', String(b.msg || '').slice(0, 300)); return { ok: true }; });
@@ -282,16 +291,16 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(out));
       return;
     }
-    // Settings → iPhone and other devices → Keep this computer awake on power: scripts/setup.sh awake on|off|status (caffeinate on a
-// Mac, systemd-inhibit on Linux, SetThreadExecutionState in WSL) → {on, text}. GUBERNOS_SETUP: tests stand in for the script.
-// on/off, then status: the state is what status says (an "on" that Linux refuses prints what an admin has to do: text)
-async function awake(cmd) {
-  const script = process.env.GUBERNOS_SETUP || path.join(path.dirname(new URL(import.meta.url).pathname), 'scripts/setup.sh');
-  const run = (c) => new Promise((resolve) => execFile('bash', [script, 'awake', c], { timeout: 60000 }, (_, out = '', err = '') => resolve(`${out}${err}`.trim())));
-  const said = cmd === 'status' ? '' : await run(cmd), status = await run('status');
-  return { on: /✓/.test(status), text: (said || status).replace(/^\s*[✓✗]\s*/gm, '').slice(0, 1500) };
-}
-// Connect your iPhone → Set up: scripts/setup.sh phone, on the Mac only. It restarts this server at the end (detached).
+    // Settings → Voice → Turn on voice: scripts/setup.sh voice-auto (Whisper where this computer's own models don't hear the
+    // language), on the computer itself; it restarts this server at the end. The page asks /api/voice/status until it's on.
+    if (url.pathname === '/api/voice/setup' && req.method === 'POST') {
+      if (!Pair.isLocal(req)) throw V.httpError(403, 'only on the computer itself');
+      const log = fs.openSync(path.join(APP_DIR, 'server.log'), 'a');
+      spawn('bash', [SETUP, 'voice-auto', voiceStatus().language], { detached: true, stdio: ['ignore', log, log] }).unref();
+      res.writeHead(200, { 'Content-Type': 'application/json' }).end('{"ok":true}');
+      return;
+    }
+    // Connect your iPhone → Set up: scripts/setup.sh phone, on the Mac only. It restarts this server at the end (detached).
     if (url.pathname === '/api/phone/setup' && req.method === 'POST') {
       if (!Pair.isLocal(req)) throw V.httpError(403, 'only on the Mac itself');
       const log = fs.openSync(path.join(path.dirname(new URL(import.meta.url).pathname), 'server.log'), 'a');

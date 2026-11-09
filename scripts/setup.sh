@@ -15,6 +15,7 @@
 #   scripts/setup.sh get-cloudflared             only that: Cloudflare's signed cloudflared into ~/.gubernos/bin
 #   scripts/setup.sh stop-tunnel                 stop the Cloudflare address and delete it (--tailscale / --private do this too)
 #   scripts/setup.sh get-tailscale               only that: download Tailscale's installer, check its signature, open it, wait for the login
+#   scripts/setup.sh voice-auto [ru-RU]          voice that works: this Mac's own model if it hears the language, else Whisper (install runs it)
 #   scripts/setup.sh voice                       Whisper (MLX on Apple Silicon; faster-whisper on Linux): Russian, mixed languages, accents. Without it the
 #                                                Mac's own speech models hear one language each (macOS 26+, nothing to install)
 #   scripts/setup.sh obsidian                    Dataview + Templater plugins in a vault that is its own Obsidian vault
@@ -82,17 +83,41 @@ models() {
   local cur; cur=$(cd "$APP" && node -e "import('./lib/llm.js').then((m) => console.log(m.providers().chosen || ''))" 2>/dev/null || true)
   [[ -n "$cur" ]] && ok "the app uses: $cur" || true
 }
-voice-language() {
-  [[ "${1:-}" =~ ^([a-z]{2,3}([-_][A-Za-z]{2,4})?|mixed)$ ]] || die "voice-language en-US|ru-RU|…|mixed"
-  (cd "$APP" && node -e "import('./lib/settings.js').then((m) => m.update({ voiceLanguage: process.argv[1] }))" "$1") || die "couldn't save the voice language"
-  local how
-  how=$("$APP/tools/voice/gubernos-voice" locales 2>/dev/null | node -e '
+# what hears a language here without Whisper: speech | dictation (the Mac's own models, macOS 26+) | none (Linux, WSL, an
+# older macOS, an Intel Mac's missing language); "whisper" for mixed (only Whisper hears several languages)
+voice_heard() {
+  [[ "$1" == mixed ]] && { echo whisper; return; }
+  [[ $OS == Darwin ]] || { echo none; return; }
+  "${GUBERNOS_VOICE_HELPER:-$APP/tools/voice/gubernos-voice}" locales 2>/dev/null | node -e '
     let s = ""; process.stdin.on("data", (d) => (s += d)).on("end", () => {
       const lang = process.argv[1], l = lang.replace("-", "_"), b = l.split("_")[0];
       let r = {}; try { r = JSON.parse(s.trim().split("\n").pop()); } catch {}
       const has = (k) => (r[k] || []).some((x) => x === l || x.split("_")[0] === b);
-      console.log(lang === "mixed" ? "whisper" : r.error ? "none" : has("speech") ? "speech" : has("dictation") ? "dictation" : "none");
-    });' "$1")
+      console.log(r.error ? "none" : has("speech") ? "speech" : has("dictation") ? "dictation" : "none");
+    });' "$1" || echo none
+}
+# the voice locale for a profile language ("Russian" → ru-RU), as lib/voice.js LANGS; anything else → en-US
+locale_of() {
+  case "$(echo "${1:-}" | tr '[:upper:]' '[:lower:]' | xargs)" in
+    russian) echo ru-RU;; ukrainian) echo uk-UA;; dutch) echo nl-NL;; german) echo de-DE;; french) echo fr-FR;; spanish) echo es-ES;;
+    italian) echo it-IT;; portuguese) echo pt-BR;; japanese) echo ja-JP;; korean) echo ko-KR;; chinese) echo zh-CN;; hindi) echo hi-IN;; *) echo en-US;;
+  esac
+}
+# voice with nothing to choose (install, and Settings → Voice → Turn on voice): this computer's own model when it hears the
+# language, else Whisper installed right here (Linux, WSL, an Apple Silicon Mac); an Intel Mac without the language says so
+voice-auto() {
+  local lang="${1:-en-US}"
+  if [[ -x "$APP/.venv/bin/python" ]]; then ok "voice: Whisper is here"; return; fi
+  local how; how="$(voice_heard "$lang")"
+  if [[ "$how" == speech || "$how" == dictation ]]; then ok "voice: $lang, heard by this Mac's own model (nothing to install)"; return; fi
+  if [[ $OS != Linux && "$(uname -m)" != arm64 ]]; then no "voice: this Mac has no speech model for $lang (macOS 26 has them), and Whisper needs Apple Silicon"; return; fi
+  echo "  voice: nothing here hears $lang yet, so Gubernos gets Whisper (a few minutes)"
+  ( voice ) || no "voice: Whisper didn't install now; Settings → Voice → Turn on voice tries again"
+}
+voice-language() {
+  [[ "${1:-}" =~ ^([a-z]{2,3}([-_][A-Za-z]{2,4})?|mixed)$ ]] || die "voice-language en-US|ru-RU|…|mixed"
+  (cd "$APP" && node -e "import('./lib/settings.js').then((m) => m.update({ voiceLanguage: process.argv[1] }))" "$1") || die "couldn't save the voice language"
+  local how; how="$(voice_heard "$1")"
   if [[ -x "$APP/.venv/bin/python" ]]; then ok "voice: $1, heard by Whisper"
   elif [[ "$how" == speech ]]; then ok "voice: $1, heard by this Mac's own speech model (nothing to install)"
   elif [[ "$how" == dictation ]]; then ok "voice: $1, heard by this Mac's dictation model; Whisper hears it better: scripts/setup.sh voice"
@@ -232,6 +257,9 @@ install() {
   if [[ $awake == 1 && $OS != Darwin ]]; then awake on; fi
   if [[ $awake == 1 && $OS == Darwin ]]; then render "$APP/deploy/gubernos-awake.plist.template" "$AWAKE_LABEL" > "$AGENTS_DIR/$AWAKE_LABEL.plist"; load "$AWAKE_LABEL" "$AGENTS_DIR/$AWAKE_LABEL.plist"; ok "Mac stays awake on power"; fi
   wait_up && ok "running: http://127.0.0.1:$(port)" || { no "the app didn't start — see $APP/server.log"; tail -5 "$APP/server.log"; exit 1; }
+  # the mic works from the start: Whisper here when this computer's own models don't hear the language (2026-11-09: a
+  # Linux/older-Mac install had no voice, and nothing said why). GUBERNOS_NO_VOICE=1: leave it (tests, a quick reinstall)
+  [[ -n "${GUBERNOS_NO_VOICE:-}" ]] || voice-auto "${vlang:-$(locale_of "$language")}"
 }
 
 ts() { command -v tailscale >/dev/null && tailscale "$@" || /Applications/Tailscale.app/Contents/MacOS/Tailscale "$@"; }
@@ -481,4 +509,4 @@ restart() {
 status() { if [[ $OS == Linux ]]; then systemd_ok && echo "  service: $(systemctl --user is-active gubernos.service 2>/dev/null)"; else launchctl print "gui/$(id -u)/$LABEL" 2>/dev/null | grep -E "state|pid" | head -2; fi; curl -sf "http://127.0.0.1:$(port)/api/state" >/dev/null && ok "answering on $(port)" || no "not answering on $(port)"; }
 
 cmd="${1:-check}"; shift || true
-case "$cmd" in check|install|model|voice-language|get-tailscale|get-cloudflared|stop-tunnel|phone|voice|obsidian|awake|calendar|key|restart|status) "$cmd" "$@";; *) die "unknown command $cmd";; esac
+case "$cmd" in check|install|model|voice-language|voice-auto|get-tailscale|get-cloudflared|stop-tunnel|phone|voice|obsidian|awake|calendar|key|restart|status) "$cmd" "$@";; *) die "unknown command $cmd";; esac

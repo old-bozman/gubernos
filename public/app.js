@@ -4146,9 +4146,21 @@ function voiceSettingsHtml() {
   const how = !v ? '' : v.engine === 'whisper' ? 'Whisper on this Mac: any language, mixed, accents'
     : v.engine === 'speech' ? 'this Mac’s own speech model · for Russian, mixed speech or a strong accent: Whisper (scripts/setup.sh voice)'
     : v.engine === 'dictation' ? 'this Mac’s dictation model · Whisper hears it better (scripts/setup.sh voice)'
-    : (S.settings?.voiceLanguage === 'mixed' ? 'off: several languages need Whisper (scripts/setup.sh voice)' : 'off: no speech model for this language on this Mac (macOS 26 has them); Whisper: scripts/setup.sh voice');
+    : S.voiceSetup ? 'getting Whisper on this computer: a few minutes (it downloads its speech models); the mic appears when it’s ready'
+    : (S.settings?.voiceLanguage === 'mixed' ? 'off: several languages need Whisper' : 'off: nothing on this computer hears this language yet');
+  // no voice here: one tap gets it (Whisper), on the computer itself, no Terminal (2026-11-09, a report from another install)
+  const turnOn = v && !v.engine && v.canWhisper ? `<button class="btn" data-act="set-voice-on" ${S.voiceSetup ? 'disabled' : ''}>${S.voiceSetup ? 'Turning on…' : 'Turn on voice'}</button>` : '';
   return `<div class="set-row"><div class="set-l">Voice<small>the language you speak to the app${how ? ` · ${esc(how)}` : ''}</small></div>
-    <select id="set-voice-lang" class="pm-select set-select">${opts.map(([id, l]) => `<option value="${esc(id)}" ${id === cur ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>`;
+    <span class="set-btns">${turnOn}<select id="set-voice-lang" class="pm-select set-select">${opts.map(([id, l]) => `<option value="${esc(id)}" ${id === cur ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></span></div>`;
+}
+// Turn on voice: ask every 5 s until the engine is there (the server restarts on the way), up to 20 min
+function voiceWait(since) {
+  setTimeout(async () => {
+    const v = await fetch('/api/voice/status').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    if (v?.engine) { S.voiceStatus = v; S.voiceSetup = false; toast('Voice is on'); return load(); }
+    if (Date.now() - since < 20 * 60e3) return voiceWait(since);
+    S.voiceSetup = false; toast('Voice didn’t turn on: see server.log in the app folder'); if (S.view === 'settings') renderMain();
+  }, 5000);
 }
 document.addEventListener('change', (e) => { if (e.target.id === 'set-voice-lang') saveSetting({ voiceLanguage: e.target.value }).then(refreshVoiceStatus).then(load); });
 function refreshCalStatus() { S.gcals = null; S.planInfoAt = 0; S.planFree = null; return fetch('/api/gcal/status').then((r) => r.json()).then((g) => { S.gstatus = g; if (S.view === 'settings') renderMain(); }).catch(() => {}); }
@@ -4529,6 +4541,9 @@ document.addEventListener('click', (e) => {
     return api('POST', '/api/phone/setup').then(() => pairWait(Date.now())).catch((err) => { S.phoneSetup = false; toast(err.message); renderMain(); });
   }
   if (b.dataset.act === 'set-pair-copy') return navigator.clipboard?.writeText(S.pair.webLink).then(() => toast('Link copied — open it on the other device'), () => prompt('The pairing link', S.pair.webLink));
+  if (b.dataset.act === 'set-voice-on') {
+    return api('POST', '/api/voice/setup', {}).then(() => { S.voiceSetup = true; renderMain(); voiceWait(Date.now()); }).catch((e) => toast(e.message));
+  }
   if (b.dataset.act === 'set-awake') {
     S.awake = { ...S.awake, busy: true }; renderMain();
     return api('POST', '/api/pair/awake', { on: v === 'on' }).then((x) => {
