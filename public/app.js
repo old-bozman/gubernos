@@ -5788,7 +5788,7 @@ function renderChat() {
       : C.key.startsWith('t:') ? ['What should I do next here?', 'What is blocking this?', 'Break it into steps']
       : C.key.startsWith('p:') ? ['Where does this project stand?', 'What is blocking it?', 'Plan my next week here']
       : ['What matters most today?', 'What is overdue and why?', 'What can an agent take over?']).map((q) => `<button class="chip" data-act="chat-suggest">${q}</button>`).join('')}</div>
-      <p>Or hold the mic and speak.</p></div>`}
+      ${S.data?.voice === false ? '' : '<p>Or hold the mic and speak.</p>'}</div>`}
       ${C.msgs.map((m, i) => m.role === 'user' ? userBubble(m.text, m.atts)
         : `<div class="msg ai"><div class="md">${md(m.text, false)}</div>
             ${m.actions?.length ? `<div class="msg-acts">${m.actions.map((a, k) => `<button class="chip act ${a.done ? 'done' : ''}" data-act="chat-action" data-m="${i}" data-k="${k}" ${a.done ? 'disabled' : ''}>${a.done ? '✓ ' : ''}${esc(actionLabel(a))}</button>`).join('')}</div>` : ''}
