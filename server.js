@@ -1,6 +1,6 @@
 // Gubernos server: JSON API over the vault + static UI + live change events.
 import http from 'node:http';
-import { spawn } from 'node:child_process';
+import { spawn, execFile } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import * as V from './lib/vault.js';
@@ -240,8 +240,10 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname.startsWith('/api/pair')) {
       const json = (o) => res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(o));
       if (url.pathname === '/api/pair' && req.method === 'GET') return json(Pair.info(req));
+      if (url.pathname === '/api/pair/awake' && req.method === 'GET') return json(await awake('status'));
       if (!Pair.isLocal(req)) throw V.httpError(403, 'only on the Mac itself');
       const body = await readBody(req);
+      if (url.pathname === '/api/pair/awake' && req.method === 'POST') return json(await awake(body.on ? 'on' : 'off'));
       if (url.pathname === '/api/pair/required' && req.method === 'POST') { Pair.setRequired(body.on); return json(Pair.info(req)); }
       if (url.pathname === '/api/pair/rotate' && req.method === 'POST') { Pair.rotate(); return json(Pair.info(req)); }
     }
@@ -280,7 +282,16 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(out));
       return;
     }
-    // Connect your iPhone → Set up: scripts/setup.sh phone, on the Mac only. It restarts this server at the end (detached).
+    // Settings → iPhone and other devices → Keep this computer awake on power: scripts/setup.sh awake on|off|status (caffeinate on a
+// Mac, systemd-inhibit on Linux, SetThreadExecutionState in WSL) → {on, text}. GUBERNOS_SETUP: tests stand in for the script.
+// on/off, then status: the state is what status says (an "on" that Linux refuses prints what an admin has to do: text)
+async function awake(cmd) {
+  const script = process.env.GUBERNOS_SETUP || path.join(path.dirname(new URL(import.meta.url).pathname), 'scripts/setup.sh');
+  const run = (c) => new Promise((resolve) => execFile('bash', [script, 'awake', c], { timeout: 60000 }, (_, out = '', err = '') => resolve(`${out}${err}`.trim())));
+  const said = cmd === 'status' ? '' : await run(cmd), status = await run('status');
+  return { on: /✓/.test(status), text: (said || status).replace(/^\s*[✓✗]\s*/gm, '').slice(0, 1500) };
+}
+// Connect your iPhone → Set up: scripts/setup.sh phone, on the Mac only. It restarts this server at the end (detached).
     if (url.pathname === '/api/phone/setup' && req.method === 'POST') {
       if (!Pair.isLocal(req)) throw V.httpError(403, 'only on the Mac itself');
       const log = fs.openSync(path.join(path.dirname(new URL(import.meta.url).pathname), 'server.log'), 'a');

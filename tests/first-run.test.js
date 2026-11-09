@@ -59,6 +59,7 @@ test('filled in the browser, it sets everything up and hands over to the intervi
   assert.ok(await page.eval('document.querySelector("#need").getBoundingClientRect().bottom <= innerHeight && document.querySelector("#need").getBoundingClientRect().top < document.querySelector("#name").getBoundingClientRect().top'), 'the requirement is below the form or off screen');
   assert.ok(!/Gemini/.test(await page.eval('document.body.innerText')));
   assert.equal(await page.eval('document.querySelectorAll("input[name=folder]").length'), 1); // no iCloud here: only the Mac
+  assert.ok(await page.eval('document.querySelector("#awake").checked'), 'keep awake is offered on by default: nearly everyone connects a phone next');
   await page.eval('document.querySelector("#name").value = "Sam"; document.querySelector("#language").value = "Dutch"; document.querySelector("#go").click()');
   // the page moves to the app (not running in this test: --no-launchd), so look at what's on disk
   const cfg = path.join(home, '.config/gubernos/config.json');

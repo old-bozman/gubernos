@@ -4279,7 +4279,11 @@ function devicesHtml() {
       <button class="linkbtn" data-act="set-pair-copy">Copy link</button></div></div>` : '';
   const require = `<div class="set-mf">Only paired devices get in ${seg('set-pair-required', p.required ? 'on' : 'off', [['off', 'Off'], ['on', 'On']], !p.local)}
       ${p.local ? ' · <button class="linkbtn" data-act="set-pair-rotate">New code — unpairs every device</button>' : ' · changed on the Mac itself'}<br><small>off: anyone who reaches this address · the Mac itself always gets in</small></div>`;
-  return `<div class="set-row"><div class="set-l">iPhone and other devices<small>they reach this Mac through ${esc(p.publicUrl.replace(/^https?:\/\//, ''))} once they have the code</small>${code}${require}</div>
+  // the phone reaches this computer only while it's awake (scripts/setup.sh awake): set right where the phone is connected
+  if (S.awake === undefined) { S.awake = null; api('GET', '/api/pair/awake').then((x) => { S.awake = x; if (S.view === 'settings') renderMain(); }).catch(() => {}); }
+  const aw = S.awake ? `<div class="set-mf">Keep this computer awake on power ${seg('set-awake', S.awake.on ? 'on' : 'off', [['off', 'Off'], ['on', 'On']], !p.local || S.awake.busy)}
+      <br><small>${S.awake.note ? esc(S.awake.note) : `so your phone reaches it all day; the screen still turns off${p.local ? '' : ' · changed on the computer itself'}`}</small></div>` : '';
+  return `<div class="set-row"><div class="set-l">iPhone and other devices<small>they reach this Mac through ${esc(p.publicUrl.replace(/^https?:\/\//, ''))} once they have the code</small>${code}${require}${aw}</div>
       <span class="set-btns">${connect}<button class="btn" data-act="set-pair-show">${S.pairShow ? 'Hide code' : 'Show code'}</button></span></div>`;
 }
 // Settings → Android or a browser: ask every 3 s until setup.sh phone has given the Mac its address (the server restarts on the way)
@@ -4525,6 +4529,14 @@ document.addEventListener('click', (e) => {
     return api('POST', '/api/phone/setup').then(() => pairWait(Date.now())).catch((err) => { S.phoneSetup = false; toast(err.message); renderMain(); });
   }
   if (b.dataset.act === 'set-pair-copy') return navigator.clipboard?.writeText(S.pair.webLink).then(() => toast('Link copied — open it on the other device'), () => prompt('The pairing link', S.pair.webLink));
+  if (b.dataset.act === 'set-awake') {
+    S.awake = { ...S.awake, busy: true }; renderMain();
+    return api('POST', '/api/pair/awake', { on: v === 'on' }).then((x) => {
+      // on that didn't take (Linux without the admin step): say what it needs
+      S.awake = { ...x, note: v === 'on' && !x.on ? x.text : null }; renderMain();
+      if (x.on === (v === 'on')) toast(x.on ? 'Stays awake on power now' : 'Sleeps as usual again');
+    }).catch((e) => { S.awake = { ...S.awake, busy: false }; renderMain(); toast(e.message); });
+  }
   if (b.dataset.act === 'set-pair-required') return api('POST', '/api/pair/required', { on: v === 'on' }).then((x) => { S.pair = x; renderMain(); toast(v === 'on' ? 'Only paired devices get in now' : 'Pairing not required'); });
   if (b.dataset.act === 'set-pair-rotate') { if (!confirm('Make a new code? Every paired phone and browser has to scan it again.')) return; return api('POST', '/api/pair/rotate').then((x) => { S.pair = x; renderMain(); toast('New code — pair your devices again'); }); }
   if (b.dataset.act === 'set-mac-focus') return saveSetting({ macFocus: v === 'on' });

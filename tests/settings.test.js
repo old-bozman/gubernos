@@ -2,6 +2,9 @@
 // very complicated again… and on the iPhone and the server they should differ; now they're the same, it looks odd."
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { startServer } from './helpers.js';
 import { openPage } from './chrome.js';
 import { webTargets } from '../lib/push.js';
@@ -11,7 +14,11 @@ const GROUPS = '[...document.querySelectorAll(".settings h2.set-g")].map((h) => 
 const ROWS = '[...document.querySelectorAll(".settings .set-row .set-l")].map((l) => l.firstChild.textContent.trim())';
 const row = (label) => `[...document.querySelectorAll(".settings .set-row")].find((r) => r.querySelector(".set-l").firstChild.textContent.trim() === ${JSON.stringify(label)})`;
 let s;
-before(async () => { s = await startServer(); }, { timeout: 30000 });
+// scripts/setup.sh awake, stood in for: it keeps its state in a file next to it and notes each call
+const fakeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gubernos-awake-'));
+fs.writeFileSync(path.join(fakeDir, 'setup.sh'), `d="$(dirname "$0")"; echo "$*" >> "$d/calls"
+case "$2" in on) touch "$d/on"; echo "  ✓ stays awake";; off) rm -f "$d/on"; echo "  ✓ normal sleep again";; status) [ -f "$d/on" ] && echo "  ✓ staying awake" || echo "  ✗ sleeps as usual";; esac\n`);
+before(async () => { s = await startServer({ GUBERNOS_SETUP: path.join(fakeDir, 'setup.sh') }); }, { timeout: 30000 });
 after(async () => { await s?.stop(); });
 
 async function settingsOn(setup) {
@@ -101,6 +108,12 @@ test('no address yet: Android or a browser gets one right there, without the iPh
     // Android's camera can't open the iPhone code (gubernos://): it gets its own, the plain link
     assert.equal(await page.eval(`${r}.querySelector(".pair-qr[data-for=android]")?.dataset.link`), 'https://m-test.gubernos.dev/pair?t=t');
     assert.ok(await page.eval(`!!${r}.querySelector(".pair-qr[data-for=android] svg") && !!${r}.querySelector(".pair-qr[data-for=iphone] svg")`), 'not both codes');
+    // right where the phone is connected: keep this computer awake (the phone reaches it only then)
+    assert.ok(await page.waitFor(`${r}.innerText.includes("Keep this computer awake on power")`), await page.eval(`${r}.innerText`));
+    assert.equal(await page.eval(`${r}.querySelector("[data-act=set-awake].on").dataset.val`), 'off');
+    await page.eval(`${r}.querySelector("[data-act=set-awake][data-val=on]").click()`);
+    assert.ok(await page.waitFor(`${r}.querySelector("[data-act=set-awake].on")?.dataset.val === "on"`), 'the switch didn’t take');
+    assert.match(fs.readFileSync(path.join(fakeDir, 'calls'), 'utf8'), /awake on\nawake status/);
     assert.deepEqual(page.errors, []);
   } finally { await page.close(); }
 });

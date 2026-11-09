@@ -66,7 +66,7 @@ There's no Android app yet, but Gubernos works in Chrome as an installed web app
 3. Chrome menu **⋮** → **Install app** (or Add to Home screen): it gets its own icon and window.
 4. In Gubernos: Settings → This device → Notifications **On**.
 
-Compared with the iPhone app it has no offline copy, widgets, Health or phone-side reminders: reminders come as pushes from the Mac, so the Mac needs to be on.
+Compared with the iPhone app it has no offline copy, widgets, Health or phone-side reminders: reminders come as pushes from the Mac, so the Mac needs to be on and awake: **Keep this computer awake on power** is right under the codes (on by default from the setup page).
 
 **No Mac?** The iPhone app also works on its own over a folder in iCloud Drive (first screen → Or use the phone on its own): tasks, habits, reminders, widgets, the watch, without agents, chat or the calendar.
 
@@ -100,7 +100,7 @@ What's different from the Mac: the calendar comes from Google (Settings → Your
 
 ## Keep the Mac awake
 
-If the Mac sits at home on power, tell your agent **"keep my Mac awake"**: that's `scripts/setup.sh awake on` (`caffeinate -s` as a login item: on power the Mac doesn't sleep, the screen still turns off as usual; on battery it sleeps as always). A laptop with the lid closed still sleeps: keep the lid open or use an external display.
+The setup page offers it, ticked by default, and it can be switched any time in Settings → Your Mac → iPhone and other devices → **Keep this computer awake on power**. Or tell your agent **"keep my Mac awake"**: that's `scripts/setup.sh awake on` (`caffeinate -s` as a login item: on power the Mac doesn't sleep, the screen still turns off as usual; on battery it sleeps as always). A laptop with the lid closed still sleeps: keep the lid open or use an external display.
 
 - Check: `scripts/setup.sh awake status`
 - Back to normal sleep: `scripts/setup.sh awake off`
