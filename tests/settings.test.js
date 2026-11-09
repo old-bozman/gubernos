@@ -139,7 +139,9 @@ test('no voice on this computer: Settings → Voice turns it on in one tap, then
     assert.ok(await page.eval(`${r}.innerText.includes("nothing on this computer hears this language yet")`));
     await page.eval(`${r}.querySelector("[data-act=set-voice-on]").click()`);
     assert.ok(await page.waitFor(`${r}.innerText.includes("getting Whisper")`), 'no sign that it is working');
-    assert.match(fs.readFileSync(path.join(fakeDir, 'calls'), 'utf8'), /voice-auto /, 'setup.sh voice-auto wasn’t run');
+    const calls = () => { try { return fs.readFileSync(path.join(fakeDir, 'calls'), 'utf8'); } catch { return ''; } };
+    for (let i = 0; i < 50 && !/voice-auto /.test(calls()); i++) await page.sleep(100); // the script runs detached: a moment
+    assert.match(calls(), /voice-auto /, 'setup.sh voice-auto wasn’t run');
     assert.ok(await page.waitFor(`!${r}.querySelector("[data-act=set-voice-on]")`, 15000), 'it never saw voice turn on');
     assert.deepEqual(page.errors, []);
   } finally { await page.close(); }
