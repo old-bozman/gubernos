@@ -3,7 +3,7 @@
 // ever in its output parser (--test-timeout can't reach it: that loop never yields), and a hung run blocks a release silently.
 // So the whole run has a limit: past it, everything is killed and the run fails, saying why.
 //   node tests/run.mjs [files…]     default: every tests/*.test.js
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,6 +19,12 @@ process.once('SIGINT', () => { killAll(); process.exit(130); });
 process.once('SIGTERM', () => { killAll(); process.exit(143); });
 const timer = setTimeout(() => {
   console.error(`\n✗ the test run was still going after ${Math.round(LIMIT / 1000)} s: stopped it, this counts as a failure`);
+  // what was still running (the test files and anything they started): the one to look at next time
+  try {
+    const ps = spawnSync('ps', ['-A', '-o', 'pid=,pgid=,etime=,command='], { encoding: 'utf8' }).stdout.split('\n')
+      .filter((l) => l.trim().split(/\s+/)[1] === String(child.pid) && !l.includes(' ps -A'));
+    console.error(`  still running:\n${ps.map((l) => { l = l.trim(); return `    ${l.length > 240 ? `${l.slice(0, 60)} … ${l.slice(-170)}` : l}`; }).join('\n')}`); // the end: a test file's name
+  } catch { /* the kill matters more */ }
   killAll();
   process.exit(1);
 }, LIMIT);
