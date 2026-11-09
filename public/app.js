@@ -4217,11 +4217,25 @@ function settingsHtml() {
     <div class="set-row"><div class="set-l">Google<small>mail, contacts and docs for agents${S.gstatus?.source === 'google' ? ', and your calendar' : ''}</small></div><div class="set-note">${googleNote()}</div></div>
     ${macFocusHtml()}
     ${devicesHtml()}
+    ${updatesHtml()}
     ${ME().feedbackRemote ? `<div class="set-row"><div class="set-l">Pushes through the relay<small>this Mac sends pushes to the iPhone app (agent finished, reminders…) through relay.gubernos.app, which signs them for Apple: the alert's text passes through, nothing is stored. Off = no pushes from this Mac</small></div>${seg('set-relay-push', st.relayPush === false ? 'off' : 'on', [['off', 'Off'], ['on', 'On']])}</div>` : ''}`}
     ${g('About')}
     <div class="set-row"><div class="set-l">How it works<small>the personal OS, its loops and where your data lives · the line each screen shows the first time you open it</small></div><span class="set-btns"><button class="btn" data-act="tour">Tour</button><a class="btn" href="#/how">Open</a><button class="btn" data-intro-again>Screen tips again</button></span></div>
     <div class="set-row"><div class="set-l">${esc(APP_NAME)}${native ? ` ${esc(window.gubernosNative.version || '')}` : ''}<small>open source: the app under MIT, the method under CC BY 4.0</small></div><button class="btn" data-act="licenses">Licenses</button></div>
   </div>`;
+}
+// Settings → Your Mac → Updates (lib/update.js): an install by install.sh gets new versions from GitHub at night, or now;
+// a git checkout (a developer's) isn't shown: it's updated with git
+function updatesHtml() {
+  if (S.update === undefined) { S.update = null; api('GET', '/api/update').then((u) => { S.update = u; if (S.view === 'settings') renderMain(); }).catch(() => {}); }
+  const u = S.update;
+  if (!u?.managed) return '';
+  const seg = (act, cur, opts) => `<span class="seg">${opts.map(([v, l]) => `<button data-act="${act}" data-val="${v}" class="${cur === v ? 'on' : ''}">${l}</button>`).join('')}</span>`;
+  const state = u.updating ? `updating to ${esc(u.latest || 'the latest')}: the app restarts in a minute`
+    : u.available ? `${esc(u.current)} · a new version is out: ${esc(u.latest)}` : `${esc(u.current)} · up to date${u.error ? ` (couldn’t check: ${esc(u.error)})` : ''}`;
+  return `<div class="set-row"><div class="set-l">Updates<small>${state}</small>
+      <div class="set-mf">Install new versions at night on their own ${seg('set-autoupdate', u.auto ? 'on' : 'off', [['off', 'Off'], ['on', 'On']])}<br><small>between 3 and 5, when no agent is working; if a new version doesn’t start, the app goes back to this one</small></div></div>
+      ${u.available && !u.updating ? '<button class="btn" data-act="set-update-now">Update now</button>' : ''}</div>`;
 }
 // Settings on a phone: the Mac's own settings aren't changed from here — one line says what the Mac uses
 function macSummaryHtml() {
@@ -4541,6 +4555,10 @@ document.addEventListener('click', (e) => {
     return api('POST', '/api/phone/setup').then(() => pairWait(Date.now())).catch((err) => { S.phoneSetup = false; toast(err.message); renderMain(); });
   }
   if (b.dataset.act === 'set-pair-copy') return navigator.clipboard?.writeText(S.pair.webLink).then(() => toast('Link copied — open it on the other device'), () => prompt('The pairing link', S.pair.webLink));
+  if (b.dataset.act === 'set-update-now') {
+    return api('POST', '/api/update', {}).then((u) => { S.update = u; renderMain(); toast('Updating: the app restarts in a minute'); setTimeout(() => location.reload(), 90e3); }).catch((e) => toast(e.message));
+  }
+  if (b.dataset.act === 'set-autoupdate') return saveSetting({ autoUpdate: v === 'on' }).then(() => { S.update = { ...S.update, auto: v === 'on' }; renderMain(); });
   if (b.dataset.act === 'set-voice-on') {
     return api('POST', '/api/voice/setup', {}).then(() => { S.voiceSetup = true; renderMain(); voiceWait(Date.now()); }).catch((e) => toast(e.message));
   }

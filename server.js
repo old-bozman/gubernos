@@ -27,6 +27,7 @@ import * as Triage from './lib/triage.js';
 import * as Backup from './lib/backup.js';
 import * as Onboarding from './lib/onboarding.js';
 import * as Import from './lib/import.js';
+import * as Update from './lib/update.js';
 import { mirror } from './lib/mirror.js';
 import { saveAttachment, attachmentFile, attachmentByName } from './lib/attachments.js';
 import { PORT, PROXY_PORT, PUBLIC_URL, APP_NAME, profile, clientConfig } from './lib/config.js';
@@ -129,6 +130,8 @@ async function awake(cmd) {
   const said = cmd === 'status' ? '' : await run(cmd), status = await run('status');
   return { on: /✓/.test(status), text: (said || status).replace(/^\s*[✓✗]\s*/gm, '').slice(0, 1500) };
 }
+// Settings → Your Mac → Updates (lib/update.js): what's here and on GitHub; update now (on the computer itself)
+route('GET', '/api/update', () => Update.check());
 route('GET', '/api/voice/status', () => voiceStatus()); // Settings → Voice: which engine, which language, what the Mac's models hear
 // Client-side voice events and errors land in server.log, so phone issues can be diagnosed later.
 route('POST', '/api/log', (_, __, b) => { vlog('client', String(b.ua || '').slice(0, 40), '|', String(b.msg || '').slice(0, 300)); return { ok: true }; });
@@ -293,6 +296,11 @@ const server = http.createServer(async (req, res) => {
     }
     // Settings → Voice → Turn on voice: scripts/setup.sh voice-auto (Whisper where this computer's own models don't hear the
     // language), on the computer itself; it restarts this server at the end. The page asks /api/voice/status until it's on.
+    if (url.pathname === '/api/update' && req.method === 'POST') {
+      if (!Pair.isLocal(req)) throw V.httpError(403, 'only on the computer itself');
+      res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(Update.apply()));
+      return;
+    }
     if (url.pathname === '/api/voice/setup' && req.method === 'POST') {
       if (!Pair.isLocal(req)) throw V.httpError(403, 'only on the computer itself');
       const log = fs.openSync(path.join(APP_DIR, 'server.log'), 'a');
@@ -364,6 +372,7 @@ server.listen(PORT, HOST, () => {
   Timers.boot(() => changed(true)); // running habit timers finish at their end, also after a restart
   feedbackSync(); // answers to bug reports sent through the relay (no-op on the developer's own install)
   feedbackInbox(); // the developer's install: reports from other installs → dev tasks (lib/feedback-inbox.js)
+  Update.start(); // an install by install.sh: newer versions from GitHub, at night (lib/update.js); a git checkout: nothing
   console.log(`${APP_NAME} → http://${HOST}:${PORT}  (vault: ${V.VAULT})`);
 });
 // the same app on PROXY_PORT, loopback only, for Tailscale serve / funnel: nothing that arrives here counts as the Mac itself
