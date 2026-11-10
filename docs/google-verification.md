@@ -12,7 +12,8 @@ Submitted from Google Cloud Console → Google Auth Platform, on the project tha
 
 State on 2026-11-10: In production; branding has home page, privacy link and the authorised domain; Data access lists
 only the three calendar scopes, with the calendar.events justification (calendarlist and freebusy count as
-non-sensitive there). Open: the gubernos.app TXT record for Search Console, the logo, the demo video.
+non-sensitive there). gubernos.app verified in Search Console (Domain property, TXT through Cloudflare); the
+privacy policy states Limited Use. Open: the logo (optional), the demo video, then Submit in the Verification centre.
 
 - [ ] **Audience**: publishing status **In production** (in Testing, sign-ins expire after 7 days and only listed test users get in).
 - [ ] **Domain**: gubernos.app verified in Google Search Console by the same Google account (Google Auth Platform → Branding links to it).
