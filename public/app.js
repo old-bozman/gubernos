@@ -3846,11 +3846,10 @@ document.addEventListener('click', async (e) => {
     case 'report': e.preventDefault(); return reportModal();
     case 'licenses': return licensesModal();
     case 'tour': return tourOpen(0);
-    case 'phone-setup': { // the relay's check (a person confirms each new address) opens in a tab: opened now, while it's a tap, filled in after
+    case 'phone-setup': { // the relay's check (a person confirms each new address) opens over the app: nobody leaves it
       S.phoneSetup = true; renderMain();
-      const tab = window.open('', '_blank');
-      return api('POST', '/api/phone/setup').then((x) => { if (x.check && tab) tab.location = x.check; else if (x.check) location.href = x.check; })
-        .catch((err) => { tab?.close(); S.phoneSetup = false; toast(err.message); renderMain(); });
+      return api('POST', '/api/phone/setup').then((x) => relayCheck(x.check))
+        .catch((err) => { S.phoneSetup = false; toast(err.message); renderMain(); });
     }
     case 'onboard-send': return onboardSend();
     case 'onboard-code': { const code = (S.obCode || '').trim(); if (!code) return $('#ob-code')?.focus(); S.obCode = ''; return api('POST', '/api/onboard/connect/code', { code }).then((x) => { S.onboard = x; renderMain(); }).catch(() => {}); }
@@ -4349,12 +4348,32 @@ function devicesHtml() {
   return `<div class="set-row"><div class="set-l">iPhone and other devices<small>they reach this Mac through ${esc(p.publicUrl.replace(/^https?:\/\//, ''))} once they have the code</small>${code}${require}${aw}</div>
       <span class="set-btns">${connect}<button class="btn" data-act="set-pair-show">${S.pairShow ? 'Hide code' : 'Show code'}</button></span></div>`;
 }
+// The relay's check (relay/worker.js /check, Cloudflare Turnstile: a person confirms each new address) in a window over the
+// app, so nobody goes to a browser tab or the Terminal; it passes by itself for most people. The relay's page tells us
+// when it has passed; setup.sh phone, waiting on the relay with the same code, then gets the address.
+function relayCheck(url) {
+  if (!url) return;
+  const origin = new URL(url).origin;
+  $('#modal').innerHTML = `<div class="overlay"><div class="qa pm relay-check">
+    <div class="bd-h">One quick check</div>
+    <p class="muted">Cloudflare confirms that a person is asking for this Mac’s address. Usually it passes by itself.</p>
+    <iframe src="${esc(url)}&embed=1" title="Cloudflare check"></iframe>
+    <div class="foot"><span class="sp"></span><button class="btn" data-act="qa-close">Cancel</button></div></div></div>`;
+  const on = (e) => {
+    if (e.origin !== origin || e.data?.gubernos !== 'checked') return;
+    removeEventListener('message', on);
+    const m = $('#modal .relay-check');
+    if (m) m.innerHTML = '<div class="bd-h">✓ Checked</div><p>Getting the address for this Mac, about a minute. It appears on this screen.</p>';
+    setTimeout(() => { if ($('#modal .relay-check')) closeModal(); }, 2500);
+  };
+  addEventListener('message', on);
+}
 // Settings → Android or a browser: ask every 3 s until setup.sh phone has given the Mac its address (the server restarts on the way)
 function pairWait(since) {
   setTimeout(async () => {
     const x = await api('GET', '/api/pair').catch(() => null);
     if (x?.publicUrl) { S.pair = x; S.phoneSetup = false; return S.view === 'settings' && renderMain(); }
-    if (Date.now() - since < 180e3) return pairWait(since);
+    if (Date.now() - since < 360e3) return pairWait(since); // the check first, then about a minute (setup.sh waits 5 min for the check)
     S.phoneSetup = false; toast('No address yet — try again in a minute'); if (S.view === 'settings') renderMain();
   }, 3000);
 }
@@ -4437,7 +4456,7 @@ function phoneHtml() {
       <li><h3>Connect it to this Mac</h3>${p.publicUrl ? `<div class="ph-row"><div class="pair-qr">${qrSvg(p.appLink)}</div>
         <div class="ph-text"><p>Open ${esc(APP_NAME)} on the iPhone once and allow notifications. Then point the Camera at this code → <b>Open in ${esc(APP_NAME)}</b>.</p>
         <p class="muted">The phone reaches this Mac at ${esc(host)}, from anywhere, as long as the Mac is awake. Only devices with this code get in.</p></div></div>`
-    : `<p class="ph-text">This Mac isn’t reachable from the phone yet. <button class="btn primary" data-act="phone-setup" ${S.phoneSetup ? 'disabled' : ''}>${S.phoneSetup ? 'Setting up…' : 'Set up the address'}</button> It gives this Mac an https address through Cloudflare: a quick check opens in your browser (a person confirms each new address), nothing to sign in to, nothing on the phone. The traffic passes through Cloudflare, under our account, so it could be seen there; we don’t store it. (Or by hand: <code>scripts/setup.sh phone</code>, with <code>--tailscale</code> to use Tailscale.) The code appears here when it’s done.</p>`}</li>
+    : `<p class="ph-text">This Mac isn’t reachable from the phone yet. <button class="btn primary" data-act="phone-setup" ${S.phoneSetup ? 'disabled' : ''}>${S.phoneSetup ? 'Setting up…' : 'Set up the address'}</button> It gives this Mac an https address through Cloudflare: one quick check appears here (a person confirms each new address), nothing to sign in to, nothing on the phone. The traffic passes through Cloudflare, under our account, so it could be seen there; we don’t store it. (Or by hand: <code>scripts/setup.sh phone</code>, with <code>--tailscale</code> to use Tailscale.) The code appears here when it’s done.</p>`}</li>
       <li class="${p.seenAt ? 'ph-ok' : ''}"><h3>${p.seenAt ? '✓ Connected' : 'Waiting for the iPhone…'}</h3>
         <p class="ph-text">${p.seenAt ? `A paired device reached this Mac ${ago}. That’s it: the app on the phone now shows your system.` : 'This turns into ✓ once the phone has connected.'}</p></li>
     </ol></div>`;
@@ -4591,7 +4610,7 @@ document.addEventListener('click', (e) => {
   if (b.dataset.act === 'set-pair-show') { S.pairShow = !S.pairShow; return renderMain(); }
   if (b.dataset.act === 'set-pair-other') {
     S.phoneSetup = true; S.pairShow = true; renderMain();
-    return api('POST', '/api/phone/setup').then(() => pairWait(Date.now())).catch((err) => { S.phoneSetup = false; toast(err.message); renderMain(); });
+    return api('POST', '/api/phone/setup').then((x) => { relayCheck(x.check); pairWait(Date.now()); }).catch((err) => { S.phoneSetup = false; toast(err.message); renderMain(); });
   }
   if (b.dataset.act === 'set-pair-copy') return navigator.clipboard?.writeText(S.pair.webLink).then(() => toast('Link copied — open it on the other device'), () => prompt('The pairing link', S.pair.webLink));
   if (b.dataset.act === 'set-update-now') {

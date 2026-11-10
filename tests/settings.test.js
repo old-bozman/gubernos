@@ -93,7 +93,7 @@ test('no address yet: Android or a browser gets one right there, without the iPh
   // the setup script itself is tested in phone.test.js; here it's stubbed: POST /api/phone/setup counted, then /api/pair has an address
   const page = await settingsOn((p) => p.onNewDocument(`window.__setup = 0; const f = window.fetch;
     const reply = (o) => Promise.resolve(new Response(JSON.stringify(o), { headers: { 'content-type': 'application/json' } }));
-    window.fetch = (u, o = {}) => String(u).endsWith('/api/phone/setup') ? (window.__setup++, reply({ ok: true }))
+    window.fetch = (u, o = {}) => String(u).endsWith('/api/phone/setup') ? (window.__setup++, reply({ ok: true, check: 'http://127.0.0.1:9/check?c=${'ab'.repeat(16)}' }))
       : window.__setup && String(u).endsWith('/api/pair') ? reply({ local: true, required: true, publicUrl: 'https://m-test.gubernos.dev', appLink: 'gubernos://pair?url=x&token=t', webLink: 'https://m-test.gubernos.dev/pair?t=t' })
       : f(u, o);`));
   try {
@@ -103,6 +103,14 @@ test('no address yet: Android or a browser gets one right there, without the iPh
     await page.eval(`${r}.querySelector('[data-act=set-pair-other]').click()`);
     assert.ok(await page.waitFor(`${r}.innerText.includes("Setting up")`), 'no sign that it is working');
     assert.equal(await page.eval('window.__setup'), 1);
+    // the relay's check (a person confirms each new address) opens over the app, not in a tab: nobody leaves it
+    assert.ok(await page.waitFor(`document.querySelector("#modal .relay-check iframe")?.getAttribute("src") === "http://127.0.0.1:9/check?c=${'ab'.repeat(16)}&embed=1"`), await page.eval('document.querySelector("#modal").innerHTML'));
+    const passed = (origin) => page.eval(`window.dispatchEvent(new MessageEvent("message", { origin: "${origin}", data: { gubernos: "checked" } }))`);
+    await passed('https://evil.test');
+    assert.ok(await page.eval('!!document.querySelector("#modal .relay-check iframe")'), 'only the relay says it passed');
+    await passed('http://127.0.0.1:9');
+    const shown = await page.eval('document.querySelector("#modal .relay-check")?.textContent'); assert.match(String(shown), /Checked/);
+    assert.ok(await page.waitFor('!document.querySelector("#modal .relay-check")', 6000), 'the window stays');
     assert.ok(await page.waitFor(`!!${r}.querySelector("[data-act=set-pair-copy]") && !!${r}.querySelector(".pair-qr svg")`, 10000), await page.eval(`${r}.innerText`));
     assert.ok(await page.eval(`${r}.innerText.includes("m-test.gubernos.dev")`));
     // Android's camera can't open the iPhone code (gubernos://): it gets its own, the plain link

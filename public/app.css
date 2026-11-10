@@ -1718,3 +1718,5 @@ button.dc-ev:hover, .dc-ev.cal-hl { box-shadow: 0 0 0 2px var(--accent); z-index
 .ob-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 15px; letter-spacing: .04em; user-select: all; }
 .ob-paste { display: flex; gap: 6px; margin-top: 6px; }
 .ob-paste input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; background: transparent; color: var(--ink); font: inherit; }
+/* the relay's check over the app (app.js relayCheck): Turnstile's widget is 300×65 */
+.relay-check iframe { display: block; width: 100%; max-width: 320px; height: 84px; border: 0; margin: 12px 0; color-scheme: normal; }

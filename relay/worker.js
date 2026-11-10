@@ -181,21 +181,22 @@ async function tunnel(req, env) {
   return json({ id: t.id, hostname, token, key: await sign(env, t.id, 'tunnel') });
 }
 // The check page: Cloudflare Turnstile (managed: usually no puzzle). Its token is verified here and grants the Mac's code.
-const page = (env, code) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+// embed: inside the app's phone step (an iframe), compact, and it tells the app when it passed — nobody leaves the app.
+const page = (env, code, embed) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Gubernos · one check</title><script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-<style>body{font:16px/1.5 -apple-system,system-ui,sans-serif;max-width:30rem;margin:12vh auto;padding:0 16px;color:#222;background:#fafaf7}
-@media(prefers-color-scheme:dark){body{color:#eee;background:#1c1c1a}}h1{font-size:1.3rem}#done{display:none}.muted{opacity:.7;font-size:.9rem}</style></head><body>
-<h1>Gubernos: one quick check</h1>
-<div id="ask"><p>Your computer is getting its address for the phone. Confirm you're a person, and it goes on by itself.</p>
+<style>body{font:16px/1.5 -apple-system,system-ui,sans-serif;color:#222;${embed ? 'margin:0;background:transparent' : 'max-width:30rem;margin:12vh auto;padding:0 16px;background:#fafaf7'}}
+@media(prefers-color-scheme:dark){body{color:#eee;${embed ? '' : 'background:#1c1c1a'}}}h1{font-size:1.3rem}#done{display:none}.muted{opacity:.7;font-size:.9rem}</style></head><body>
+${embed ? '' : '<h1>Gubernos: one quick check</h1>'}
+<div id="ask">${embed ? '' : '<p>Your computer is getting its address for the phone. Confirm you\'re a person, and it goes on by itself.</p>'}
 <div class="cf-turnstile" data-sitekey="${env.TURNSTILE_SITEKEY}" data-callback="passed"></div></div>
-<p id="done">Done. Go back to Gubernos: the address appears there in a few seconds. You can close this tab.</p>
+<p id="done">${embed ? '✓ Checked' : 'Done. Go back to Gubernos: the address appears there in a few seconds. You can close this tab.'}</p>
 <p id="err" class="muted"></p>
-<p class="muted">Why: anyone can ask for an address, so a person confirms each one. Nothing about you is kept.</p>
+${embed ? '' : '<p class="muted">Why: anyone can ask for an address, so a person confirms each one. Nothing about you is kept.</p>'}
 <script>
 async function passed(token) {
   const r = await fetch('/check', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: ${JSON.stringify(code)}, token }) });
-  if (r.ok) { document.getElementById('ask').style.display = 'none'; document.getElementById('done').style.display = 'block'; }
-  else document.getElementById('err').textContent = 'That didn\u2019t work (' + ((await r.json().catch(() => ({}))).error || r.status) + '). Reload the page to try again.';
+  if (r.ok) { document.getElementById('ask').style.display = 'none'; document.getElementById('done').style.display = 'block';${embed ? " parent.postMessage({ gubernos: 'checked' }, '*');" : ''} }
+  else document.getElementById('err').textContent = 'That didn’t work (' + ((await r.json().catch(() => ({}))).error || r.status) + '). Reload the page to try again.';
 }
 </script></body></html>`;
 
@@ -239,7 +240,7 @@ export default {
     if (url.pathname === '/tunnel' && req.method === 'POST') return tunnel(req, env); // its per-IP limit counts tunnels made, not the Mac asking again
     if (url.pathname === '/check' && req.method === 'GET') {
       const c = url.searchParams.get('c') || '';
-      return CODE_RE.test(c) ? new Response(page(env, c), { headers: { 'content-type': 'text/html; charset=utf-8' } }) : json({ error: 'no code' }, 400);
+      return CODE_RE.test(c) ? new Response(page(env, c, url.searchParams.has('embed')), { headers: { 'content-type': 'text/html; charset=utf-8' } }) : json({ error: 'no code' }, 400);
     }
     if (url.pathname === '/check' && req.method === 'POST') {
       const ok = !env.TUNNEL_LIMIT || (await env.TUNNEL_LIMIT.limit({ key: req.headers.get('cf-connecting-ip') || 'ip?' })).success;

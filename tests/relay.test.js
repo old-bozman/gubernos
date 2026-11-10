@@ -82,6 +82,16 @@ test('tunnel: a person passes the check first; the code is used up', async () =>
   assert.equal((await tcall('POST', '/tunnel', { port: 4748, code: CODE })).status, 428, 'one tunnel per check');
 });
 
+test('check: inside the app the page is compact and tells the app when it passed (no tab, no leaving the app)', async () => {
+  const tenv = tunnelEnv();
+  const res = await worker.fetch(new Request(`https://relay.test/check?c=${CODE}&embed=1`), tenv);
+  const html = await res.text();
+  assert.match(html, /data-sitekey="site"/);
+  assert.match(html, /parent\.postMessage\(\{ gubernos: 'checked' \}, '\*'\)/);
+  assert.doesNotMatch(html, /close this tab|<h1>/);
+  assert.equal(res.headers.get('x-frame-options'), null, 'the app frames it');
+});
+
 test('tunnel: a daily cap in all, and the developer is alerted once', async () => {
   const tenv = tunnelEnv();
   stubCloudflare('11111111-2222-3333-4444-555555555555');
