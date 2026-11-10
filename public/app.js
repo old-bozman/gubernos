@@ -95,7 +95,13 @@ async function syncHealth(force = false) {
 
 // The last errors on this page, sent along with a bug report (Report a bug or idea).
 const ERRS = [];
-const noteErr = (m) => { ERRS.push(`${new Date().toTimeString().slice(0, 8)} ${String(m ?? '').slice(0, 200)}`); if (ERRS.length > 10) ERRS.shift(); };
+const noteErr = (m) => { ERRS.push(`${new Date().toTimeString().slice(0, 8)} ${String(m ?? '').slice(0, 200)}`); if (ERRS.length > 10) ERRS.shift(); phoneLog(`page error: ${m}`); };
+// the iPhone app's own log (gubernos-ios AppLog.swift; shared with the Mac only when its owner allows): the page's errors
+// and how long the state took; task ids are masked (they carry titles)
+function phoneLog(text) {
+  if (!window.gubernosNative) return;
+  window.webkit?.messageHandlers?.gubernos?.postMessage({ op: 'log', text: String(text ?? '').replace(/(\/api\/tasks\/)[^\s/?]+/g, '$1…').slice(0, 300) }).catch(() => {});
+}
 window.addEventListener('error', (e) => noteErr(e.message));
 window.addEventListener('unhandledrejection', (e) => noteErr(e.reason?.message || e.reason));
 
@@ -123,7 +129,8 @@ const STATE_WAIT_MS = 12000, STATE_RETRY_MS = 5000;
 let loadRetry = null;
 async function load() {
   clearTimeout(loadRetry);
-  try { S.data = await api('GET', '/api/state', undefined, STATE_WAIT_MS); S.loaded = true; } catch (e) {
+  const asked = performance.now();
+  try { S.data = await api('GET', '/api/state', undefined, STATE_WAIT_MS); S.loaded = true; if (!S.stateLogged) { S.stateLogged = true; phoneLog(`state in ${Math.round(performance.now() - asked)} ms`); } } catch (e) {
     loadRetry = setTimeout(() => load().catch(() => {}), STATE_RETRY_MS);
     if (S.loaded) throw e; // the last state stays on screen
     S.unreachable = true;
@@ -1657,6 +1664,9 @@ function reportByVoice(kind, text) {
   closeModal(); reportModal(kind, text);
 }
 async function sendFeedback({ kind = 'bug', text = '', images = [], snapshot = screenSnapshot(), context = screenContext(), share = false }) {
+  // the iPhone app hands the Mac its latest log first, so the report carries it (when its owner shares it; 3 s at most)
+  const h = window.gubernosNative && window.webkit?.messageHandlers?.gubernos;
+  if (h) await Promise.race([h.postMessage({ op: 'pushLog' }).catch(() => {}), new Promise((r) => setTimeout(r, 3000))]);
   await api('POST', '/api/feedback', { kind, text, images, snapshot, context, errors: ERRS, share });
   toast(ME().feedbackRemote ? `${kind === 'idea' ? 'Idea' : 'Bug'} sent to the developer — answers come back to the task` : `${kind === 'idea' ? 'Idea' : 'Bug'} sent — Claude sees it with this screen`);
   load();
@@ -4283,6 +4293,7 @@ function nativeSettingsHtml() {
     ${sw('reminders', 'Reminders', 'ring from the phone itself, even without the Mac or network')}
     ${sw('checkins', 'Morning plan &amp; evening check-in', 'the digest, the evening check-in, the reflection and your protocols, from the phone')}
     ${sw('agents', 'Agent finished or blocked', 'when iOS lets the app look at the Mac in the background: minutes to hours later, not instantly')}
+    ${'shareLog' in n ? sw('shareLog', 'Share the app’s log', 'helps fix problems on this iPhone: how long it looked for your Mac, load times, errors — never your tasks. It goes to your Mac and, with bug reports you send, to the developer') : ''}
     <div class="set-row"><div class="set-l">Voice without the Mac<small>the iPhone’s own speech recognition needs one language; with the Mac, voice understands any</small></div>
       <select id="set-native-lang" class="pm-select set-select">${(n.languages || []).map((l) => `<option value="${esc(l.id)}" ${l.id === n.language ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></div>`;
 }

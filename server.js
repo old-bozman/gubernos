@@ -37,6 +37,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { clock, validAt } from './lib/clock.js';
 import { report, replyRemote, startSync as feedbackSync } from './lib/feedback.js';
 import { startInbox as feedbackInbox } from './lib/feedback-inbox.js';
+import * as DeviceLog from './lib/device-log.js';
 
 const HOST = process.env.HOST || '127.0.0.1';
 const PUBLIC = path.join(path.dirname(new URL(import.meta.url).pathname), 'public');
@@ -111,6 +112,7 @@ const route = (method, pattern, handler) => routes.push({ method, re: new RegExp
 registerCore(route, { stateExtras: () => ({ voice: voiceAvailable(), runs: [...runs.values()].map(publicRun), agents: agentsAvailable(), timers: Timers.list() }) });
 
 route('POST', '/api/feedback', (_, __, b) => report(b));
+route('POST', '/api/device-log', (_, __, b) => DeviceLog.save(b)); // the iPhone app's log, when its owner shares it (lib/device-log.js)
 // a report sent through the relay: the owner's answer or "still wrong" goes back to the developer (not to a local agent)
 route('POST', '/api/tasks/:id/reply-dev', async ({ id }, _, b) => (await replyRemote(id, String(b.text || '').trim())) || (() => { throw V.httpError(400, 'not a report sent to the developer'); })());
 route('POST', '/api/tasks/:id/run', ({ id }, _, b) => publicRun(startRun(id, { brief: b.brief, agent: b.agent, now: !!b.now })));
