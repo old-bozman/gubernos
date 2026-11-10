@@ -10,6 +10,10 @@ Submitted from Google Cloud Console → Google Auth Platform, on the project tha
 
 ## 1. Before submitting (the owner)
 
+State on 2026-11-10: In production; branding has home page, privacy link and the authorised domain; Data access lists
+only the three calendar scopes, with the calendar.events justification (calendarlist and freebusy count as
+non-sensitive there). Open: the gubernos.app TXT record for Search Console, the logo, the demo video.
+
 - [ ] **Audience**: publishing status **In production** (in Testing, sign-ins expire after 7 days and only listed test users get in).
 - [ ] **Domain**: gubernos.app verified in Google Search Console by the same Google account (Google Auth Platform → Branding links to it).
 - [ ] **Branding**:
@@ -59,7 +63,7 @@ the user subscribes to.
 - How to remove access: Settings → Your Mac → Google → Disconnect, or myaccount.google.com/permissions.
 - Remove the line "Google hasn't verified Gubernos yet… at most 100 people" once verified.
 
-## 4. Limited Use statement (the owner's decision)
+## 4. Limited Use statement (decided 2026-11-10: state it)
 
 Google asks apps with sensitive scopes to follow the Google API Services User Data Policy, including the Limited Use
 requirements, and most verified apps state it in the policy:

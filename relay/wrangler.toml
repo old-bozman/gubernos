@@ -20,7 +20,7 @@ TUNNEL_DOMAIN = "gubernos.dev"
 CF_ACCOUNT_ID = "d783ff8d4774b998bfccd91f53ded87b"
 CF_ZONE_ID = "756eae3e950f8092ec7bf7e9051abfee"
 # the check before a new tunnel (GET /check): the Turnstile widget for relay.gubernos.app (its secret: wrangler secret put TURNSTILE_SECRET)
-TURNSTILE_SITEKEY = ""
+TURNSTILE_SITEKEY = "0x4AAAAAAF7MxRBpJ106YeLC"
 # new tunnels a day in all; reaching it, or ALERT_TOTAL on the account (Cloudflare's limit: 1,000), opens an alert issue
 DAILY_TUNNELS = "30"
 ALERT_TOTAL = "800"
