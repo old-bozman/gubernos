@@ -1,5 +1,10 @@
 # Gubernos
 
+**A personal OS for people who already pay for Claude or ChatGPT: your agent gets a model of your life, you get the
+screens to steer it. Plain Markdown, open source, no account.** → [gubernos.app](https://gubernos.app)
+
+[![Gubernos: today, your #1 and the agents' work on one screen](https://gubernos.app/og.png)](https://gubernos.app)
+
 **Gubernos** is a personal operating system: one working model of your life, steered day by day. What you are
 responsible for, what you have promised, what you want and what you still have to decide, wired to your projects, your
 tasks and today. It keeps that model in plain Markdown files you own and gives you, and your AI agents (Claude Code,
@@ -14,6 +19,13 @@ Gubernos is not affiliated with any of them.
 
 **Before you install: you need an AI subscription.** Claude with Claude Code (Pro or higher), or any ChatGPT subscription. Gubernos runs on it: the first interview, the chat and the agents all need it. Don't have one? Get it first: [Claude plans](https://claude.com/pricing) · [ChatGPT plans](https://chatgpt.com/pricing).
 
+**The easiest way: let your AI agent do the setup**, on a Mac, Linux or Windows. Open Claude Code or Codex (the table in [SETUP.md](SETUP.md) shows
+how to get one) and paste:
+
+```
+Install Gubernos for me: read https://raw.githubusercontent.com/old-bozman/gubernos/main/SETUP.md and do the part "For the agent".
+```
+
 **On your Mac** (macOS 13 or later), no Terminal needed:
 
 1. Download **[Gubernos.dmg](https://github.com/old-bozman/gubernos/releases/latest/download/Gubernos.dmg)**, open it and double-click **Gubernos**. macOS asks whether to open an app
@@ -22,27 +34,20 @@ Gubernos is not affiliated with any of them.
    A few minutes, and Gubernos runs on your Mac.
 3. Gubernos interviews you, by voice if you like: about 10 minutes, and it ends with your plan for today.
 
+**On Windows:** in PowerShell, `irm https://gubernos.app/install.ps1 | iex` (it gets WSL and Ubuntu when they're missing). **On Linux:** `curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash -s -- --wizard`. Then the same setup page in your browser ([more](docs/install.md#linux-or-windows-in-wsl)).
+
+By hand in the Terminal: `curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash`
+(details: [docs/install.md](docs/install.md)).
+
 **On your iPhone:**
 
 1. Install **TestFlight** from the App Store.
 2. On the iPhone, open **[testflight.apple.com/join/rBUGmgJG](https://testflight.apple.com/join/rBUGmgJG)** → **Accept** →
    **Install**.
-3. On the Mac, Gubernos → **Connect your iPhone** → **Set up**, then point the iPhone's Camera at the code. The phone
-   keeps a copy of your files from the Mac, so it works when the Mac is away too.
+3. On the computer, Gubernos → ☰ → **Settings** → **Your Mac** → **iPhone and other devices** → **Connect your iPhone**,
+   then point the iPhone's Camera at the code. The phone keeps a copy of your files, so it works when the computer is away too.
 
 **On Android:** open Gubernos in Chrome and install it as an app ([how](docs/install.md#android)).
-
-**On Windows:** in PowerShell, `irm https://gubernos.app/install.ps1 | iex` (it gets WSL and Ubuntu when they're missing). **On Linux:** `curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash -s -- --wizard`. Then the same setup page in your browser ([more](docs/install.md#linux-or-windows-in-wsl)).
-
-**Or let your AI agent do the setup**, on a Mac, Linux or Windows. Open Claude Code or Codex (the table in [SETUP.md](SETUP.md) shows
-how to get one) and paste:
-
-```
-Install Gubernos for me: read https://raw.githubusercontent.com/old-bozman/gubernos/main/SETUP.md and do the part "For the agent".
-```
-
-By hand in the Terminal: `curl -fsSL https://raw.githubusercontent.com/old-bozman/gubernos/main/install.sh | bash`
-(details: [docs/install.md](docs/install.md)).
 
 Feedback: in TestFlight take a screenshot → **Share Beta Feedback**, or open an issue here.
 
