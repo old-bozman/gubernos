@@ -338,7 +338,8 @@ cloudflare-tunnel() {
     if [[ -z "$code" ]]; then
       code=$(node -p 'require("crypto").randomBytes(16).toString("hex")')
       echo "  One check first, in the browser (a person confirms each new address): $TUNNEL_RELAY/check?c=$code" >&2
-      if [[ $OS == Linux ]]; then { wslview "$TUNNEL_RELAY/check?c=$code" || xdg-open "$TUNNEL_RELAY/check?c=$code"; } >/dev/null 2>&1 || true
+      if [[ -n "${GUBERNOS_NO_LAUNCHD:-}" ]]; then :  # tests: nothing opened
+      elif [[ $OS == Linux ]]; then { wslview "$TUNNEL_RELAY/check?c=$code" || xdg-open "$TUNNEL_RELAY/check?c=$code"; } >/dev/null 2>&1 || true
       else open "$TUNNEL_RELAY/check?c=$code" >/dev/null 2>&1 || true; fi
     fi
     for _ in $(seq 1 100); do
