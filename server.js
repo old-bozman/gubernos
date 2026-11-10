@@ -3,6 +3,7 @@ import http from 'node:http';
 import { spawn, execFile } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import zlib from 'node:zlib';
 import * as V from './lib/vault.js';
 import { runs, startRun, agentsAvailable, stopRun, publicRun } from './lib/runner.js';
 import { transcribe, interpret, warm, vlog, voiceAvailable, voiceStatus } from './lib/voice.js';
@@ -339,7 +340,11 @@ const server = http.createServer(async (req, res) => {
         if (req.headers['x-gubernos-at']) console.log(`[offline] ${req.method} ${url.pathname} queued on the phone at ${req.headers['x-gubernos-at']}${req.headers['x-gubernos-why'] ? ` — direct write failed: ${decodeURIComponent(String(req.headers['x-gubernos-why'])).slice(0, 500)}` : ''}`);
         const out = await requestClock.run({ at }, () => r.handler(routeParams(m.groups), Object.fromEntries(url.searchParams), body));
         if (req.method !== 'GET') changed(true);
-        res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(out));
+        // big answers (the state is ~200 KB) go compressed: the phone gets them through a tunnel, 2026-11-10 one outlasted its limit
+        const text = JSON.stringify(out);
+        if (text?.length > 20000 && /\bgzip\b/.test(req.headers['accept-encoding'] || '')) {
+          res.writeHead(200, { 'Content-Type': 'application/json', 'Content-Encoding': 'gzip', Vary: 'Accept-Encoding' }).end(zlib.gzipSync(text));
+        } else res.writeHead(200, { 'Content-Type': 'application/json' }).end(text);
         return;
       }
       res.writeHead(404, { 'Content-Type': 'application/json' }).end('{"error":"not found"}');

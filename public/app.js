@@ -101,7 +101,11 @@ window.addEventListener('unhandledrejection', (e) => noteErr(e.reason?.message |
 
 async function api(method, url, body, waitMs) {
   const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined, signal: waitMs ? AbortSignal.timeout(waitMs) : undefined });
-  const j = await r.json().catch(() => ({}));
+  // AICODE-NOTE: an answer that came but can't be read (cut off by the time limit or the tunnel) is an error, not {}:
+  // 2026-11-10 the state's body stalled past the limit, {} became S.data and every screen broke on S.data.inbox.length
+  let j;
+  // an empty answer is {} (a route that returns nothing)
+  try { const t = await r.text(); j = t ? JSON.parse(t) : {}; } catch (e) { if (r.ok) { noteErr(`${method} ${url} → unreadable answer (${e.name})`); throw e; } j = {}; }
   // not paired (another device, after the Mac turned pairing on): reload, and the Mac answers with its pairing page
   if (r.status === 401 && /^not paired/.test(j.error || '') && /^https?:$/.test(location.protocol) && !sessionStorage.getItem('unpaired')) {
     try { sessionStorage.setItem('unpaired', '1'); } catch { /* private window */ }
