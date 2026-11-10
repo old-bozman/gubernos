@@ -4526,7 +4526,9 @@ function googleNote() {
   const local = ['127.0.0.1', 'localhost'].includes(location.hostname);
   const label = on.length ? 'Re-connect' : 'Sign in with Google';
   const link = local ? `<a href="/api/gcal/connect">${label}</a>` : `${label} on the Mac: 127.0.0.1:${location.port || 4747}/api/gcal/connect`;
-  return `${on.length ? `Connected: ${on.join(', ')}` : 'Not connected'} · ${link}${on.length ? ' · <button class="linkbtn" data-act="google-disconnect">Disconnect</button>' : unverified}`;
+  // the shared sign-in asks for the calendar only (lib/google.js); mail, contacts and documents for agents need one's own client
+  const own = g.shared && !g.gmail ? ' <small>Gmail, Contacts and Drive for the agents: with your own Google client, <code>docs/google.md</code>.</small>' : '';
+  return `${on.length ? `Connected: ${on.join(', ')}` : 'Not connected'} · ${link}${on.length ? ' · <button class="linkbtn" data-act="google-disconnect">Disconnect</button>' : unverified}${own}`;
 }
 // Settings → Your Mac → Calendar: where Plan the day reads meetings and puts time blocks — the Mac's own calendars (Calendar.app:
 // whatever accounts are added there, one Allow) or Google's (its own sign-in, Settings → Your Mac → Google). lib/calendar.js

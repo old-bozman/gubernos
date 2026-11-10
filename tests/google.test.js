@@ -35,6 +35,9 @@ test('no own client: the shared one signs in, with PKCE', async () => {
   assert.equal(u.searchParams.get('client_id'), 'shared-id.apps.googleusercontent.com');
   assert.equal(u.searchParams.get('code_challenge_method'), 'S256');
   assert.match(u.searchParams.get('scope'), /calendar\.calendarlist\.readonly/);
+  // the shared client asks for the calendar only: what Google verifies without a yearly audit (lib/google.js)
+  assert.deepEqual(u.searchParams.get('scope').split(' ').filter((x) => !/\/auth\/calendar\./.test(x)), []);
+  assert.deepEqual(st.wanted, ['calendar']);
   const cb = await fetch(`${s.url}/api/gcal/callback?code=c1&state=${u.searchParams.get('state')}`);
   assert.equal(cb.status, 200, await cb.text());
   assert.equal(got.code, 'c1');
