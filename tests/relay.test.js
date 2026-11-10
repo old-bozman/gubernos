@@ -50,19 +50,68 @@ test('anything else is 404', async () => {
   assert.equal((await call('GET', '/')).status, 404);
 });
 
-test('tunnel: a Cloudflare tunnel, its ingress to the Mac port and its DNS name; only its key deletes it', async () => {
-  const tenv = { ...env, CF_API_TOKEN: 'cf', CF_ACCOUNT_ID: 'acc', CF_ZONE_ID: 'zone', TUNNEL_DOMAIN: 'mac.test' };
-  const id = '11111111-2222-3333-4444-555555555555';
+// KV as the Worker has it (get / put / delete), in memory
+const kv = () => { const m = new Map(); return { m, get: async (k) => m.get(k) ?? null, put: async (k, v) => { m.set(k, v); }, delete: async (k) => { m.delete(k); } }; };
+const CODE = 'a'.repeat(32), CODE2 = 'b'.repeat(32);
+const tunnelEnv = () => ({ ...env, CF_API_TOKEN: 'cf', CF_ACCOUNT_ID: 'acc', CF_ZONE_ID: 'zone', TUNNEL_DOMAIN: 'mac.test', TURNSTILE_SITEKEY: 'site', TURNSTILE_SECRET: 'sec', DAILY_TUNNELS: '2', ALERT_TOTAL: '800', TUNNELS: kv() });
+const stubCloudflare = (id, { total = 5, human = true } = {}) => {
   globalThis.fetch = async (url, init = {}) => {
     calls.push({ url: String(url), init });
-    const ok = (result) => reply(200, { success: true, result });
+    const ok = (result, extra = {}) => reply(200, { success: true, result, ...extra });
+    if (String(url).includes('turnstile/v0/siteverify')) return reply(200, { success: human && init.body.get('response') === 'good' });
+    if (/\/issues$/.test(url)) return reply(201, { number: 9 });
     if (init.method === 'POST' && url.endsWith('/cfd_tunnel')) return ok({ id, token: 'TOK' });
+    if (url.includes('/cfd_tunnel?is_deleted=false')) return ok([], { result_info: { total_count: total } });
     if (init.method === 'GET' && url.includes('/dns_records?')) return ok([{ id: 'd1' }]);
     return ok({});
   };
+};
+
+test('tunnel: a person passes the check first; the code is used up', async () => {
+  const tenv = tunnelEnv();
+  stubCloudflare('11111111-2222-3333-4444-555555555555');
   const tcall = (method, path, body) => worker.fetch(new Request(`https://relay.test${path}`, { method, body: body ? JSON.stringify(body) : undefined }), tenv);
-  assert.equal((await tcall('POST', '/tunnel', { port: 80 })).status, 400);
-  const t = await (await tcall('POST', '/tunnel', { port: 4748 })).json();
+  assert.equal((await tcall('POST', '/tunnel', { port: 4748 })).status, 400, 'no code: an old installer');
+  assert.equal((await tcall('POST', '/tunnel', { port: 4748, code: CODE })).status, 428, 'not checked yet');
+  const pageRes = await tcall('GET', `/check?c=${CODE}`);
+  const html = await pageRes.text(); assert.match(html, /challenges\.cloudflare\.com\/turnstile/); assert.match(html, /data-sitekey="site"/);
+  assert.equal((await tcall('POST', '/check', { code: CODE, token: 'bad' })).status, 403, 'Turnstile said no');
+  assert.equal((await tcall('POST', '/tunnel', { port: 4748, code: CODE })).status, 428);
+  assert.equal((await tcall('POST', '/check', { code: CODE, token: 'good' })).status, 200);
+  assert.equal((await tcall('POST', '/tunnel', { port: 4748, code: CODE })).status, 200);
+  assert.equal((await tcall('POST', '/tunnel', { port: 4748, code: CODE })).status, 428, 'one tunnel per check');
+});
+
+test('tunnel: a daily cap in all, and the developer is alerted once', async () => {
+  const tenv = tunnelEnv();
+  stubCloudflare('11111111-2222-3333-4444-555555555555');
+  const tcall = (method, path, body) => worker.fetch(new Request(`https://relay.test${path}`, { method, body: body ? JSON.stringify(body) : undefined }), tenv);
+  const make = async (code) => { await tcall('POST', '/check', { code, token: 'good' }); return (await tcall('POST', '/tunnel', { port: 4748, code })).status; };
+  assert.equal(await make(CODE), 200);
+  assert.equal(await make(CODE2), 200);
+  assert.equal(await make('c'.repeat(32)), 503, 'the third today');
+  assert.equal(await make('d'.repeat(32)), 503);
+  assert.equal(calls.filter((c) => /\/issues$/.test(c.url)).length, 1, 'one alert a day');
+  assert.match(JSON.parse(calls.find((c) => /\/issues$/.test(c.url)).init.body).title, /daily limit/);
+});
+
+test('tunnel: near Cloudflare’s 1,000 the developer is alerted', async () => {
+  const tenv = tunnelEnv();
+  stubCloudflare('11111111-2222-3333-4444-555555555555', { total: 801 });
+  const tcall = (method, path, body) => worker.fetch(new Request(`https://relay.test${path}`, { method, body: body ? JSON.stringify(body) : undefined }), tenv);
+  await tcall('POST', '/check', { code: CODE, token: 'good' });
+  assert.equal((await tcall('POST', '/tunnel', { port: 4748, code: CODE })).status, 200);
+  assert.match(JSON.parse(calls.find((c) => /\/issues$/.test(c.url)).init.body).title, /801 tunnels/);
+});
+
+test('tunnel: a Cloudflare tunnel, its ingress to the Mac port and its DNS name; only its key deletes it', async () => {
+  const tenv = tunnelEnv();
+  const id = '11111111-2222-3333-4444-555555555555';
+  stubCloudflare(id);
+  const tcall = (method, path, body) => worker.fetch(new Request(`https://relay.test${path}`, { method, body: body ? JSON.stringify(body) : undefined }), tenv);
+  assert.equal((await tcall('POST', '/tunnel', { port: 80, code: CODE })).status, 400);
+  await tcall('POST', '/check', { code: CODE, token: 'good' });
+  const t = await (await tcall('POST', '/tunnel', { port: 4748, code: CODE })).json();
   assert.equal(t.id, id); assert.equal(t.token, 'TOK');
   assert.match(t.hostname, /^m-[0-9a-f]{12}\.mac\.test$/);
   const cfg = JSON.parse(calls.find((c) => c.url.endsWith('/configurations')).init.body);

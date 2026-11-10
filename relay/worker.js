@@ -17,11 +17,19 @@
 //     http://localhost:<port> on that Mac (its proxy port, where only paired devices get in: lib/pair.js), and the DNS name.
 //     One level under the domain, so Universal SSL covers it. The Mac runs cloudflared with the token. The tunnel ends TLS
 //     at Cloudflare; we don't store the traffic, Cloudflare keeps its own request data.
+//     A person passes a check first (2026-11-10, before any public launch: an open POST let anyone mint tunnels and names
+//     under gubernos.dev on the developer's account; one serving phishing would put the domain on blocklists and break
+//     every phone's link). The Mac makes a one-time code and the person opens GET /check?c=<code> (Cloudflare Turnstile);
+//     passing it grants that code for 10 minutes. POST /tunnel {port, code} answers 428 until then (setup.sh asks again
+//     every few seconds), then uses the code up. No more than DAILY_TUNNELS a day in all; reaching that, or ALERT_TOTAL
+//     tunnels on the account (Cloudflare's limit is 1,000), opens an issue in FEEDBACK_REPO once a day (the developer's alert).
+//   GET  /check?c=<code>  the check page;  POST /check {code, token}  → {ok}: Turnstile's answer verified, the code granted
 //   DELETE /tunnel/<id>?key=…                            → the tunnel and its DNS name gone (a reinstall, or leaving)
 // key = HMAC(tunnel id): only the Mac that made a tunnel can delete it.
 // Secrets: GITHUB_TOKEN, KEY_SECRET, APNS_KEY (the .p8 text), CF_API_TOKEN (Account: Cloudflare Tunnel Edit; Zone
 // TUNNEL_DOMAIN: DNS Edit) (wrangler secret put …). Vars: FEEDBACK_REPO, APNS_KEY_ID, APNS_TEAM_ID, APNS_TOPIC,
-// CF_ACCOUNT_ID, CF_ZONE_ID, TUNNEL_DOMAIN. Bindings: LIMIT (reports per IP), PUSH_LIMIT (pushes per IP), TUNNEL_LIMIT.
+// CF_ACCOUNT_ID, CF_ZONE_ID, TUNNEL_DOMAIN, TURNSTILE_SITEKEY, DAILY_TUNNELS, ALERT_TOTAL; secret TURNSTILE_SECRET.
+// Bindings: LIMIT (reports per IP), PUSH_LIMIT (pushes per IP), TUNNEL_LIMIT, TUNNELS (KV: granted codes, the day's count).
 const MAX = 2 * 1024 * 1024;
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json' } });
 const enc = new TextEncoder();
@@ -129,10 +137,31 @@ async function cf(env, method, path, body) {
   if (!r.ok || j.success === false) throw new Error(`Cloudflare ${method} ${path.split('/').slice(0, 4).join('/')}: ${(j.errors || []).map((e) => e.message).join('; ') || r.status}`);
   return j.result;
 }
+const CODE_RE = /^[0-9a-f]{32}$/;
+const day = () => new Date().toISOString().slice(0, 10);
+// the developer's alert: an issue in the feedback repo (it reaches the dev session's queue too), once a day per reason
+async function alert(env, what, title, body) {
+  const k = `alerted:${what}:${day()}`;
+  if (await env.TUNNELS.get(k)) return;
+  await env.TUNNELS.put(k, '1', { expirationTtl: 2 * 86400 });
+  await gh(env, 'POST', `/repos/${env.FEEDBACK_REPO}/issues`, { title, body }).catch(() => {});
+}
+
 async function tunnel(req, env) {
   let r; try { r = JSON.parse(await req.text()); } catch { return json({ error: 'not JSON' }, 400); }
   const port = Number(r.port);
   if (!Number.isInteger(port) || port < 1024 || port > 65535) return json({ error: 'port: the Mac\'s proxy port, 1024–65535' }, 400);
+  const code = String(r.code || '');
+  if (!CODE_RE.test(code)) return json({ error: 'a check code is needed: update Gubernos, then set up the address again' }, 400);
+  if (!(await env.TUNNELS.get(`grant:${code}`))) return json({ error: 'waiting for the check in the browser', check: `/check?c=${code}` }, 428);
+  if (env.TUNNEL_LIMIT && !(await env.TUNNEL_LIMIT.limit({ key: req.headers.get('cf-connecting-ip') || 'ip?' })).success) return json({ error: 'too many tunnels, try again in a minute' }, 429);
+  const cap = Number(env.DAILY_TUNNELS || 30), countKey = `count:${day()}`, made = Number(await env.TUNNELS.get(countKey) || 0);
+  if (made >= cap) {
+    await alert(env, 'daily', `Relay: ${cap} new tunnels today, the daily limit`, `POST /tunnel turns new Macs away until tomorrow (UTC). If this is real growth, raise DAILY_TUNNELS in relay/wrangler.toml and deploy; if not, look at the tunnels made today in the Cloudflare dashboard (Zero Trust → Networks → Tunnels).`);
+    return json({ error: 'too many new addresses today, try again tomorrow (or use Tailscale: scripts/setup.sh phone --tailscale)' }, 503);
+  }
+  await env.TUNNELS.delete(`grant:${code}`); // one tunnel per check
+  await env.TUNNELS.put(countKey, String(made + 1), { expirationTtl: 2 * 86400 });
   const name = `m-${[...crypto.getRandomValues(new Uint8Array(6))].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
   const hostname = `${name}.${env.TUNNEL_DOMAIN}`, acc = `/accounts/${env.CF_ACCOUNT_ID}/cfd_tunnel`;
   let t;
@@ -145,8 +174,44 @@ async function tunnel(req, env) {
     return json({ error: e.message }, 502);
   }
   const token = t.token || await cf(env, 'GET', `${acc}/${t.id}/token`);
+  // near Cloudflare's 1,000 tunnels per account: time to clean up idle ones or move on (Tunnels for Platforms, our own relay)
+  const all = await fetch(`${env.CF_API || 'https://api.cloudflare.com/client/v4'}${acc}?is_deleted=false&per_page=1`, { headers: { authorization: `Bearer ${env.CF_API_TOKEN}` } })
+    .then((x) => x.json()).then((j) => j.result_info?.total_count).catch(() => null);
+  if (all >= Number(env.ALERT_TOTAL || 800)) await alert(env, 'total', `Relay: ${all} tunnels on the account (Cloudflare's limit is 1,000)`, 'New Macs stop getting addresses at 1,000. Delete tunnels idle for a month, or move to Tunnels for Platforms / our own relay.');
   return json({ id: t.id, hostname, token, key: await sign(env, t.id, 'tunnel') });
 }
+// The check page: Cloudflare Turnstile (managed: usually no puzzle). Its token is verified here and grants the Mac's code.
+const page = (env, code) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gubernos · one check</title><script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<style>body{font:16px/1.5 -apple-system,system-ui,sans-serif;max-width:30rem;margin:12vh auto;padding:0 16px;color:#222;background:#fafaf7}
+@media(prefers-color-scheme:dark){body{color:#eee;background:#1c1c1a}}h1{font-size:1.3rem}#done{display:none}.muted{opacity:.7;font-size:.9rem}</style></head><body>
+<h1>Gubernos: one quick check</h1>
+<div id="ask"><p>Your computer is getting its address for the phone. Confirm you're a person, and it goes on by itself.</p>
+<div class="cf-turnstile" data-sitekey="${env.TURNSTILE_SITEKEY}" data-callback="passed"></div></div>
+<p id="done">Done. Go back to Gubernos: the address appears there in a few seconds. You can close this tab.</p>
+<p id="err" class="muted"></p>
+<p class="muted">Why: anyone can ask for an address, so a person confirms each one. Nothing about you is kept.</p>
+<script>
+async function passed(token) {
+  const r = await fetch('/check', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: ${JSON.stringify(code)}, token }) });
+  if (r.ok) { document.getElementById('ask').style.display = 'none'; document.getElementById('done').style.display = 'block'; }
+  else document.getElementById('err').textContent = 'That didn\u2019t work (' + ((await r.json().catch(() => ({}))).error || r.status) + '). Reload the page to try again.';
+}
+</script></body></html>`;
+
+async function check(req, env) {
+  let r; try { r = JSON.parse(await req.text()); } catch { return json({ error: 'not JSON' }, 400); }
+  const code = String(r.code || ''), token = String(r.token || '');
+  if (!CODE_RE.test(code) || !token) return json({ error: 'code and token' }, 400);
+  const form = new FormData();
+  form.append('secret', env.TURNSTILE_SECRET); form.append('response', token);
+  const ip = req.headers.get('cf-connecting-ip'); if (ip) form.append('remoteip', ip);
+  const v = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body: form }).then((x) => x.json()).catch(() => ({}));
+  if (!v.success) return json({ error: 'the check didn\'t pass' }, 403);
+  await env.TUNNELS.put(`grant:${code}`, '1', { expirationTtl: 600 });
+  return json({ ok: true });
+}
+
 async function untunnel(id, key, env) {
   if (!key || !same(key, await sign(env, id, 'tunnel'))) return json({ error: 'wrong key' }, 403);
   const acc = `/accounts/${env.CF_ACCOUNT_ID}/cfd_tunnel`;
@@ -171,9 +236,14 @@ export default {
       const ok = !env.PUSH_LIMIT || (await env.PUSH_LIMIT.limit({ key: req.headers.get('cf-connecting-ip') || 'ip?' })).success;
       return ok ? push(req, env) : json({ error: 'too many pushes, try again in a minute' }, 429);
     }
-    if (url.pathname === '/tunnel' && req.method === 'POST') {
+    if (url.pathname === '/tunnel' && req.method === 'POST') return tunnel(req, env); // its per-IP limit counts tunnels made, not the Mac asking again
+    if (url.pathname === '/check' && req.method === 'GET') {
+      const c = url.searchParams.get('c') || '';
+      return CODE_RE.test(c) ? new Response(page(env, c), { headers: { 'content-type': 'text/html; charset=utf-8' } }) : json({ error: 'no code' }, 400);
+    }
+    if (url.pathname === '/check' && req.method === 'POST') {
       const ok = !env.TUNNEL_LIMIT || (await env.TUNNEL_LIMIT.limit({ key: req.headers.get('cf-connecting-ip') || 'ip?' })).success;
-      return ok ? tunnel(req, env) : json({ error: 'too many tunnels, try again in a minute' }, 429);
+      return ok ? check(req, env) : json({ error: 'too many checks, try again in a minute' }, 429);
     }
     const tm = url.pathname.match(/^\/tunnel\/([0-9a-f-]{36})$/);
     if (tm && req.method === 'DELETE') return untunnel(tm[1], url.searchParams.get('key') || '', env);

@@ -4,6 +4,7 @@ import { spawn, execFile } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
+import crypto from 'node:crypto';
 import * as V from './lib/vault.js';
 import { runs, startRun, agentsAvailable, stopRun, publicRun } from './lib/runner.js';
 import { transcribe, interpret, warm, vlog, voiceAvailable, voiceStatus } from './lib/voice.js';
@@ -315,8 +316,10 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/phone/setup' && req.method === 'POST') {
       if (!Pair.isLocal(req)) throw V.httpError(403, 'only on the Mac itself');
       const log = fs.openSync(path.join(path.dirname(new URL(import.meta.url).pathname), 'server.log'), 'a');
-      spawn('bash', [path.join(path.dirname(new URL(import.meta.url).pathname), 'scripts/setup.sh'), 'phone'], { detached: true, stdio: ['ignore', log, log] }).unref();
-      res.writeHead(200, { 'Content-Type': 'application/json' }).end('{"ok":true}');
+      // a person passes a check in the browser before the relay makes the address (relay/worker.js /check): the page opens it
+      const code = crypto.randomBytes(16).toString('hex'), relay = process.env.GUBERNOS_TUNNEL_RELAY || 'https://relay.gubernos.app';
+      spawn('bash', [path.join(path.dirname(new URL(import.meta.url).pathname), 'scripts/setup.sh'), 'phone'], { detached: true, stdio: ['ignore', log, log], env: { ...process.env, GUBERNOS_CHECK_CODE: code } }).unref();
+      res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ ok: true, check: `${relay}/check?c=${code}` }));
       return;
     }
     if (url.pathname === '/api/gcal/connect') {

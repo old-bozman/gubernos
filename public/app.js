@@ -3846,7 +3846,12 @@ document.addEventListener('click', async (e) => {
     case 'report': e.preventDefault(); return reportModal();
     case 'licenses': return licensesModal();
     case 'tour': return tourOpen(0);
-    case 'phone-setup': S.phoneSetup = true; renderMain(); return api('POST', '/api/phone/setup').catch((err) => { S.phoneSetup = false; toast(err.message); renderMain(); });
+    case 'phone-setup': { // the relay's check (a person confirms each new address) opens in a tab: opened now, while it's a tap, filled in after
+      S.phoneSetup = true; renderMain();
+      const tab = window.open('', '_blank');
+      return api('POST', '/api/phone/setup').then((x) => { if (x.check && tab) tab.location = x.check; else if (x.check) location.href = x.check; })
+        .catch((err) => { tab?.close(); S.phoneSetup = false; toast(err.message); renderMain(); });
+    }
     case 'onboard-send': return onboardSend();
     case 'onboard-code': { const code = (S.obCode || '').trim(); if (!code) return $('#ob-code')?.focus(); S.obCode = ''; return api('POST', '/api/onboard/connect/code', { code }).then((x) => { S.onboard = x; renderMain(); }).catch(() => {}); }
     case 'onboard-cancel': return api('POST', '/api/onboard/connect/cancel').then((x) => { S.onboard = x; renderMain(); }).catch((err) => toast(err.message));
@@ -4432,7 +4437,7 @@ function phoneHtml() {
       <li><h3>Connect it to this Mac</h3>${p.publicUrl ? `<div class="ph-row"><div class="pair-qr">${qrSvg(p.appLink)}</div>
         <div class="ph-text"><p>Open ${esc(APP_NAME)} on the iPhone once and allow notifications. Then point the Camera at this code → <b>Open in ${esc(APP_NAME)}</b>.</p>
         <p class="muted">The phone reaches this Mac at ${esc(host)}, from anywhere, as long as the Mac is awake. Only devices with this code get in.</p></div></div>`
-    : `<p class="ph-text">This Mac isn’t reachable from the phone yet. <button class="btn primary" data-act="phone-setup" ${S.phoneSetup ? 'disabled' : ''}>${S.phoneSetup ? 'Setting up…' : 'Set up the address'}</button> It gives this Mac an https address through Cloudflare; nothing to sign in to, nothing on the phone. The traffic passes through Cloudflare, under our account, so it could be seen there; we don’t store it. (Or by hand: <code>scripts/setup.sh phone</code>, with <code>--tailscale</code> to use Tailscale.) The code appears here when it’s done.</p>`}</li>
+    : `<p class="ph-text">This Mac isn’t reachable from the phone yet. <button class="btn primary" data-act="phone-setup" ${S.phoneSetup ? 'disabled' : ''}>${S.phoneSetup ? 'Setting up…' : 'Set up the address'}</button> It gives this Mac an https address through Cloudflare: a quick check opens in your browser (a person confirms each new address), nothing to sign in to, nothing on the phone. The traffic passes through Cloudflare, under our account, so it could be seen there; we don’t store it. (Or by hand: <code>scripts/setup.sh phone</code>, with <code>--tailscale</code> to use Tailscale.) The code appears here when it’s done.</p>`}</li>
       <li class="${p.seenAt ? 'ph-ok' : ''}"><h3>${p.seenAt ? '✓ Connected' : 'Waiting for the iPhone…'}</h3>
         <p class="ph-text">${p.seenAt ? `A paired device reached this Mac ${ago}. That’s it: the app on the phone now shows your system.` : 'This turns into ✓ once the phone has connected.'}</p></li>
     </ol></div>`;

@@ -19,6 +19,16 @@ APNS_TOPIC = "app.gubernos"
 TUNNEL_DOMAIN = "gubernos.dev"
 CF_ACCOUNT_ID = "d783ff8d4774b998bfccd91f53ded87b"
 CF_ZONE_ID = "756eae3e950f8092ec7bf7e9051abfee"
+# the check before a new tunnel (GET /check): the Turnstile widget for relay.gubernos.app (its secret: wrangler secret put TURNSTILE_SECRET)
+TURNSTILE_SITEKEY = ""
+# new tunnels a day in all; reaching it, or ALERT_TOTAL on the account (Cloudflare's limit: 1,000), opens an alert issue
+DAILY_TUNNELS = "30"
+ALERT_TOTAL = "800"
+
+# granted check codes (10 minutes) and the day's count of new tunnels
+[[kv_namespaces]]
+binding = "TUNNELS"
+id = "90488fcbf07e49a19bcfe53f2568ae52"
 
 # 5 reports a minute per IP
 [[ratelimits]]
@@ -32,7 +42,7 @@ name = "PUSH_LIMIT"
 namespace_id = "1002"
 simple = { limit = 60, period = 60 }
 
-# 3 new tunnels a minute per IP (a Mac makes one, once)
+# 3 new tunnels a minute per IP (a Mac makes one, once); also checks passed
 [[ratelimits]]
 name = "TUNNEL_LIMIT"
 namespace_id = "1003"

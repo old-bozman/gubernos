@@ -331,7 +331,24 @@ cloudflare-tunnel() {
   local tf="$CFG_DIR/tunnel.json" tok="$CFG_DIR/tunnel.token" pp; pp=$(proxy_port)
   if [[ ! -s "$tok" ]] || [[ "$(node -p 'try{require(process.argv[1]).port}catch{0}' "$tf")" != "$pp" ]]; then
     stop-tunnel >&2 # the port changed: the old one goes
-    local out; out=$(curl -fsS -X POST "$TUNNEL_RELAY/tunnel" -H 'content-type: application/json' -d "{\"port\":$pp}") || die "the relay couldn't make an address for this Mac (try again in a minute)"
+    # A person passes a check in the browser first (relay/worker.js /check: anyone could ask for addresses otherwise). The
+    # app's Set up button opens it with its code (GUBERNOS_CHECK_CODE); from the Terminal or an agent the link is printed,
+    # and opened when there's a browser. The relay answers 428 until the check is passed: ask again every 3 s, 5 minutes.
+    local code="${GUBERNOS_CHECK_CODE:-}" out st ans; ans=$(mktemp)
+    if [[ -z "$code" ]]; then
+      code=$(node -p 'require("crypto").randomBytes(16).toString("hex")')
+      echo "  One check first, in the browser (a person confirms each new address): $TUNNEL_RELAY/check?c=$code" >&2
+      if [[ $OS == Linux ]]; then { wslview "$TUNNEL_RELAY/check?c=$code" || xdg-open "$TUNNEL_RELAY/check?c=$code"; } >/dev/null 2>&1 || true
+      else open "$TUNNEL_RELAY/check?c=$code" >/dev/null 2>&1 || true; fi
+    fi
+    for _ in $(seq 1 100); do
+      st=$(curl -sS -m 30 -o "$ans" -w '%{http_code}' -X POST "$TUNNEL_RELAY/tunnel" -H 'content-type: application/json' -d "{\"port\":$pp,\"code\":\"$code\"}") || st=000
+      [[ $st == 428 ]] || break
+      sleep 3
+    done
+    out=$(cat "$ans"); rm -f "$ans"
+    if [[ $st == 428 ]]; then die "the check in the browser wasn't passed within 5 minutes: set up the address again"; fi
+    [[ $st == 200 ]] || die "the relay couldn't make an address for this Mac: $(node -p 'try{JSON.parse(process.argv[1]).error||""}catch{""}' "$out" 2>/dev/null || true)"
     mkdir -p "$CFG_DIR"; ( umask 077
       node -e 'const j=JSON.parse(process.argv[1]);require("fs").writeFileSync(process.argv[2],JSON.stringify({id:j.id,hostname:j.hostname,key:j.key,port:+process.argv[4]},null,1)+"\n");require("fs").writeFileSync(process.argv[3],j.token)' "$out" "$tf" "$tok" "$pp" )
   fi
