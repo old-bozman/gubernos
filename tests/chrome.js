@@ -39,7 +39,7 @@ async function start(args) {
   let id = 0;
   ws.onmessage = ({ data }) => {
     const m = JSON.parse(data);
-    if (m.id) { const w = waiting.get(m.id); waiting.delete(m.id); return m.error ? w.reject(new Error(m.error.message)) : w.resolve(m.result); }
+    if (m.id) { const w = waiting.get(m.id); if (!w) return; /* its 15 s ran out already: that test failed with it */ waiting.delete(m.id); return m.error ? w.reject(new Error(m.error.message)) : w.resolve(m.result); }
     if (m.method === 'Runtime.exceptionThrown') { const d = m.params.exceptionDetails; errors.push(`exception: ${d.exception?.description || d.text} (${d.url || ''}:${d.lineNumber})`); }
     if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') errors.push(`console.error: ${m.params.args.map((a) => a.value ?? a.description).join(' ')}`);
     if (m.method === 'Log.entryAdded' && m.params.entry.level === 'error') errors.push(`log: ${m.params.entry.text} ${m.params.entry.url || ''}`);
