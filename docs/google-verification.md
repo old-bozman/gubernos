@@ -10,10 +10,12 @@ Submitted from Google Cloud Console → Google Auth Platform, on the project tha
 
 ## 1. Before submitting (the owner)
 
-State on 2026-11-10: In production; branding has home page, privacy link and the authorised domain; Data access lists
-only the three calendar scopes, with the calendar.events justification (calendarlist and freebusy count as
-non-sensitive there). gubernos.app verified in Search Console (Domain property, TXT through Cloudflare); the
-privacy policy states Limited Use. Open: the logo (optional), the demo video, then Submit in the Verification centre.
+State on 2026-11-11: **submitted, under review.** Branding verified and published; Data access lists the three calendar
+scopes with the calendar.events justification; demo video https://youtu.be/4QplY03rQLU (unlisted, on the test account's
+channel, recorded with the demo vault in a separate Chrome profile); the only OAuth client is the Desktop one in the
+video. Google answers by email to the project's developer contact (the owner's Gmail) and in Verification centre →
+View verification progress; reviewers often come back with a question first. Logo not provided (optional; adding one
+later means re-verifying the branding).
 
 - [ ] **Audience**: publishing status **In production** (in Testing, sign-ins expire after 7 days and only listed test users get in).
 - [ ] **Domain**: gubernos.app verified in Google Search Console by the same Google account (Google Auth Platform → Branding links to it).
