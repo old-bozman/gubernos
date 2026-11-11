@@ -144,6 +144,7 @@ async function load() {
   if (S.view === 'logbook') S.logbook = await api('GET', '/api/logbook');
   if (['day', 'reflect'].includes(S.view) && S.day?.date && !S.day.loading) loadDay(S.day.date); // the day file may have changed elsewhere
   render();
+  maybeBrief();
 }
 
 // ---------- dates ----------
@@ -2844,6 +2845,7 @@ function inline(s) {
     .replace(/!?\[\[([^\]|]+\.(?:pdf|png|jpe?g|gif|webp|heic|txt|csv|docx?|xlsx?))\]\]/gi, (_, n) => `<a class="att-file" href="/api/attachment-by-name?name=${encodeURIComponent(n)}" target="_blank" rel="noopener">📎 ${n}</a>`)
     .replace(/!?\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, target, alias) => (obsidianUrl(target) ? `<a class="wl" href="${obsidianUrl(target)}">${alias || target}</a>` : `<span class="wl">${alias || target}</span>`))
     .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+    .replace(/\[([^\]]+)\]\((#\/[\w/.%-]+)\)/g, '<a href="$2">$1</a>') // a screen of the app (the morning brief's tasks)
     .replace(/(^|\s)(https?:\/\/[^\s<]+)/g, '$1<a href="$2" target="_blank" rel="noopener">$2</a>');
 }
 
@@ -5849,6 +5851,30 @@ function closeChat() {
   document.body.classList.remove('chat-on');
   const el = $('#chat'); if (el) el.hidden = true;
 }
+// The morning brief (lib/brief.js): the first time the app opens in the morning, the chat opens with it; later in the day
+// it's one tap away in an empty chat (This morning's brief). Seen on one device = not opened again on another.
+// a task linked in a chat message: on the phone the chat covers the screen, so it steps aside
+document.addEventListener('click', (e) => { if (e.target.closest?.('#chat .md a[href^="#/"]') && matchMedia('(max-width: 800px)').matches) closeChat(); });
+async function maybeBrief() {
+  const d = S.data, h = new Date().getHours();
+  if (!d?.me?.brief || S.briefAsked === d.today || S.view === 'onboard' || h < 5 || h >= 14) return;
+  S.briefAsked = d.today;
+  let st;
+  try { st = await api('GET', '/api/brief/status', undefined, 10000); } catch { S.briefAsked = null; return; }
+  if (!st.enabled || st.seen || (S.chat?.open && S.chat.msgs.length)) return; // mid-conversation: not over it
+  showBrief();
+}
+async function showBrief() {
+  S.chat = { key: 'brief', context: { view: 'today' }, label: 'Morning brief', session: null, msgs: [], busy: true, deep: S.chat?.deep || false, open: true };
+  S.chatPin = 'brief';
+  fitChat(); document.body.classList.add('chat-on'); renderChat();
+  let msg;
+  try { const b = await api('POST', '/api/brief/open', {}, 180000); msg = { role: 'ai', text: b.text, actions: b.actions }; } catch (e) { msg = { role: 'ai', text: `_Couldn't prepare the brief: ${e.message || 'error'}_` }; }
+  if (S.chat?.key !== 'brief') return;
+  S.chat.msgs.push(msg); S.chat.busy = false;
+  if (msg.actions) S.chat.context.brief = `${msg.text}\n\nButtons under it: ${msg.actions.map((a) => (a.type === 'run' ? `▶ Do it: ${a.text}` : 'Plan the day')).join('; ')}`; // what the follow-up talks about
+  renderChat();
+}
 function chatGeneral() { // drop the task/project context → a general conversation about today
   S.chat = { key: 'v:general', context: { view: 'today' }, label: 'Everything', session: null, msgs: [], busy: false, deep: S.chat?.deep, open: true };
   renderChat();
@@ -5858,7 +5884,7 @@ function actionLabel(a) {
   return { add_subtasks: `+ ${a.items.length} step${a.items.length === 1 ? '' : 's'}`, set_due: `◷ Due → ${d}`, set_deadline: `⚑ Deadline → ${d}`,
     create_task: `+ Task: ${(a.text || '').slice(0, 40)}${d ? ` · ${d}` : ''}`, add_note: '✎ Add as note',
     timeblock: `⏱ Block ${a.start ? `${d} ${a.start.slice(11)}` : 'time'}`, open_task: 'Open task',
-    run: `▶ Do it: ${(a.text || '').replace(/\s+/g, ' ').slice(0, 48)}${(a.text || '').length > 48 ? '…' : ''}`, drop_decision: '✕ Not a decision', decision_to: `→ Make it a ${a.text || 'task'}`,
+    plan_day: '▤ Plan the day', run: `▶ Do it: ${(a.text || '').replace(/\s+/g, ' ').slice(0, 48)}${(a.text || '').length > 48 ? '…' : ''}`, drop_decision: '✕ Not a decision', decision_to: `→ Make it a ${a.text || 'task'}`,
     email: `✉ ${a.threadId ? 'Reply' : 'Email'} to ${(a.to || '').replace(/<.*>/, '').trim().slice(0, 28) || '…'}`, link_email: `✉ Link “${(a.subject || 'email').slice(0, 30)}”`,
     set_woop: Object.entries(a.woop || {}).map(([k, v]) => `↯ ${k[0].toUpperCase()}${k.slice(1)}: ${v.length > 60 ? `${v.slice(0, 59)}…` : v}`).join(' · ') }[a.type] || a.type;
 }
@@ -5879,6 +5905,7 @@ function renderChat() {
       : C.key.startsWith('t:') ? ['What should I do next here?', 'What is blocking this?', 'Break it into steps']
       : C.key.startsWith('p:') ? ['Where does this project stand?', 'What is blocking it?', 'Plan my next week here']
       : ['What matters most today?', 'What is overdue and why?', 'What can an agent take over?']).map((q) => `<button class="chip" data-act="chat-suggest">${q}</button>`).join('')}</div>
+      ${S.data?.me?.brief && C.key.startsWith('v:') ? '<button class="linkbtn" data-act="chat-brief">This morning’s brief</button>' : ''}
       ${S.data?.voice === false ? '' : '<p>Or hold the mic and speak.</p>'}</div>`}
       ${C.msgs.map((m, i) => m.role === 'user' ? userBubble(m.text, m.atts)
         : `<div class="msg ai"><div class="md">${md(m.text, false)}</div>
@@ -5933,6 +5960,7 @@ function shortTitle(text = '') {
   return s.length <= 80 ? s : `${s.slice(0, 80).replace(/\s+\S*$/, '')}…`;
 }
 async function chatAction(m, k) {
+  if (S.chat.key === 'brief') api('POST', '/api/brief/used', { type: S.chat.msgs[m].actions[k].type }).catch(() => {}); // did the brief lead anywhere
   await runAgentAction(S.chat.msgs[m].actions[k], S.chat.msgs[m].text);
   renderChat();
 }
@@ -5940,6 +5968,7 @@ async function chatAction(m, k) {
 async function runAgentAction(a, replyText = '') {
   const t = a.taskId && taskById(a.taskId);
   const need = () => { if (!t) throw new Error('task not found'); };
+  if (a.type === 'plan_day') { closeChat(); location.hash = '#/plan'; return; }
   try {
     if (a.type === 'add_subtasks') { need(); await patch(t.id, { addSubtasks: a.items }); toast(`Added ${a.items.length} steps`); }
     if (a.type === 'set_due' || a.type === 'set_deadline') {
@@ -5995,6 +6024,7 @@ document.addEventListener('click', (e) => {
   const act = b.dataset.act;
   if (act === 'chat-close') return closeChat();
   if (act === 'chat-general') return chatGeneral();
+  if (act === 'chat-brief') return showBrief();
   if (act === 'chat-deep') { S.chat.deep = !S.chat.deep; return renderChat(); }
   if (act === 'chat-send') { const v = $('#chat-in').value; return chatSend(v); }
   if (act === 'chat-suggest') return chatSend(b.textContent);

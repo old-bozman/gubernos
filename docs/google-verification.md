@@ -57,8 +57,8 @@ the user subscribes to.
 - Where the data goes: between the user's computer and Google directly; kept on that computer (the sign-in in
   `~/.config/gubernos`); shown on the user's iPhone over their phone connection (Cloudflare Tunnel or Tailscale, as the
   phone section says). **Event titles and times are not sent to the AI model**: Plan the day gives the model only the
-  number of free hours today. (Keep this true: lib/planner.js. A future morning brief that would show meetings to the
-  model changes this sentence and needs a re-check.)
+  number of free hours today. (Keep this true: lib/planner.js. The morning brief, lib/brief.js, does give the model today's
+  events; it is on only on the developer's own install, and turning it on for others changes this sentence first.)
 - No selling, no advertising, no training of AI models on Google data; no human reads it, except in a bug report the
   user sends with screenshots ticked.
 - How to remove access: Settings → Your Mac → Google → Disconnect, or myaccount.google.com/permissions.

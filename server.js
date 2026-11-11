@@ -25,6 +25,7 @@ import * as Daily from './lib/daily.js';
 import * as Oura from './lib/oura.js';
 import * as Timers from './lib/timers.js';
 import { ask } from './lib/chat.js';
+import * as Brief from './lib/brief.js';
 import * as Triage from './lib/triage.js';
 import * as Backup from './lib/backup.js';
 import * as Onboarding from './lib/onboarding.js';
@@ -227,6 +228,10 @@ route('POST', '/api/plan/draft', (_, __, b) => Plan.draft({ refresh: !!b.refresh
 route('GET', '/api/plan/estimates', () => Plan.cachedEstimates());
 route('POST', '/api/search/semantic', (_, __, b) => semanticSearch(String(b.q || '')));
 route('POST', '/api/chat', (_, __, b) => ask(b));
+// the morning brief (lib/brief.js): status on each open, the brief itself (built now if the Mac slept through the morning)
+route('GET', '/api/brief/status', () => Brief.status());
+route('POST', '/api/brief/open', (_, __, b) => Brief.open({ seen: b.seen !== false }));
+route('POST', '/api/brief/used', (_, __, b) => Brief.used(b));
 
 function streamRun(req, res, id) {
   const run = runs.get(id);
