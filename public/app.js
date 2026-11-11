@@ -5873,7 +5873,7 @@ async function showBrief() {
   try { const b = await api('POST', '/api/brief/open', {}, 180000); msg = { role: 'ai', text: b.text, actions: b.actions }; } catch (e) { msg = { role: 'ai', text: `_Couldn't prepare the brief: ${e.message || 'error'}_` }; }
   if (S.chat?.key !== 'brief') return;
   S.chat.msgs.push(msg); S.chat.busy = false;
-  if (msg.actions) S.chat.context.brief = `${msg.text}\n\nButtons under it: ${msg.actions.map((a) => (a.type === 'run' ? `▶ Do it: ${a.text}` : 'Plan the day')).join('; ')}`; // what the follow-up talks about
+  if (msg.actions) S.chat.context.brief = `${msg.text}\n\nButtons under it: ${msg.actions.map((a) => (a.type === 'run' ? `▶ Do it: ${a.text}` : a.type === 'create_task' ? `+ Task: ${a.text}` : 'Plan the day')).join('; ')}`; // what the follow-up talks about
   renderChat();
 }
 function chatGeneral() { // drop the task/project context → a general conversation about today

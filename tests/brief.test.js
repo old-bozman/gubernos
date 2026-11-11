@@ -17,7 +17,7 @@ if (a[0] === 'auth') { console.log(JSON.stringify({ loggedIn: true })); process.
 const prompt = a[a.indexOf('-p') + 1];
 fs.writeFileSync(${JSON.stringify(path.join(d, 'prompt.txt'))}, prompt);
 const id = (prompt.match(/^- (\\d{8}-\\d{6}-[\\w-]+) ·/m) || [])[1] || null;
-console.log(JSON.stringify({ structured_output: { advice: ['Protect the morning for the tax return.'], offers: [{ text: 'Collect last year’s statements into the task.', task_id: id }, { text: 'Made-up work', task_id: 'no-such-task' }] }, total_cost_usd: 0 }));
+console.log(JSON.stringify({ structured_output: { advice: ['Protect the morning for the tax return.'], offers: [{ text: 'Collect last year’s statements into the task.', task_id: id }, { text: 'Made-up work', task_id: 'no-such-task' }], tasks: [{ title: 'Prepare questions for the 14:00 intro', why: 'nothing prepared yet' }] }, total_cost_usd: 0 }));
 `, { mode: 0o755 });
   const s = await startServer({ GUBERNOS_CLAUDE_BIN: fake, GUBERNOS_BRIEF: '1' });
   try {
@@ -29,7 +29,10 @@ console.log(JSON.stringify({ structured_output: { advice: ['Protect the morning 
     assert.match(b.text, /#1:\*\* not set yet/);
     assert.ok(b.text.includes(`[(tax) File the tax return](#/task/${t.id})`), b.text);
     assert.match(b.text, /\*\*How to run today\*\*\n- Protect the morning/);
-    assert.deepEqual(b.actions.map((x) => [x.type, x.taskId ?? null]), [['run', t.id], ['run', null], ['plan_day', null]], 'an id the model made up is not used');
+    assert.deepEqual(b.actions.map((x) => [x.type, x.taskId ?? null]), [['run', t.id], ['run', null], ['create_task', null], ['plan_day', null]], 'an id the model made up is not used');
+    const nt = b.actions.find((x) => x.type === 'create_task'); // a meeting that needs a task: + Task, due today
+    assert.equal(nt.text, 'Prepare questions for the 14:00 intro'); assert.equal(nt.date, new Date().toLocaleDateString('sv'));
+    assert.match(b.text, /\*\*From your calendar\*\*\n- Prepare questions for the 14:00 intro · nothing prepared yet/);
     assert.match(fs.readFileSync(path.join(d, 'prompt.txt'), 'utf8'), /The agenda:/);
     assert.equal((await s.get('/api/brief/status')).body.seen, true, 'seen: another device doesn’t open it again');
     assert.equal((await s.post('/api/brief/open', {})).body.at, b.at, 'built once a day');
