@@ -8,6 +8,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { startServer } from './helpers.js';
+import { openPage } from './chrome.js';
 
 let s, stub, got, revoked;
 const shared = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'gg-')), 'google-client.json');
@@ -45,9 +46,21 @@ test('no own client: the shared one signs in, with PKCE', async () => {
   assert.equal((await s.get('/api/gcal/status')).body.googleCalendar, true);
 });
 
-test('disconnect revokes at Google and forgets the token', async () => {
+// 2026-11-11 (recording the demo for Google): Settings said Gubernos is about mail, contacts and docs, and its Disconnect did nothing
+test('Settings: the shared sign-in is about the calendar; Disconnect revokes at Google and forgets the token', { timeout: 60000 }, async () => {
   assert.equal((await s.get('/api/gcal/status')).body.googleCalendar, true);
-  assert.equal((await s.post('/api/gcal/disconnect', {})).status, 200);
+  const page = await openPage();
+  try {
+    await page.goto(`${s.url}/#/settings`);
+    const row = `[...document.querySelectorAll(".settings .set-row")].find((r) => r.querySelector(".set-l").firstChild.textContent.trim() === "Google")`;
+    assert.ok(await page.waitFor(`${row}?.innerText.includes("Connected: Calendar")`, 15000), 'Settings never showed the connection');
+    const text = await page.eval(`${row}.innerText`);
+    assert.match(text, /your calendar/);
+    assert.doesNotMatch(text, /mail|contacts|docs|Drive/i, text);
+    await page.eval(`${row}.querySelector("[data-act=google-disconnect]").click()`);
+    assert.ok(await page.waitFor(`${row}?.innerText.includes("Not connected")`, 10000), await page.eval(`${row}.innerText`));
+    assert.deepEqual(page.errors.filter((e) => !/api\/gcal\/calendars/.test(e)), []); // the calendar list asks Google itself: none here
+  } finally { await page.close(); }
   assert.equal(revoked.token, 'r');
   assert.equal((await s.get('/api/gcal/status')).body.googleCalendar, false);
 });

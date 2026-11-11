@@ -4251,7 +4251,7 @@ function settingsHtml() {
     ${voiceSettingsHtml()}
     ${agentsSettingsHtml()}
     ${calendarHtml()}
-    <div class="set-row"><div class="set-l">Google<small>mail, contacts and docs for agents${S.gstatus?.source === 'google' ? ', and your calendar' : ''}</small></div><div class="set-note">${googleNote()}</div></div>
+    <div class="set-row"><div class="set-l">Google<small>${S.gstatus?.shared && !S.gstatus?.gmail ? 'your calendar: meetings for Plan the day and the time blocks you apply' : `mail, contacts and docs for agents${S.gstatus?.source === 'google' ? ', and your calendar' : ''}`}</small></div><div class="set-note">${googleNote()}</div></div>
     ${macFocusHtml()}
     ${devicesHtml()}
     ${updatesHtml()}
@@ -4548,7 +4548,8 @@ function googleNote() {
   const label = on.length ? 'Re-connect' : 'Sign in with Google';
   const link = local ? `<a href="/api/gcal/connect">${label}</a>` : `${label} on the Mac: 127.0.0.1:${location.port || 4747}/api/gcal/connect`;
   // the shared sign-in asks for the calendar only (lib/google.js); mail, contacts and documents for agents need one's own client
-  const own = g.shared && !g.gmail ? ' <small>Gmail, Contacts and Drive for the agents: with your own Google client, <code>docs/google.md</code>.</small>' : '';
+  // (Gmail, Contacts and Drive for agents need one's own client: docs/google.md, not here — Gubernos' sign-in is about the calendar)
+  const own = '';
   return `${on.length ? `Connected: ${on.join(', ')}` : 'Not connected'} · ${link}${on.length ? ' · <button class="linkbtn" data-act="google-disconnect">Disconnect</button>' : unverified}${own}`;
 }
 // Settings → Your Mac → Calendar: where Plan the day reads meetings and puts time blocks — the Mac's own calendars (Calendar.app:
@@ -4581,7 +4582,7 @@ document.addEventListener('change', (e) => {
   saveSetting(S.gstatus?.source === 'macos' ? { macCalendars: S.gcals.every((y) => y.on) ? null : read } : { calendars: read }).then(() => { S.planInfoAt = 0; S.planFree = null; });
 });
 document.addEventListener('click', (e) => {
-  const b = e.target.closest('.settings [data-act^="set-"]');
+  const b = e.target.closest('.settings [data-act^="set-"], .settings [data-act="google-disconnect"]'); // 2026-11-11: Disconnect wasn't matched and did nothing
   if (!b) return;
   e.stopPropagation();
   const v = b.dataset.val;

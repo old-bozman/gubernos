@@ -146,7 +146,7 @@ route('POST', '/api/focus/why', (_, __, b) => why(String(b.taskId || ''), Array.
 // Calendar time-blocking, the Mac's calendars or Google's (lib/calendar.js; events only after the UI's confirm step).
 route('GET', '/api/ai', () => AI.providers()); // the model behind the app (Settings → Your Mac → Model): lib/llm.js
 route('GET', '/api/gcal/status', () => Cal.status());
-route('POST', '/api/gcal/disconnect', () => G.disconnect());
+route('POST', '/api/gcal/disconnect', async () => { const r = await G.disconnect(); Plan.forgetFree(); return r; });
 route('POST', '/api/calendar/mac/access', async () => { const access = await Cal.requestMacAccess(); Plan.forgetFree(); return { access }; }); // the system dialog, on the Mac's screen
 route('GET', '/api/gcal/calendars', () => Cal.listCalendars());
 route('POST', '/api/gcal/slots', (_, __, b) => Cal.freeSlots({ minutes: Number(b.minutes) || 50, from: b.from || null }));
@@ -333,8 +333,10 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/gcal/callback') {
       await G.callback(Object.fromEntries(url.searchParams));
+      Plan.forgetFree(); // 2026-11-11: Plan the day kept "no calendar connected" for two minutes after signing in
+      // back to the app by itself (the sign-in opened in the app's own tab)
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
-        .end('<meta name="viewport" content="width=device-width"><body style="font:16px system-ui;padding:40px">✓ Google connected. You can close this tab and go back to the app.</body>');
+        .end('<meta name="viewport" content="width=device-width"><meta http-equiv="refresh" content="2;url=/#/settings"><body style="font:16px system-ui;padding:40px">✓ Google connected. <a href="/#/settings">Back to Gubernos</a></body>');
       return;
     }
     const rs = url.pathname.match(/^\/api\/runs\/([^/]+)\/stream$/);
