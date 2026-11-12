@@ -24,7 +24,9 @@ console.log(JSON.stringify({ structured_output: { advice: ['Protect the morning 
     const t = (await s.post('/api/tasks', { title: '[tax] File the tax return', priority: 'urgent', due: new Date().toLocaleDateString('sv') })).body;
     assert.equal((await s.get('/api/state')).body.me.brief, true);
     assert.deepEqual((await s.get('/api/brief/status')).body, { enabled: true, ready: false, seen: false });
-    const b = (await s.post('/api/brief/open', {})).body;
+    const b = (await s.post('/api/brief/open', { seen: false })).body; // the app: seen only once it's on a visible screen
+    assert.equal((await s.get('/api/brief/status')).body.seen, false, 'built but not on a screen yet: shown at the next open');
+    await s.post('/api/brief/seen', {});
     assert.match(b.text, /\*\*Today\*\*/);
     assert.match(b.text, /#1:\*\* not set yet/);
     assert.ok(b.text.includes(`[(tax) File the tax return](#/task/${t.id})`), b.text);

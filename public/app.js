@@ -5870,12 +5870,21 @@ async function showBrief() {
   S.chatPin = 'brief';
   fitChat(); document.body.classList.add('chat-on'); renderChat();
   let msg;
-  try { const b = await api('POST', '/api/brief/open', {}, 180000); msg = { role: 'ai', text: b.text, actions: b.actions }; } catch (e) { msg = { role: 'ai', text: `_Couldn't prepare the brief: ${e.message || 'error'}_` }; }
+  // AICODE-NOTE: seen only once it is on a visible screen. 2026-11-12 the app was opened at 08:22, the brief took ~8 s to
+  // build, the app was left before it came, and the server had already marked it seen: no brief that day on any device.
+  try { const b = await api('POST', '/api/brief/open', { seen: false }, 180000); msg = { role: 'ai', text: b.text, actions: b.actions }; } catch (e) { msg = { role: 'ai', text: `_Couldn't prepare the brief: ${e.message || 'error'}_` }; }
   if (S.chat?.key !== 'brief') return;
   S.chat.msgs.push(msg); S.chat.busy = false;
   if (msg.actions) S.chat.context.brief = `${msg.text}\n\nButtons under it: ${msg.actions.map((a) => (a.type === 'run' ? `▶ Do it: ${a.text}` : a.type === 'create_task' ? `+ Task: ${a.text}` : 'Plan the day')).join('; ')}`; // what the follow-up talks about
   renderChat();
+  S.briefShown = !!msg.actions; briefSeen();
 }
+function briefSeen() { // the brief is on a screen someone looks at: other devices don't open it again
+  if (!S.briefShown || document.hidden || S.chat?.key !== 'brief' || !S.chat.open) return;
+  S.briefShown = false;
+  api('POST', '/api/brief/seen', {}).catch(() => { S.briefShown = true; });
+}
+document.addEventListener('visibilitychange', briefSeen);
 function chatGeneral() { // drop the task/project context → a general conversation about today
   S.chat = { key: 'v:general', context: { view: 'today' }, label: 'Everything', session: null, msgs: [], busy: false, deep: S.chat?.deep, open: true };
   renderChat();

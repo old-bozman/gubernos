@@ -232,6 +232,7 @@ route('POST', '/api/chat', (_, __, b) => ask(b));
 route('GET', '/api/brief/status', () => Brief.status());
 route('POST', '/api/brief/open', (_, __, b) => Brief.open({ seen: b.seen !== false }));
 route('POST', '/api/brief/used', (_, __, b) => Brief.used(b));
+route('POST', '/api/brief/seen', () => Brief.seen());
 
 function streamRun(req, res, id) {
   const run = runs.get(id);
