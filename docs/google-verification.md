@@ -20,8 +20,9 @@ later means re-verifying the branding).
 2026-11-13 Google asked for "data protection mechanisms for sensitive data" in the privacy policy. Answer: the section
 privacy.html#security (How we protect your data, site 389b5bc, 2026-11-14): storage on the user's devices, TLS in
 transit (and where it ends with the Cloudflare tunnel), OAuth with PKCE, the token file (0600, ~/.config/gubernos),
-pairing, read-only agent tools, the relay keeping nothing, Disconnect. Then resubmit in Cloud Console and reply to
-their email (they require the reply). Keep that section true when storage, pairing or the relay change.
+pairing, read-only agent tools, the relay keeping nothing, Disconnect. The policy URL didn't change, so there was
+nothing to resubmit in Cloud Console (Verification progress: "reply to your email thread"); replied 2026-11-14. Every
+other check passed on 13 Nov. Keep that section true when storage, pairing or the relay change.
 
 - [ ] **Audience**: publishing status **In production** (in Testing, sign-ins expire after 7 days and only listed test users get in).
 - [ ] **Domain**: gubernos.app verified in Google Search Console by the same Google account (Google Auth Platform → Branding links to it).
