@@ -2508,12 +2508,16 @@ function decisionCard(d) {
   if (pending) acts = '<div class="dec-acts"><span class="dec-note">Recording…</span></div>';
   else if (mode === 'drop') acts = `<div class="dec-acts wrap"><input class="dec-why" id="dec-drop-${d.slug}" placeholder="Why not (optional)" autocomplete="off">
       <button class="btn" data-act="dec-drop" data-slug="${d.slug}">Not a decision</button><button class="linkbtn" data-act="dec-back" data-slug="${d.slug}">Back</button></div>`;
-  else if (mode === 'choose') acts = `<div class="dec-acts wrap">${d.options.map((o) => `<button class="btn ${o.letter === d.rec ? 'primary' : ''}" data-act="dec-choose" data-slug="${d.slug}" data-letter="${o.letter}">${o.letter} · ${esc(o.label.slice(0, 32))}</button>`).join('')}
-      <input class="dec-why" id="dec-why-${d.slug}" placeholder="Why (optional)" autocomplete="off"><button class="linkbtn" data-act="dec-back" data-slug="${d.slug}">Back</button></div>`;
+  else if (mode === 'choose') acts = `<div class="dec-acts wrap">${d.options.length ? '<span class="dec-note">Decided:</span>' : ''}${d.options.map((o) => `<button class="btn ${o.letter === d.rec ? 'primary' : ''}" data-act="dec-choose" data-slug="${d.slug}" data-letter="${o.letter}">${o.letter} · ${esc(o.label.slice(0, 32))}</button>`).join('')}
+      <input class="dec-why" id="dec-why-${d.slug}" placeholder="Why (optional)" autocomplete="off"></div>
+    <div class="dec-acts wrap"><input class="dec-why dec-own" id="dec-own-${d.slug}" placeholder="${d.options.length ? 'Or in your own words' : 'What did you decide?'}" autocomplete="off">
+      <button class="btn" data-act="dec-own" data-slug="${d.slug}">Decided</button><button class="linkbtn" data-act="dec-back" data-slug="${d.slug}">Back</button></div>`;
   else if (mode === 'park') acts = `<div class="dec-acts wrap"><span class="dec-note">Not now, until</span>${[['1 week', 7], ['1 month', 30], ['3 months', 91]].map(([l, n]) => `<button class="btn" data-act="dec-park" data-slug="${d.slug}" data-date="${plus(n)}">${l}</button>`).join('')}
       <input type="date" class="dec-date" data-slug="${d.slug}" min="${plus(1)}"><button class="linkbtn" data-act="dec-back" data-slug="${d.slug}">Back</button></div>`;
-  else acts = `<div class="dec-acts">${recd ? `<button class="btn primary" data-act="dec-accept" data-slug="${d.slug}" title="Record the recommendation">✓ ${d.rec} · ${esc(recd.label.slice(0, 28))}</button>` : ''}
-      <button class="btn" data-act="dec-other" data-slug="${d.slug}">${recd ? 'Other…' : 'Choose…'}</button><button class="btn" data-act="dec-notnow" data-slug="${d.slug}">Not now</button>
+  // AICODE-NOTE: 2026-11-16 Alex didn't see how to close a decision ("I want this kind of button"): "✓ A · …" didn't read
+  // as deciding, and there was no way to record a choice outside the options. The buttons say Decide; Other… takes own words.
+  else acts = `<div class="dec-acts">${recd ? `<button class="btn primary" data-act="dec-accept" data-slug="${d.slug}" title="Record the recommendation and close the decision">✓ Decide ${d.rec} · ${esc(recd.label.slice(0, 28))}</button>` : ''}
+      <button class="btn${recd ? '' : ' primary'}" data-act="dec-other" data-slug="${d.slug}" title="Record what you decided and close it">${recd ? 'Decided otherwise…' : '✓ Decide…'}</button><button class="btn" data-act="dec-notnow" data-slug="${d.slug}">Not now</button>
       <button class="btn agentish" data-act="dec-discuss" data-slug="${d.slug}" title="Talk it through with the agent">Discuss</button></div>
     <div class="dec-alt"><button class="linkbtn" data-act="dec-notone" data-slug="${d.slug}" title="Nothing to choose here: close it (kept in the archive)">Not a decision</button>
       <span>·</span><span class="dec-note">it’s really a</span>${['task', 'project', 'goal'].map((k) => `<button class="linkbtn" data-act="dec-to" data-slug="${d.slug}" data-kind="${k}">${k}</button>`).join('')}</div>`;
@@ -2559,11 +2563,11 @@ function decisionTo(d, kind) {
   if (kind === 'project') return projectModal(null, { title, outcome: summary, onCreated: (np) => done(np.slug) });
   return goalModal(null, { title, description: summary, onCreated: (g) => done(g.slug) });
 }
-function recordDecision(d, letter, reason = '') {
+function recordDecision(d, letter, reason = '', own = '') {
   const o = d.options.find((x) => x.letter === letter);
   delete S.decPick[d.slug];
-  deferOp(`dec:${d.slug}`, `Decided: ${letter} · ${o.label.slice(0, 36)}`, async (leaving) => {
-    const r = await post(`/api/decisions/${encodeURIComponent(d.slug)}/decide`, { letter, reason }, leaving);
+  deferOp(`dec:${d.slug}`, `Decided: ${own ? own.slice(0, 40) : `${letter} · ${o.label.slice(0, 36)}`}`, async (leaving) => {
+    const r = await post(`/api/decisions/${encodeURIComponent(d.slug)}/decide`, own ? { own, reason } : { letter, reason }, leaving);
     if (leaving) return;
     const j = await r.json();
     if (!r.ok) throw new Error(j.error);
@@ -3884,6 +3888,12 @@ document.addEventListener('click', async (e) => {
       const d = S.data.decisions.find((x) => x.slug === a.dataset.slug);
       if (!d) return;
       return recordDecision(d, act === 'dec-accept' ? d.rec : a.dataset.letter, act === 'dec-choose' ? $(`#dec-why-${d.slug}`)?.value || '' : '');
+    }
+    case 'dec-own': {
+      const d = S.data.decisions.find((x) => x.slug === a.dataset.slug), own = $(`#dec-own-${a.dataset.slug}`)?.value.trim();
+      if (!d) return;
+      if (!own) { $(`#dec-own-${d.slug}`)?.focus(); return toast('Write what you decided'); }
+      return recordDecision(d, null, $(`#dec-why-${d.slug}`)?.value || '', own);
     }
     case 'dec-park': {
       const slug = a.dataset.slug; delete S.decPick[slug];
