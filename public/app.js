@@ -2113,6 +2113,8 @@ function scheduleLabel(h) {
   if (h.days.join() === 'sun,sat') return 'weekends';
   return h.days.map((d) => N[d]).join(' ');
 }
+// where an automatic habit's value comes from (vault CLAUDE.md, habit `auto`); 2026-11-17 app:… habits said "Oura"
+const AUTO_SOURCE = { health: 'Health', oura: 'Oura', app: 'Gubernos' };
 function habitRow(h, D) {
   const st = h.state, done = st === 'done' || st === 'min', quit = h.kind === 'quit', open = S.hbOpen.has(h.slug);
   const skipped = st === 'skip', notToday = !done && !skipped && h.due === false; // off its schedule, or a times-a-week habit already met
@@ -2127,7 +2129,7 @@ function habitRow(h, D) {
   const unit = h.streakUnit === 'week' ? 'week' : 'day';
   const sched = h.perWeek ? `<span class="${h.weekDone >= h.perWeek ? 'd-today' : ''}">${h.weekDone}/${h.perWeek} this week</span>` : '';
   const meta = [dots, sched, h.streak ? `<span class="hb-streak" title="${unit === 'week' ? 'weeks in a row with the times a week met' : 'streak: one missed day is a gap, two in a row end it; days off the schedule and skipped days don’t count'}">${fmtNum(h.streak)} ${unit}${h.streak === 1 ? '' : 's'}</span>` : '',
-    skipped ? '<span class="pill">skipped today</span>' : '', h.checkin === 'by-reflection' && !done ? '<span>ticks itself when you save the reflection</span>' : '', h.auto ? `<span title="filled in automatically">⟲ ${h.auto.source === 'health' ? 'Health' : 'Oura'}</span>` : '', notToday && !h.perWeek ? `<span class="pill">not today · ${esc(scheduleLabel(h))}</span>` : '',
+    skipped ? '<span class="pill">skipped today</span>' : '', h.checkin === 'by-reflection' && !done ? '<span>ticks itself when you save the reflection</span>' : '', h.auto ? `<span title="filled in automatically">⟲ ${AUTO_SOURCE[h.auto.source] || esc(h.auto.source)}</span>` : '', notToday && !h.perWeek ? `<span class="pill">not today · ${esc(scheduleLabel(h))}</span>` : '',
     h.keystone ? '<span class="pill" title="keystone habit">🔑 keystone</span>' : '', st === 'min' ? '<span class="pill">minimum</span>' : '',
     !quit && !score && h.entry?.note && h.target == null && st !== 'min' ? `<span>${esc(h.entry.note)}</span>` : ''].filter(Boolean).join('');
   const nmt = (h.nmt || h.behind) && !done && !skipped && D.date === S.data.today
