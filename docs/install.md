@@ -2,7 +2,7 @@
 
 **Gubernos** (Gubern OS, from Latin *gubernare*, to steer) is a personal operating system: tasks, projects, goals, habits and your day, with agents that take part of the work off your hands. Everything stays yours: plain Markdown files on your Mac (or in your iCloud, if you like), your Mac as the "server", agents on your own Claude subscription. No third-party server, no one else's database.
 
-**Before you install: you need an AI subscription.** Claude with Claude Code (Pro or higher), or any ChatGPT subscription. Gubernos runs on it: the first interview, the chat and the agents all need it. Don't have one? Get it first: [Claude plans](https://claude.com/pricing) · [ChatGPT plans](https://chatgpt.com/pricing).
+**Before you install: you need an AI model.** Claude with Claude Code (Pro or higher), any ChatGPT subscription, or your own Anthropic API key (paid per use: [console.anthropic.com](https://console.anthropic.com/settings/keys); you paste it in the first interview or in Settings → Your Mac → Model). Gubernos runs on it: the first interview, the chat and the agents all need it. Don't have one? [Claude plans](https://claude.com/pricing) · [ChatGPT plans](https://chatgpt.com/pricing).
 
 Two steps: the Mac, then the iPhone.
 
@@ -23,6 +23,7 @@ same setup done by your AI agent or by hand, for those who prefer it.
 |---|---|---|---|
 | **Claude** with Claude Code (Pro or higher) | Claude Code | `curl -fsSL https://claude.ai/install.sh \| bash` | `~/.local/bin/claude` |
 | **ChatGPT**, any subscription | Codex | `npm install -g @openai/codex` | `codex login` |
+| An **Anthropic API key** (paid per use) | none needed | — | paste the key in the first interview or Settings → Your Mac → Model |
 
 That model reads your inbox and voice notes, answers in the app's chat and runs agents on tasks. You can switch later (Settings → Your Mac → Model), or install a second one as another agent.
 

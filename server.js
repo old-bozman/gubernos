@@ -12,6 +12,7 @@ import { breakdown, why, semanticSearch } from './lib/assist.js';
 import * as G from './lib/gcal.js'; // Google sign-in (connect / callback); calendar work goes through lib/calendar.js
 import * as Cal from './lib/calendar.js';
 import * as AI from './lib/llm.js';
+import * as APIKey from './lib/anthropic.js';
 import * as Pair from './lib/pair.js';
 import * as Mail from './lib/gmail.js';
 import * as Push from './lib/push.js';
@@ -307,6 +308,21 @@ const server = http.createServer(async (req, res) => {
     }
     // Settings → Voice → Turn on voice: scripts/setup.sh voice-auto (Whisper where this computer's own models don't hear the
     // language), on the computer itself; it restarts this server at the end. The page asks /api/voice/status until it's on.
+    // Settings → Model → Claude API key: typed on the computer itself only. Over the phone's tunnel it would pass Cloudflare
+    // readable (privacy#phone); the phone keeps its own key in its Keychain.
+    if (url.pathname === '/api/ai/key' && ['POST', 'DELETE'].includes(req.method)) {
+      if (!Pair.isLocal(req)) throw V.httpError(403, 'Add the key on the computer itself, not through the phone’s connection');
+      if (req.method === 'POST') {
+        await APIKey.saveKey((await readBody(req)).key);
+        Settings.update({ provider: 'api' }); // added here = the app runs on it
+      } else {
+        APIKey.removeKey();
+        if (Settings.get().provider === 'api') Settings.update({ provider: null });
+      }
+      AI.forgetModels();
+      res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(AI.providers()));
+      return;
+    }
     if (url.pathname === '/api/update' && req.method === 'POST') {
       if (!Pair.isLocal(req)) throw V.httpError(403, 'only on the computer itself');
       res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(Update.apply()));
