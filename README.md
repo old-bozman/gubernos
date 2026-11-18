@@ -17,7 +17,7 @@ Gubernos is not affiliated with any of them.
 
 ### Install Gubernos
 
-**Before you install: you need an AI model.** Claude with Claude Code (Pro or higher), any ChatGPT subscription, or your own Anthropic API key (paid per use: [console.anthropic.com](https://console.anthropic.com/settings/keys); you paste it in the first interview or in Settings → Your Mac → Model). Gubernos runs on it: the first interview, the chat and the agents all need it. Don't have one? [Claude plans](https://claude.com/pricing) · [ChatGPT plans](https://chatgpt.com/pricing).
+**Before you install: you need an AI model.** Claude with Claude Code (Pro or higher), any ChatGPT subscription, or your own Anthropic or OpenAI API key (paid per use: [Anthropic](https://console.anthropic.com/settings/keys) · [OpenAI](https://platform.openai.com/api-keys); you paste it in the first interview or in Settings → Your Mac → Model). Gubernos runs on it: the first interview, the chat and the agents all need it. Don't have one? [Claude plans](https://claude.com/pricing) · [ChatGPT plans](https://chatgpt.com/pricing).
 
 **The easiest way: let your AI agent do the setup**, on a Mac, Linux or Windows. Open Claude Code or Codex (the table in [SETUP.md](SETUP.md) shows
 how to get one) and paste:
