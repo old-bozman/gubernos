@@ -92,7 +92,11 @@ test('the Claude API instead of Claude Code: answers, chat with tools, an agent 
   } finally { await s.stop(); api.close(); }
 });
 
-test('without a key the Claude API is not offered', { timeout: 30000 }, async () => {
+test('without a key the Claude API is offered, not ready (its key is added in Settings → Model)', { timeout: 30000 }, async () => {
   const s = await startServer();
-  try { assert.deepEqual((await s.get('/api/ai')).body.list.map((p) => p.id), ['claude', 'codex']); } finally { await s.stop(); }
+  try {
+    const ai = (await s.get('/api/ai')).body;
+    assert.deepEqual(ai.list.map((p) => p.id), ['claude', 'codex', 'api']);
+    assert.equal(ai.list.find((p) => p.id === 'api').ready, false);
+  } finally { await s.stop(); }
 });
