@@ -2778,7 +2778,7 @@ const agentReady = (a) => !(MODEL_CLI[a.run] && S.data.agents?.[a.run] === false
 const agentNames = () => Object.fromEntries(agentList().map((a) => [a.id, a.name]));
 const agentName = (id) => agentOf(id)?.name || (id ? id[0].toUpperCase() + id.slice(1) : 'agent');
 // the model the app uses (Settings → Your Mac → Model, lib/llm.js): a task with no agent runs with it
-const MODEL_CLI = { claude: 'Claude Code', codex: 'Codex', api: 'the Claude API' };
+const MODEL_CLI = { claude: 'Claude Code', codex: 'Codex', api: 'the Claude API', openai: 'the OpenAI API' };
 const appModel = () => S.data.agents?.provider || 'claude';
 // started here (when that model's CLI is on this Mac) or not: then it takes its own queue
 const agentRun = (id) => { const r = agentOf(id)?.run || appModel(); return MODEL_CLI[r] && S.data.agents?.[r] === false ? 'queue' : r; };
@@ -3863,11 +3863,11 @@ document.addEventListener('click', async (e) => {
       const inp = $(act === 'ai-key-save' ? '#ai-key' : '#ob-key'), k = inp?.value.trim();
       if (!k) return inp?.focus();
       S.aiKeyBusy = true; render();
-      try { S.ai = await api('POST', '/api/ai/key', { key: k }); toast('The key works: the app runs on the Claude API'); } catch (err) { toast(err.message); } finally { S.aiKeyBusy = false; }
+      try { S.ai = await api('POST', '/api/ai/key', { key: k }); toast(`The key works: the app runs on ${S.ai.current === 'openai' ? 'the OpenAI API' : 'the Claude API'}`); } catch (err) { toast(err.message); } finally { S.aiKeyBusy = false; }
       if (act === 'onboard-key') S.onboard = await api('GET', '/api/onboard').catch(() => S.onboard);
       return load();
     }
-    case 'ai-key-remove': S.ai = await api('DELETE', '/api/ai/key'); toast('Key removed'); return load();
+    case 'ai-key-remove': S.ai = await api('DELETE', `/api/ai/key?provider=${encodeURIComponent(a.dataset.val || 'api')}`); toast('Key removed'); return load();
     case 'onboard-send': return onboardSend();
     case 'onboard-code': { const code = (S.obCode || '').trim(); if (!code) return $('#ob-code')?.focus(); S.obCode = ''; return api('POST', '/api/onboard/connect/code', { code }).then((x) => { S.onboard = x; renderMain(); }).catch(() => {}); }
     case 'onboard-cancel': return api('POST', '/api/onboard/connect/cancel').then((x) => { S.onboard = x; renderMain(); }).catch((err) => toast(err.message));
@@ -4425,9 +4425,9 @@ function onboardHtml() {
   const working = S.onboardBusy ? '<div class="ob-t ob-agent ob-working">Putting this into your system…</div>' : '';
   if (o.connecting?.running && !S.onboardPoll) S.onboardPoll = setTimeout(async () => { S.onboardPoll = null; try { S.onboard = await api('GET', '/api/onboard'); } catch { /* next time */ } if (S.view === 'onboard' && document.activeElement?.id !== 'ob-code') renderMain(); else if (S.view === 'onboard') S.onboardPoll = setTimeout(function typing() { S.onboardPoll = null; if (document.activeElement?.id === 'ob-code') S.onboardPoll = setTimeout(typing, 1500); else renderMain(); }, 1500); }, 1500); // the code being typed isn't redrawn away
   const connecting = o.connecting?.running;
-  const foot = !o.model ? `<div class="ob-connect"><p>First, connect the AI that will listen. It runs on your own AI subscription: Claude with Claude Code (Pro or higher), or any ChatGPT subscription. Or on your own Anthropic API key, paid per use.</p>
+  const foot = !o.model ? `<div class="ob-connect"><p>First, connect the AI that will listen. It runs on your own AI subscription: Claude with Claude Code (Pro or higher), or any ChatGPT subscription. Or on your own Anthropic or OpenAI API key, paid per use.</p>
       ${(o.models || []).map((m) => `<p><button class="btn" data-act="onboard-connect" data-val="${esc(m.id)}" ${connecting ? 'disabled' : ''}>${m.installed ? `Sign in to ${esc(m.name)}` : `Get ${esc(m.name)} and sign in`}</button> <span class="ph-text">${esc(m.plan)}</span></p>`).join('')}
-      ${S.pair?.local === false || connecting ? '' : `<p class="set-key"><input type="password" id="ob-key" placeholder="Anthropic API key, sk-ant-…" autocomplete="off" spellcheck="false" ${connecting ? 'disabled' : ''}><button class="btn" data-act="onboard-key" ${connecting || S.aiKeyBusy ? 'disabled' : ''}>${S.aiKeyBusy ? 'Checking…' : 'Use this key'}</button> <span class="ph-text">from <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>; what you say goes to Anthropic under your key</span></p>`}
+      ${S.pair?.local === false || connecting ? '' : `<p class="set-key"><input type="password" id="ob-key" placeholder="API key: sk-ant-… or sk-…" autocomplete="off" spellcheck="false" ${connecting ? 'disabled' : ''}><button class="btn" data-act="onboard-key" ${connecting || S.aiKeyBusy ? 'disabled' : ''}>${S.aiKeyBusy ? 'Checking…' : 'Use this key'}</button> <span class="ph-text">from <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Anthropic</a> or <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">OpenAI</a>; what you say goes to that company under your key</span></p>`}
       ${connecting ? `<p class="ph-text">${esc(o.connecting.name)}: ${signInHelp(o.connecting.login)}${o.connecting.signingIn ? ' <button class="linkbtn" data-act="onboard-cancel">Can’t find that page? Start again</button>' : ''}</p>` : ''}${!connecting && o.connecting?.error ? `<p class="d-over">${esc(o.connecting.error)}</p>` : ''}</div>`
     : `<div class="ob-input"><span class="rf-in"><textarea id="ob-msg" rows="3" placeholder="${voice ? 'Press the mic and talk, or type' : 'Answer here'}" ${S.onboardBusy ? 'disabled' : ''}>${S.onboardBusy ? '' : esc(S.onboardDraft || '')}</textarea><button type="button" class="rf-mic" data-voice data-dictate="ob-msg" aria-label="Dictate">${MIC_SVG}</button></span><button class="btn primary" data-act="onboard-send" ${S.onboardBusy ? 'disabled' : ''}>Send</button></div>`;
   return `<div class="onboard">${intro}${bubbles}${working}${o.error ? `<p class="d-over">${esc(o.error)}</p>` : ''}${o.finished ? '<p class="ph-text"><b>That’s the setup.</b></p><p><a class="btn primary" href="#/today">Open Today</a> <a class="btn" href="#/phone">Connect your iPhone</a></p><p class="ph-text">Your tasks are in Todoist, Things or Reminders? <button class="linkbtn" data-act="import-open">Bring them in</button> — now or later, from Settings → General → Import tasks.</p>' : foot}</div>`;
@@ -4548,14 +4548,16 @@ function modelSettingsHtml() {
   const help2 = unsigned.length ? `<br>Not signed in: ${unsigned.map((p) => `${esc(p.name)} — ${esc(p.login)}`).join('; ')}` : '';
   return `<div class="set-row"><div class="set-l">Model<small>what reads your inbox and voice, answers in the chat and runs agents: ${esc(cur?.cli || '')} on your ${esc(cur?.plan || '')}${help}${help2}</small></div><span class="seg">${btns}</span></div>${apiKeyHtml()}`;
 }
-// Claude API on your own key (lib/anthropic.js): added on the computer itself (server.js /api/ai/key), kept in its Keychain
+// Your own API key, Anthropic's or OpenAI's (lib/anthropic.js; which one by how it starts): added on the computer itself
+// (server.js /api/ai/key), kept in its Keychain
 function apiKeyHtml() {
-  const k = S.ai?.list.find((p) => p.id === 'api');
-  if (!k) return '';
-  if (k.installed) return `<div class="set-row"><div class="set-l">Claude API key<small>set ✓ · paid per use on your Anthropic account (console.anthropic.com → Billing)</small></div><button class="linkbtn" data-act="ai-key-remove">Remove</button></div>`;
-  const here = S.pair?.local !== false;
-  return `<div class="set-row"><div class="set-l">Claude API key<small>no Claude Code or ChatGPT plan? Use your own key from <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com → API keys</a>. Paid per use: everyday use is a few dollars a month, agent runs cost more. What the app sends goes to Anthropic under your key; Anthropic doesn’t train on API data by default.${here ? '' : '<br>Add it on the computer itself: here it would pass through the phone’s connection.'}</small></div>
-    ${here ? `<span class="set-key"><input type="password" id="ai-key" placeholder="sk-ant-…" autocomplete="off" spellcheck="false"><button class="btn" data-act="ai-key-save" ${S.aiKeyBusy ? 'disabled' : ''}>${S.aiKeyBusy ? 'Checking…' : 'Save'}</button></span>` : ''}</div>`;
+  const keyed = (S.ai?.list || []).filter((p) => ['api', 'openai'].includes(p.id));
+  if (!keyed.length) return '';
+  const set = keyed.filter((p) => p.installed), here = S.pair?.local !== false;
+  const rows = set.map((p) => `<div class="set-row"><div class="set-l">${p.id === 'api' ? 'Anthropic' : 'OpenAI'} API key<small>set ✓ · paid per use on your ${p.id === 'api' ? 'Anthropic account (console.anthropic.com → Billing)' : 'OpenAI account (platform.openai.com → Billing)'}</small></div><button class="linkbtn" data-act="ai-key-remove" data-val="${p.id}">Remove</button></div>`).join('');
+  if (set.length === keyed.length) return rows;
+  return `${rows}<div class="set-row"><div class="set-l">${set.length ? 'Another API key' : 'API key'}<small>no Claude Code or ChatGPT plan? Use your own key: <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Anthropic</a> (Claude) or <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">OpenAI</a>. Paid per use: everyday use is a few dollars a month, agent runs cost more. What the app sends goes to that company under your key; neither trains on API data by default.${here ? '' : '<br>Add it on the computer itself: here it would pass through the phone’s connection.'}</small></div>
+    ${here ? `<span class="set-key"><input type="password" id="ai-key" placeholder="sk-ant-… or sk-…" autocomplete="off" spellcheck="false"><button class="btn" data-act="ai-key-save" ${S.aiKeyBusy ? 'disabled' : ''}>${S.aiKeyBusy ? 'Checking…' : 'Save'}</button></span>` : ''}</div>`;
 }
 function saveAgents(change) {
   const list = agentList().map((a) => ({ id: a.id, name: a.name, run: a.run, on: a.on }));

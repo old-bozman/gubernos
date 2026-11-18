@@ -308,16 +308,17 @@ const server = http.createServer(async (req, res) => {
     }
     // Settings → Voice → Turn on voice: scripts/setup.sh voice-auto (Whisper where this computer's own models don't hear the
     // language), on the computer itself; it restarts this server at the end. The page asks /api/voice/status until it's on.
-    // Settings → Model → Claude API key: typed on the computer itself only. Over the phone's tunnel it would pass Cloudflare
+    // Settings → Model → API key (Anthropic or OpenAI): typed on the computer itself only. Over the phone's tunnel it would pass Cloudflare
     // readable (privacy#phone); the phone keeps its own key in its Keychain.
     if (url.pathname === '/api/ai/key' && ['POST', 'DELETE'].includes(req.method)) {
       if (!Pair.isLocal(req)) throw V.httpError(403, 'Add the key on the computer itself, not through the phone’s connection');
       if (req.method === 'POST') {
-        await APIKey.saveKey((await readBody(req)).key);
-        Settings.update({ provider: 'api' }); // added here = the app runs on it
+        const b = await readBody(req);
+        Settings.update({ provider: await APIKey.saveKey(b.key, b.provider || undefined) }); // added here = the app runs on it (Anthropic or OpenAI, by the key)
       } else {
-        APIKey.removeKey();
-        if (Settings.get().provider === 'api') Settings.update({ provider: null });
+        const v = url.searchParams.get('provider') || 'api';
+        APIKey.removeKey(v);
+        if (Settings.get().provider === v) Settings.update({ provider: null });
       }
       AI.forgetModels();
       res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(AI.providers()));
