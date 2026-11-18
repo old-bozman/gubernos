@@ -3868,6 +3868,7 @@ document.addEventListener('click', async (e) => {
       return load();
     }
     case 'ai-key-remove': S.ai = await api('DELETE', `/api/ai/key?provider=${encodeURIComponent(a.dataset.val || 'api')}`); toast('Key removed'); return load();
+    case 'ob-phone-key': return window.webkit?.messageHandlers?.gubernos?.postMessage({ op: 'settings' }); // the shell's Settings: the key field
     case 'onboard-send': return onboardSend();
     case 'onboard-code': { const code = (S.obCode || '').trim(); if (!code) return $('#ob-code')?.focus(); S.obCode = ''; return api('POST', '/api/onboard/connect/code', { code }).then((x) => { S.onboard = x; renderMain(); }).catch(() => {}); }
     case 'onboard-cancel': return api('POST', '/api/onboard/connect/cancel').then((x) => { S.onboard = x; renderMain(); }).catch((err) => toast(err.message));
@@ -4325,7 +4326,11 @@ function nativeSettingsHtml() {
       <select id="set-native-lang" class="pm-select set-select">${(n.languages || []).map((l) => `<option value="${esc(l.id)}" ${l.id === n.language ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></div>`;
 }
 // the iPhone app's sheet closed (Mac address, folder): read its settings again
-window.gubernosNativeChanged = () => { S.native = null; if (S.view === 'settings') renderMain(); };
+window.gubernosNativeChanged = () => {
+  S.native = null; if (S.view === 'settings') renderMain();
+  // offline on the phone the model is chosen at start (local/llm.js): a key added or removed in Settings needs a fresh page
+  if (window.gubernosKeyAtStart != null) window.webkit?.messageHandlers?.gubernos?.postMessage({ op: 'native' }).then((n) => { if (`${!!n?.claudeKey}/${n?.keyVendor || ''}` !== window.gubernosKeyAtStart) location.reload(); }).catch(() => {});
+};
 document.addEventListener('change', (e) => {
   if (e.target.id !== 'set-native-lang') return;
   window.webkit?.messageHandlers?.gubernos?.postMessage({ op: 'setNative', key: 'language', value: e.target.value }).then((n) => { S.native = n; toast('Saved'); }).catch((err) => toast(err.message));
@@ -4425,12 +4430,15 @@ function onboardHtml() {
   const working = S.onboardBusy ? '<div class="ob-t ob-agent ob-working">Putting this into your system…</div>' : '';
   if (o.connecting?.running && !S.onboardPoll) S.onboardPoll = setTimeout(async () => { S.onboardPoll = null; try { S.onboard = await api('GET', '/api/onboard'); } catch { /* next time */ } if (S.view === 'onboard' && document.activeElement?.id !== 'ob-code') renderMain(); else if (S.view === 'onboard') S.onboardPoll = setTimeout(function typing() { S.onboardPoll = null; if (document.activeElement?.id === 'ob-code') S.onboardPoll = setTimeout(typing, 1500); else renderMain(); }, 1500); }, 1500); // the code being typed isn't redrawn away
   const connecting = o.connecting?.running;
+  // on the phone with no Mac (local/onboarding.js): the key lives in the app's own Settings → This iPhone
+  const phoneKey = o.phone && !o.model ? `<div class="ob-connect"><p>First, connect the AI that will listen: your own API key from Anthropic (Claude) or OpenAI, paid per use. Everyday use is a few dollars a month.</p>
+      <p><button class="btn primary" data-act="ob-phone-key">Add your API key</button> <span class="ph-text">Settings → This iPhone; get one at console.anthropic.com or platform.openai.com</span></p></div>` : '';
   const foot = !o.model ? `<div class="ob-connect"><p>First, connect the AI that will listen. It runs on your own AI subscription: Claude with Claude Code (Pro or higher), or any ChatGPT subscription. Or on your own Anthropic or OpenAI API key, paid per use.</p>
       ${(o.models || []).map((m) => `<p><button class="btn" data-act="onboard-connect" data-val="${esc(m.id)}" ${connecting ? 'disabled' : ''}>${m.installed ? `Sign in to ${esc(m.name)}` : `Get ${esc(m.name)} and sign in`}</button> <span class="ph-text">${esc(m.plan)}</span></p>`).join('')}
       ${S.pair?.local === false || connecting ? '' : `<p class="set-key"><input type="password" id="ob-key" placeholder="API key: sk-ant-… or sk-…" autocomplete="off" spellcheck="false" ${connecting ? 'disabled' : ''}><button class="btn" data-act="onboard-key" ${connecting || S.aiKeyBusy ? 'disabled' : ''}>${S.aiKeyBusy ? 'Checking…' : 'Use this key'}</button> <span class="ph-text">from <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Anthropic</a> or <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">OpenAI</a>; what you say goes to that company under your key</span></p>`}
       ${connecting ? `<p class="ph-text">${esc(o.connecting.name)}: ${signInHelp(o.connecting.login)}${o.connecting.signingIn ? ' <button class="linkbtn" data-act="onboard-cancel">Can’t find that page? Start again</button>' : ''}</p>` : ''}${!connecting && o.connecting?.error ? `<p class="d-over">${esc(o.connecting.error)}</p>` : ''}</div>`
     : `<div class="ob-input"><span class="rf-in"><textarea id="ob-msg" rows="3" placeholder="${voice ? 'Press the mic and talk, or type' : 'Answer here'}" ${S.onboardBusy ? 'disabled' : ''}>${S.onboardBusy ? '' : esc(S.onboardDraft || '')}</textarea><button type="button" class="rf-mic" data-voice data-dictate="ob-msg" aria-label="Dictate">${MIC_SVG}</button></span><button class="btn primary" data-act="onboard-send" ${S.onboardBusy ? 'disabled' : ''}>Send</button></div>`;
-  return `<div class="onboard">${intro}${bubbles}${working}${o.error ? `<p class="d-over">${esc(o.error)}</p>` : ''}${o.finished ? '<p class="ph-text"><b>That’s the setup.</b></p><p><a class="btn primary" href="#/today">Open Today</a> <a class="btn" href="#/phone">Connect your iPhone</a></p><p class="ph-text">Your tasks are in Todoist, Things or Reminders? <button class="linkbtn" data-act="import-open">Bring them in</button> — now or later, from Settings → General → Import tasks.</p>' : foot}</div>`;
+  return `<div class="onboard">${intro}${bubbles}${working}${o.error ? `<p class="d-over">${esc(o.error)}</p>` : ''}${o.finished ? `<p class="ph-text"><b>That’s the setup.</b></p><p><a class="btn primary" href="#/today">Open Today</a>${o.phone ? '' : ' <a class="btn" href="#/phone">Connect your iPhone</a>'}</p><p class="ph-text">Your tasks are in Todoist, Things or Reminders? <button class="linkbtn" data-act="import-open">Bring them in</button> — now or later, from Settings → General → Import tasks.</p>` : phoneKey || foot}</div>`;
 }
 async function onboardSend() {
   if (S.onboardBusy) return;

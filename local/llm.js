@@ -22,7 +22,10 @@ export function trace(...a) {
     fs.writeFileSync('/data/claude.log', `${old.split('\n').filter(Boolean).slice(-199).join('\n')}\n${line}\n`);
   } catch { /* never in the way */ }
 }
-const VENDOR = (await Promise.resolve(call({ op: 'native' })).catch(() => ({})))?.keyVendor || 'anthropic';
+const NATIVE = (await Promise.resolve(call({ op: 'native' })).catch(() => ({}))) || {};
+const VENDOR = NATIVE.keyVendor || 'anthropic';
+window.gubernosKeyAtStart = `${!!NATIVE.claudeKey}/${NATIVE.keyVendor || ''}`; // app.js reloads when Settings changed it
+export const hasKey = () => !!NATIVE.claudeKey; // a key on this iPhone (read once, at start: adding one in Settings reloads the page)
 const via = (op) => async (body, { timeoutMs } = {}) => {
   const t0 = Date.now();
   trace('send', op, body.model, `msgs=${(body.messages || body.input || []).length}`);

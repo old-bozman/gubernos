@@ -70,14 +70,14 @@ Everything is plain Markdown files in your own iCloud: there is no account and n
 **Feedback email:** hello@gubernos.app
 
 **What to Test** (per build)
-Start a new system (or pick your existing folder), add a few tasks by typing and by voice, set a reminder, check off a habit, try the widgets and the watch. If you have a Mac with Gubernos: pair the phone (Settings → Your Mac → iPhone and other devices → Show code) and hand a task to an agent.
+Start on this iPhone (or pick your existing folder), add a few tasks by typing and by voice, set a reminder, check off a habit, try the widgets and the watch. If you have a Mac with Gubernos: pair the phone (Settings → Your Mac → iPhone and other devices → Show code) and hand a task to an agent.
 
 ## Beta App Review / App Review notes
 
 Sign-in: **not required** (no account exists).
 
 > Gubernos needs no account and no server of ours. To try it without a Mac:
-> 1. Launch → "Start a new system" → in the file picker, iCloud Drive → New Folder → choose it. An empty starter system (folders, templates) is created there.
+> 1. Launch → "Start on this iPhone" → in the file picker, iCloud Drive → New Folder → choose it. An empty starter system (folders, templates) is created there.
 > 2. Today → + Add task (or the mic button) → e.g. "Call the dentist tomorrow 10:00" → a task with a reminder.
 > 3. The Protocol screen → + New habit (e.g. "10,000 steps", from Apple Health: permission asked then) → tap it to check it off.
 > 4. Widgets: "Add to Gubernos", "Habits", "Protocol". Siri: "Add to Gubernos".
@@ -92,7 +92,7 @@ Contact for review: Alexander Safonov, hello@gubernos.app (and a phone number in
 
 Not yet verified on devices (only the simulator or not at all). Tick them on the TestFlight build:
 
-- [ ] First launch on a phone that never had the app: Start a new system → the starter kit appears; then pick an existing folder instead
+- [ ] First launch on a phone that never had the app: Start on this iPhone → the starter kit appears; then pick an existing folder instead
 - [ ] Pairing by QR: Mac → Settings → Your Mac → iPhone and other devices → Show code → camera → Open in Gubernos → the full app
 - [ ] Offline: flight mode → add a task, check a habit → back online → both reach the Mac
 - [ ] Reminders ring with the phone locked; notification buttons (Done, Snooze) work, also on the watch

@@ -22,7 +22,7 @@ test('without the Mac: voice → tasks on Claude’s key, then chat and voice on
   execFileSync(process.execPath, [path.join(ROOT, 'scripts/build-local.mjs'), out, '--mock', vault]);
   const seen = { claude: [], openai: [] };
   const ESTIMATE = { tasks: [{ n: 1, task: 'Call the dentist', minutes: 15, must_today: true, why: 'overdue' }] };
-  const claude = (b) => ({ id: 'm', type: 'message', role: 'assistant', model: b.model, content: [{ type: 'text', text: JSON.stringify(b.output_config?.format?.schema?.properties?.intent ? VOICE : ESTIMATE) }], stop_reason: 'end_turn', usage: { input_tokens: 500, output_tokens: 50 } });
+  const claude = (b) => ({ id: 'm', type: 'message', role: 'assistant', model: b.model, content: [{ type: 'text', text: JSON.stringify(b.output_config?.format?.schema?.properties?.intent ? VOICE : /onboarding|interview/i.test(JSON.stringify(b.system)) ? { reply: 'Nice to meet you. Who is in your life?', finished: false } : ESTIMATE) }], stop_reason: 'end_turn', usage: { input_tokens: 500, output_tokens: 50 } });
   const openai = (b) => {
     const usage = { input_tokens: 500, input_tokens_details: { cached_tokens: 0 }, output_tokens: 50 };
     const msg = (text) => ({ status: 'completed', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text }] }], usage });
@@ -72,6 +72,21 @@ test('without the Mac: voice → tasks on Claude’s key, then chat and voice on
     assert.ok(await page.waitFor('/Call the dentist/.test(document.querySelector("#main")?.innerText || "")', 15000), 'the Plan screen didn’t show the task');
     assert.deepEqual(page.errors, []);
 
+    // the first interview on the phone, on its key: the same skill as on the Mac
+    const ob0 = await page.eval(`fetch('/api/onboard').then((r) => r.json())`);
+    assert.equal(ob0.model, 'api'); assert.equal(ob0.phone, true);
+    const ob1 = await post('/api/onboard', { message: 'I am Alex, I live in Utrecht' });
+    assert.equal(ob1.status, 200, JSON.stringify(ob1.body));
+    assert.equal(ob1.body.turns.at(-1).text, 'Nice to meet you. Who is in your life?');
+    assert.match(JSON.stringify(seen.claude.at(-1).system), /onboarding/i, 'the skill went to the model');
+    assert.equal(seen.claude.at(-1).model, 'claude-sonnet-5-5');
+
+    // no key on the phone: the interview asks for one in Settings → This iPhone
+    await page.eval(`localStorage.setItem('gubernos-mock-vendor', 'none')`);
+    await page.goto('about:blank'); await page.goto(url.replace('#/today', '#/onboard'));
+    assert.ok(await started(), 'the offline page started without a key');
+    assert.ok(await page.waitFor('!!document.querySelector("[data-act=ob-phone-key]")', 15000), 'no way to add a key from the interview');
+
     // the phone's key is OpenAI's now
     await page.eval(`localStorage.setItem('gubernos-mock-vendor', 'openai')`);
     await page.goto('about:blank'); await page.goto(url);
@@ -83,6 +98,6 @@ test('without the Mac: voice → tasks on Claude’s key, then chat and voice on
     const chat = await post('/api/chat', { message: 'What is due?' });
     assert.equal(chat.status, 200, JSON.stringify(chat.body));
     assert.match(chat.body.reply, /20261108-120000-call-the-dentist\.md/);
-    assert.equal(seen.claude.length, 2, 'nothing went to Anthropic on the OpenAI key (voice and the plan before)');
+    assert.equal(seen.claude.length, 3, 'nothing went to Anthropic on the OpenAI key (voice, the plan and the interview before)');
   } finally { await page.close(); server.close(); fs.rmSync(dir, { recursive: true, force: true }); }
 });

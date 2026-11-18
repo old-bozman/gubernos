@@ -76,6 +76,10 @@ if (claude) {
   // voice: the phone recognizes the speech, the model turns the words into tasks or a command (lib/voice-parse.js)
   const Voice = await import('/lib/voice-parse.js');
   route('POST', '/api/voice/parse', (_, __, b) => Voice.interpret(String(b.text || ''), b.context || {}));
+  // the first interview on the phone (local/onboarding.js)
+  const Onboarding = await import('/lib/onboarding.js');
+  route('GET', '/api/onboard', () => Onboarding.state());
+  route('POST', '/api/onboard', (_, __, b) => Onboarding.turn(b.message));
   // Plan the day: the workday and the tasks, without the calendar (local/calendar.js)
   const Plan = await import('/lib/planner.js');
   route('GET', '/api/plan/free', () => Plan.dayFree());

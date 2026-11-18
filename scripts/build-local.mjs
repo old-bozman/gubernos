@@ -24,6 +24,8 @@ fs.cpSync(path.join(ROOT, 'public'), out, { recursive: true });
 fs.mkdirSync(path.join(out, 'lib'), { recursive: true });
 for (const f of [...CORE, ...MODEL]) fs.copyFileSync(path.join(ROOT, 'lib', f), path.join(out, 'lib', f));
 fs.cpSync(path.join(ROOT, 'local'), path.join(out, 'local'), { recursive: true });
+// the interview's skill for the phone (local/onboarding.js): the vault copy on the phone has no hidden folders
+fs.copyFileSync(path.join(ROOT, 'kit/vault/.claude/skills/onboarding/SKILL.md'), path.join(out, 'local', 'onboarding-skill.md'));
 fs.cpSync(path.join(ROOT, 'node_modules', 'yaml', 'browser'), path.join(out, 'vendor', 'yaml'), { recursive: true }); // index.js adds the default export
 fs.copyFileSync(path.join(ROOT, 'node_modules', 'yaml', 'LICENSE'), path.join(out, 'vendor', 'yaml', 'LICENSE'));
 
@@ -33,6 +35,7 @@ const importmap = { imports: {
   '/public/recur.js': '/recur.js', // lib/cron.js imports ../public/recur.js; in the bundle public/ is the root
   '/public/parse.js': '/parse.js', // lib/voice-parse.js imports ../public/parse.js
   '/lib/llm.js': '/local/llm.js', // the model on the phone: the API through the shell
+  '/lib/onboarding.js': '/local/onboarding.js', // the first interview on the phone, on its API key
   '/lib/calendar.js': '/local/calendar.js', // no calendar on the phone yet: Plan the day plans the workday (lib/planner.js)
 } };
 let html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8')
@@ -72,7 +75,7 @@ window.gubernosMockBridge = { call: async (m) => {
   if (m.op === 'load') { const b = await (await fetch('/vault.json')).json(); b.data = JSON.parse(localStorage.getItem('gubernos-data') || '{}'); return b; }
   // the shell's Claude API call: the page that serves this bundle answers it (a test stands in for the API there)
   if (m.op === 'claude' || m.op === 'openai') { const r = await fetch('/' + m.op, { method: 'POST', body: m.body }); const t = await r.text(); if (!r.ok) throw new Error(t || m.op + ' failed'); return t; }
-  if (m.op === 'native') return { claudeKey: true, keyVendor: localStorage.getItem('gubernos-mock-vendor') || 'anthropic' }; // which key a test's phone has
+  if (m.op === 'native') { const v = localStorage.getItem('gubernos-mock-vendor') || 'anthropic'; return v === 'none' ? { claudeKey: false, keyVendor: '' } : { claudeKey: true, keyVendor: v }; } // which key a test's phone has
   window.gubernosWrites.push(m);
   if (m.op === 'write' && m.path.startsWith('/data/')) { const d = JSON.parse(localStorage.getItem('gubernos-data') || '{}'); d[m.path.slice(6)] = m.text; localStorage.setItem('gubernos-data', JSON.stringify(d)); }
   return { ok: true };
