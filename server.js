@@ -6,7 +6,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import crypto from 'node:crypto';
 import * as V from './lib/vault.js';
-import { runs, startRun, agentsAvailable, stopRun, publicRun } from './lib/runner.js';
+import { runs, startRun, agentsAvailable, stopRun, stopTask, settleOrphanRuns, publicRun } from './lib/runner.js';
 import { transcribe, interpret, warm, vlog, voiceAvailable, voiceStatus } from './lib/voice.js';
 import { breakdown, why, semanticSearch } from './lib/assist.js';
 import * as G from './lib/gcal.js'; // Google sign-in (connect / callback); calendar work goes through lib/calendar.js
@@ -119,6 +119,7 @@ route('POST', '/api/device-log', (_, __, b) => DeviceLog.save(b)); // the iPhone
 route('POST', '/api/tasks/:id/reply-dev', async ({ id }, _, b) => (await replyRemote(id, String(b.text || '').trim())) || (() => { throw V.httpError(400, 'not a report sent to the developer'); })());
 route('POST', '/api/tasks/:id/run', ({ id }, _, b) => publicRun(startRun(id, { brief: b.brief, agent: b.agent, now: !!b.now })));
 route('POST', '/api/runs/:id/stop', ({ id }) => publicRun(stopRun(id) || { id }));
+route('POST', '/api/tasks/:id/stop', ({ id }) => stopTask(id)); // ■ Stop: the live run, or a running state with no process behind it
 // habit countdowns (lib/timers.js): the Protocol screen and the watch (through the iPhone app)
 route('GET', '/api/timers', () => ({ timers: Timers.list() }));
 route('GET', '/api/timers/health', () => ({ sessions: Timers.healthSessions() })); // mindful minutes for Apple Health (the iPhone)
@@ -388,6 +389,7 @@ server.listen(PORT, HOST, () => {
   if (!process.env.GUBERNOS_NO_NOTIFY && !sharedData) Notify.start();
   if (!sharedData) Backup.start(); // a daily copy of the vault's .md files (lib/backup.js)
   Timers.boot(() => changed(true)); // running habit timers finish at their end, also after a restart
+  try { settleOrphanRuns(); } catch (e) { console.error('settleOrphanRuns', e); } // agent runs a restart cut off (lib/runner.js)
   feedbackSync(); // answers to bug reports sent through the relay (no-op on the developer's own install)
   feedbackInbox(); // the developer's install: reports from other installs → dev tasks (lib/feedback-inbox.js)
   Update.start(); // an install by install.sh: newer versions from GitHub, at night (lib/update.js); a git checkout: nothing

@@ -309,6 +309,7 @@ POST  /api/tasks/:id/complete | drop | reopen
 POST  /api/tasks/:id/claim | submit | block | log        agent handshake ({agent, text})
 POST  /api/tasks/:id/accept {text, close?} | sendback {text}   human review
 POST  /api/tasks/:id/run {brief?} → run (brief = the request from the chat, logged as "▶ Do it: …"); GET /api/runs/:id/stream (SSE); POST /api/runs/:id/stop
+POST  /api/tasks/:id/stop                 ■ Stop: its live run, or agent_state running with no process → queued (runs a restart cut off are settled at start)
 POST  /api/tasks/:id/breakdown            Haiku: 3–7 steps
 POST  /api/tasks/:id/timeblock {start, end, subtask?}; DELETE /api/tasks/:id/timeblock/:event
 POST  /api/projects; PATCH /api/projects/:slug {title, category, goal, status, outcome}

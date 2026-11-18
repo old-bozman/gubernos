@@ -3736,7 +3736,7 @@ document.addEventListener('click', async (e) => {
     case 'toggle-done': S.showDone = !S.showDone; if (S.showDone) S.logbook = await api('GET', '/api/logbook'); return renderMain();
     case 'close': S.openId = null; S.editingBody = false; return render();
     case 'run': return startRun(S.openId, '', a.dataset.agent || null, !!a.dataset.now);
-    case 'stop': { const r = runFor(S.openId); if (r) await api('POST', `/api/runs/${r.id}/stop`); return load(); }
+    case 'stop': await api('POST', `/api/tasks/${encodeURIComponent(S.openId)}/stop`); return load(); // also a running state with no live run
     case 'accept': case 'accept-close': {
       if (a.disabled) return;
       const close = act === 'accept-close';
