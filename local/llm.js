@@ -1,10 +1,13 @@
 // lib/llm.js in the iPhone app with no Mac (scripts/build-local.mjs maps /lib/llm.js here): Claude through the Anthropic API,
-// the same loop as the Mac's Claude API model (lib/claude-loop.js). The native shell sends each request and adds the key,
+// or OpenAI through lib/openai-loop.js (2026-11-18; which one by the key on the phone), the same loop as the Mac's API models
+// (lib/claude-loop.js). The native shell sends each request and adds the key,
 // which it keeps in the iOS Keychain (gubernos-ios Gubernos/Claude.swift, Settings → This iPhone → Claude API key): the page
 // never sees the key. lib/chat.js, assist.js and triage.js run unchanged on top of this.
-//   bridge {op: 'claude', body: JSON text, timeoutMs} → the API's response as JSON text; fails with the API's error (or "no key")
+//   bridge {op: 'claude' | 'openai', body: JSON text, timeoutMs} → the API's response as JSON text; fails with the API's
+//   error (or "no key"). {op: 'native'}.keyVendor says which key the phone has: 'anthropic', 'openai' or ''.
 import fs from 'node:fs';
 import * as L from '/lib/claude-loop.js';
+import * as O from '/lib/openai-loop.js';
 import { httpError } from '/lib/vault.js';
 
 const native = window.webkit?.messageHandlers?.gubernos;
@@ -19,15 +22,18 @@ export function trace(...a) {
     fs.writeFileSync('/data/claude.log', `${old.split('\n').filter(Boolean).slice(-199).join('\n')}\n${line}\n`);
   } catch { /* never in the way */ }
 }
-const send = async (body, { timeoutMs } = {}) => {
+const VENDOR = (await Promise.resolve(call({ op: 'native' })).catch(() => ({})))?.keyVendor || 'anthropic';
+const via = (op) => async (body, { timeoutMs } = {}) => {
   const t0 = Date.now();
-  trace('send', body.model, `msgs=${body.messages.length}`);
-  try { const r = JSON.parse(await call({ op: 'claude', body: JSON.stringify(body), timeoutMs: timeoutMs || 120000 })); trace('got', r.stop_reason, `${Date.now() - t0}ms`); return r; } catch (e) {
+  trace('send', op, body.model, `msgs=${(body.messages || body.input || []).length}`);
+  try { const r = JSON.parse(await call({ op, body: JSON.stringify(body), timeoutMs: timeoutMs || 120000 })); trace('got', r.stop_reason || r.status, `${Date.now() - t0}ms`); return r; } catch (e) {
     const m = String(e?.message || e);
     trace('failed', `${Date.now() - t0}ms`, m.slice(0, 200));
-    throw m.includes(NO_KEY) ? httpError(503, 'Offline on the phone — this needs the Mac, or a Claude API key (Settings → This iPhone)') : new Error(m);
+    throw m.includes(NO_KEY) ? httpError(503, 'Offline on the phone — this needs the Mac, or an API key (Settings → This iPhone)') : new Error(m);
   }
 };
+const send = VENDOR === 'openai' ? O.adapt(via('openai')) : via('claude');
+const MODELS = VENDOR === 'openai' ? O.MODELS : L.MODELS;
 
 // the vault in the page's copy (local/shims/fs.js): writes go to the phone's iCloud copy like any other change
 const clean = (p) => {
@@ -59,13 +65,13 @@ function logCost(job, model, cost, ms) {
 const chats = new Map(); // a chat's history, for this session of the app
 const store = { get: (id) => chats.get(id) || null, set: (id, c) => chats.set(id, c) };
 
-export const current = () => 'api';
+export const current = () => (VENDOR === 'openai' ? 'openai' : 'api');
 // who asked, off the call stack (/lib/triage.js → triage), as on the Mac
 const caller = () => (new Error().stack.split('\n').slice(2).map((l) => l.match(/\/lib\/([\w-]+)\.js/)?.[1]).find((x) => x && x !== 'llm') || 'app');
 export async function ask({ system, prompt, schema, timeoutMs, deep = false }) {
   const t0 = Date.now(), job = caller();
   try {
-    const r = await L.ask({ send, system, prompt, schema: L.apiSchema(schema), deep, timeoutMs });
+    const r = await L.ask({ send, models: MODELS, system, prompt, schema: L.apiSchema(schema), deep, timeoutMs });
     logCost(job, r.model, r.cost, Date.now() - t0);
     return { output: r.output, cost: r.cost };
   } catch (e) { if (e.status) throw e; console.error('[llm]', e.message); throw httpError(502, `The agent couldn’t answer: ${e.message}`); }
@@ -73,7 +79,7 @@ export async function ask({ system, prompt, schema, timeoutMs, deep = false }) {
 export async function chatTurn({ system, prompt, schema, session = null, deep = false, write = false }) {
   const t0 = Date.now();
   trace('chat turn', session ? 'follow-up' : 'new');
-  const r = await L.turn({ send, ops, store, system, prompt, schema: L.apiSchema(schema), session, deep, write, timeoutMs: 120000 });
+  const r = await L.turn({ send, models: MODELS, ops, store, system, prompt, schema: L.apiSchema(schema), session, deep, write, timeoutMs: 120000 });
   logCost('chat', r.model, r.cost, Date.now() - t0);
   return { output: r.output, session: r.session, cost: r.cost };
 }

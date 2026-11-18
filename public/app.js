@@ -4316,7 +4316,7 @@ function nativeSettingsHtml() {
   const sw = (key, label, hint) => `<div class="set-row"><div class="set-l">${label}<small>${hint}</small></div><span class="seg">${[['off', 'Off'], ['on', 'On']].map(([v, l]) => `<button data-act="set-native" data-key="${key}" data-val="${v}" class="${(n[key] ? 'on' : 'off') === v ? 'on' : ''}">${l}</button>`).join('')}</span></div>`;
   const where = n.mac ? `${esc(n.mac.replace(/^https?:\/\//, ''))}${n.paired ? ' · paired ✓' : ''}` : 'no Mac yet';
   return `${sheet('Mac', `${where} · without the Mac: ${n.folder ? `the folder ${esc(n.folder)}` : 'a copy of your files'}`)}
-    ${'claudeKey' in n ? sheet('Claude API key', n.claudeKey ? 'set ✓ · the chat, ✦ steps and inbox triage work when the Mac is away, paid per use on your Anthropic account' : 'not set · with your own key the chat, ✦ steps and inbox triage work when the Mac is away') : ''}
+    ${'claudeKey' in n ? sheet('AI API key', n.claudeKey ? `set ✓ (${n.keyVendor === 'openai' ? 'OpenAI' : 'Anthropic'}) · the chat, ✦ steps, inbox triage and voice work when the Mac is away, paid per use on that account` : 'not set · with your own Anthropic or OpenAI key the chat, ✦ steps, inbox triage and voice work when the Mac is away') : ''}
     ${sw('reminders', 'Reminders', 'ring from the phone itself, even without the Mac or network')}
     ${sw('checkins', 'Morning plan &amp; evening check-in', 'the digest, the evening check-in, the reflection and your protocols, from the phone')}
     ${sw('agents', 'Agent finished or blocked', 'when iOS lets the app look at the Mac in the background: minutes to hours later, not instantly')}

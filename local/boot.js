@@ -73,6 +73,14 @@ if (claude) {
   Triage = await import('/lib/triage.js');
   route('POST', '/api/chat', (_, __, b) => Chat.ask(b));
   route('POST', '/api/tasks/:id/breakdown', ({ id }) => Assist.breakdown(id));
+  // voice: the phone recognizes the speech, the model turns the words into tasks or a command (lib/voice-parse.js)
+  const Voice = await import('/lib/voice-parse.js');
+  route('POST', '/api/voice/parse', (_, __, b) => Voice.interpret(String(b.text || ''), b.context || {}));
+  // Plan the day: the workday and the tasks, without the calendar (local/calendar.js)
+  const Plan = await import('/lib/planner.js');
+  route('GET', '/api/plan/free', () => Plan.dayFree());
+  route('POST', '/api/plan/draft', (_, __, b) => Plan.draft({ refresh: !!b.refresh }));
+  route('GET', '/api/plan/estimates', () => Plan.cachedEstimates());
   // the Ask chat (hidden offline without a key: app.css)
   const n = native ? await bridge.call({ op: 'native' }).catch(() => ({})) : { claudeKey: true };
   if (n.claudeKey) document.documentElement.classList.add('local-claude');

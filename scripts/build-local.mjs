@@ -14,10 +14,10 @@ const CORE = ['core-routes.js', 'vault.js', 'model.js', 'review.js', 'config.js'
 
 // what needs a model, with Claude through the API sent by the shell (the key in the iPhone's Keychain): chat, ✦ steps, inbox
 // triage. Their ./llm.js is local/llm.js (the import map below).
-const MODEL = ['claude-loop.js', 'chat.js', 'assist.js', 'triage.js', 'article.js'];
+const MODEL = ['claude-loop.js', 'openai-loop.js', 'chat.js', 'assist.js', 'triage.js', 'article.js', 'voice-parse.js', 'planner.js'];
 // every lib/ file a bundled file imports must be bundled, or the offline app hangs on "Reading your system folder"
 for (const f of [...CORE, ...MODEL]) for (const [, dep] of fs.readFileSync(path.join(ROOT, 'lib', f), 'utf8').matchAll(/from '\.\/([\w-]+\.js)'/g)) {
-  if (![...CORE, ...MODEL, 'llm.js'].includes(dep)) { console.error(`build-local: lib/${f} imports ./${dep}, which is not bundled (CORE or MODEL in scripts/build-local.mjs)`); process.exit(1); }
+  if (![...CORE, ...MODEL, 'llm.js', 'calendar.js'].includes(dep)) { console.error(`build-local: lib/${f} imports ./${dep}, which is not bundled (CORE or MODEL in scripts/build-local.mjs)`); process.exit(1); }
 }
 fs.rmSync(out, { recursive: true, force: true });
 fs.cpSync(path.join(ROOT, 'public'), out, { recursive: true });
@@ -28,10 +28,12 @@ fs.cpSync(path.join(ROOT, 'node_modules', 'yaml', 'browser'), path.join(out, 've
 fs.copyFileSync(path.join(ROOT, 'node_modules', 'yaml', 'LICENSE'), path.join(out, 'vendor', 'yaml', 'LICENSE'));
 
 const importmap = { imports: {
-  'node:fs': '/local/shims/fs.js', 'node:path': '/local/shims/path.js', 'node:child_process': '/local/shims/child_process.js',
+  'node:fs': '/local/shims/fs.js', 'node:path': '/local/shims/path.js', 'node:child_process': '/local/shims/child_process.js', 'node:crypto': '/local/shims/crypto.js',
   yaml: '/vendor/yaml/index.js',
   '/public/recur.js': '/recur.js', // lib/cron.js imports ../public/recur.js; in the bundle public/ is the root
+  '/public/parse.js': '/parse.js', // lib/voice-parse.js imports ../public/parse.js
   '/lib/llm.js': '/local/llm.js', // the model on the phone: the API through the shell
+  '/lib/calendar.js': '/local/calendar.js', // no calendar on the phone yet: Plan the day plans the workday (lib/planner.js)
 } };
 let html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8')
   .replace('<link rel="manifest" href="/manifest.webmanifest">', '')
@@ -69,7 +71,8 @@ if (mock) {
 window.gubernosMockBridge = { call: async (m) => {
   if (m.op === 'load') { const b = await (await fetch('/vault.json')).json(); b.data = JSON.parse(localStorage.getItem('gubernos-data') || '{}'); return b; }
   // the shell's Claude API call: the page that serves this bundle answers it (a test stands in for the API there)
-  if (m.op === 'claude') { const r = await fetch('/claude', { method: 'POST', body: m.body }); const t = await r.text(); if (!r.ok) throw new Error(t || 'claude failed'); return t; }
+  if (m.op === 'claude' || m.op === 'openai') { const r = await fetch('/' + m.op, { method: 'POST', body: m.body }); const t = await r.text(); if (!r.ok) throw new Error(t || m.op + ' failed'); return t; }
+  if (m.op === 'native') return { claudeKey: true, keyVendor: localStorage.getItem('gubernos-mock-vendor') || 'anthropic' }; // which key a test's phone has
   window.gubernosWrites.push(m);
   if (m.op === 'write' && m.path.startsWith('/data/')) { const d = JSON.parse(localStorage.getItem('gubernos-data') || '{}'); d[m.path.slice(6)] = m.text; localStorage.setItem('gubernos-data', JSON.stringify(d)); }
   return { ok: true };
