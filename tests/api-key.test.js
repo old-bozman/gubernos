@@ -49,7 +49,7 @@ test('an API key added on the computer: checked, kept, used, removed; not throug
     assert.ok(!JSON.stringify((await s.get('/api/state')).body).includes(GOOD), 'the key never goes back to a page');
 
     await page.goto(`${s.url}/#/settings`); await page.eval('location.reload()'); // a fresh page: Settings asks the Mac again
-    assert.ok(await page.waitFor('[...document.querySelectorAll(".set-l")].some((x) => /Claude API key/.test(x.textContent) && /set ✓/.test(x.textContent))', 15000), 'Settings doesn’t show the key as set');
+    assert.ok(await page.waitFor('[...document.querySelectorAll(".set-l")].some((x) => /Anthropic API key/.test(x.textContent) && /set ✓/.test(x.textContent))', 15000), 'Settings doesn’t show the key as set');
 
     const gone = (await fetch(`${s.url}/api/ai/key`, { method: 'DELETE' }).then((r) => r.json()));
     assert.equal(gone.list.find((p) => p.id === 'api').installed, false);
