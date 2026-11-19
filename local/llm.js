@@ -73,7 +73,7 @@ function logCost(job, model, cost, ms) {
 const chats = new Map(); // a chat's history, for this session of the app
 const store = { get: (id) => chats.get(id) || null, set: (id, c) => chats.set(id, c) };
 
-export const current = () => (['openai', 'gemini'].includes(VENDOR) ? VENDOR : 'api');
+export const current = () => (VENDOR === 'openai' ? 'openai' : VENDOR === 'gemini' ? 'google' : 'api'); // the Mac's provider ids (lib/llm.js)
 // who asked, off the call stack (/lib/triage.js → triage), as on the Mac
 const caller = () => (new Error().stack.split('\n').slice(2).map((l) => l.match(/\/lib\/([\w-]+)\.js/)?.[1]).find((x) => x && x !== 'llm') || 'app');
 export async function ask({ system, prompt, schema, timeoutMs, deep = false }) {

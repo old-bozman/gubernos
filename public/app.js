@@ -2778,8 +2778,8 @@ const agentReady = (a) => !(MODEL_CLI[a.run] && S.data.agents?.[a.run] === false
 const agentNames = () => Object.fromEntries(agentList().map((a) => [a.id, a.name]));
 const agentName = (id) => agentOf(id)?.name || (id ? id[0].toUpperCase() + id.slice(1) : 'agent');
 // the model the app uses (Settings → Your Mac → Model, lib/llm.js): a task with no agent runs with it
-const MODEL_CLI = { claude: 'Claude Code', codex: 'Codex', api: 'the Claude API', openai: 'the OpenAI API', gemini: 'the Gemini API' };
-const KEY_CO = { api: 'Anthropic', anthropic: 'Anthropic', openai: 'OpenAI', gemini: 'Google' }; // whose key: lib/anthropic.js vendor ids, the phone's keyVendor
+const MODEL_CLI = { claude: 'Claude Code', codex: 'Codex', api: 'the Claude API', openai: 'the OpenAI API', google: 'the Gemini API' };
+const KEY_CO = { api: 'Anthropic', anthropic: 'Anthropic', openai: 'OpenAI', google: 'Google', gemini: 'Google' }; // whose key: lib/anthropic.js vendor ids, the phone's keyVendor
 const appModel = () => S.data.agents?.provider || 'claude';
 // started here (when that model's CLI is on this Mac) or not: then it takes its own queue
 const agentRun = (id) => { const r = agentOf(id)?.run || appModel(); return MODEL_CLI[r] && S.data.agents?.[r] === false ? 'queue' : r; };
@@ -4571,10 +4571,10 @@ const keyHowTo = (phone = false) => `<details class="key-howto"><summary>How to 
 // Your own API key, Anthropic's, OpenAI's or Google's (lib/anthropic.js; which one by how it starts): added on the computer itself
 // (server.js /api/ai/key), kept in its Keychain
 function apiKeyHtml() {
-  const keyed = (S.ai?.list || []).filter((p) => ['api', 'openai', 'gemini'].includes(p.id));
+  const keyed = (S.ai?.list || []).filter((p) => ['api', 'openai', 'google'].includes(p.id));
   if (!keyed.length) return '';
   const set = keyed.filter((p) => p.installed), here = S.pair?.local !== false;
-  const rows = set.map((p) => `<div class="set-row"><div class="set-l">${KEY_CO[p.id]} API key<small>set ✓ · ${{ api: 'paid per use on your Anthropic account (console.anthropic.com → Billing)', openai: 'paid per use on your OpenAI account (platform.openai.com → Billing)', gemini: 'Google’s free quota (aistudio.google.com shows it; turn on billing there for more)' }[p.id]}</small></div><button class="linkbtn" data-act="ai-key-remove" data-val="${p.id}">Remove</button></div>`).join('');
+  const rows = set.map((p) => `<div class="set-row"><div class="set-l">${KEY_CO[p.id]} API key<small>set ✓ · ${{ api: 'paid per use on your Anthropic account (console.anthropic.com → Billing)', openai: 'paid per use on your OpenAI account (platform.openai.com → Billing)', google: 'Google’s free quota (aistudio.google.com shows it; turn on billing there for more)' }[p.id]}</small></div><button class="linkbtn" data-act="ai-key-remove" data-val="${p.id}">Remove</button></div>`).join('');
   if (set.length === keyed.length) return rows;
   return `${rows}<div class="set-row"><div class="set-l">${set.length ? 'Another API key' : 'API key'}<small>no Claude Code or ChatGPT plan? Use your own key. Free: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google Gemini</a> (no card, a daily limit). Paid per use: <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Anthropic</a> (Claude) or <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">OpenAI</a>, a few dollars a month for everyday use, agent runs cost more. What the app sends goes to that company under your key. Anthropic and OpenAI don’t train on API data by default; on Google’s free tier, outside the EU, UK and Switzerland, Google may.${keyHowTo()}${here ? '' : '<br>Add it on the computer itself: here it would pass through the phone’s connection.'}</small></div>
     ${here ? `<span class="set-key"><input type="password" id="ai-key" placeholder="AIza…, sk-ant-… or sk-…" autocomplete="off" spellcheck="false"><button class="btn" data-act="ai-key-save" ${S.aiKeyBusy ? 'disabled' : ''}>${S.aiKeyBusy ? 'Checking…' : 'Save'}</button></span>` : ''}</div>`;

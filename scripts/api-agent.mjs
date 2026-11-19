@@ -7,7 +7,7 @@ import { loop, toolset, modelsOf, price, why } from '../lib/anthropic.js';
 
 const prompt = String(process.argv[2] || '').trim();
 const out = (o) => process.stdout.write(`${JSON.stringify(o)}\n`);
-const vendor = ['openai', 'gemini'].includes(process.env.GUBERNOS_VENDOR) ? process.env.GUBERNOS_VENDOR : 'api';
+const vendor = ['openai', 'google'].includes(process.env.GUBERNOS_VENDOR) ? process.env.GUBERNOS_VENDOR : 'api';
 const model = modelsOf(vendor).sonnet;
 const system = `You are an autonomous agent working in a folder of plain Markdown files: the owner's vault (their tasks, projects and notes).
 Use the tools to read, search and change files; paths are relative to the vault. Work carefully: read a file before you edit it, change only what the task needs.

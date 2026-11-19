@@ -44,7 +44,7 @@ test('a Gemini key: answers, chat with tools, an agent run', { timeout: 90000 },
     assert.equal((await s.post('/api/ai/key', { key: 'AIzaSyWrongKey0123456789abcdefghijklmn' })).status, 400, 'Google says 400 for a bad key');
     const k = await s.post('/api/ai/key', { key: KEY });
     assert.equal(k.status, 200, JSON.stringify(k.body));
-    assert.equal(k.body.current, 'gemini', 'an AIza key is Google’s, and the app runs on it');
+    assert.equal(k.body.current, 'google', 'an AIza key is Google’s, and the app runs on it');
     assert.equal(fs.statSync(path.join(s.dir, 'config/gemini-key')).mode & 0o777, 0o600);
 
     // one answer to a schema: the quick model, the schema as response_format, nothing stored at Google
@@ -81,7 +81,7 @@ test('a Gemini key: answers, chat with tools, an agent run', { timeout: 90000 },
     assert.ok(api.seen.every((x) => x.key === KEY));
 
     // removed: back to whatever else is ready
-    const gone = await fetch(`${s.url}/api/ai/key?provider=gemini`, { method: 'DELETE' }).then((x) => x.json());
-    assert.equal(gone.list.find((p) => p.id === 'gemini').installed, false);
+    const gone = await fetch(`${s.url}/api/ai/key?provider=google`, { method: 'DELETE' }).then((x) => x.json());
+    assert.equal(gone.list.find((p) => p.id === 'google').installed, false);
   } finally { await s.stop(); api.close(); }
 });

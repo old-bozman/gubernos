@@ -96,7 +96,7 @@ test('without a key the Claude API is offered, not ready (its key is added in Se
   const s = await startServer();
   try {
     const ai = (await s.get('/api/ai')).body;
-    assert.deepEqual(ai.list.map((p) => p.id), ['claude', 'codex', 'api', 'openai', 'gemini']);
+    assert.deepEqual(ai.list.map((p) => p.id), ['claude', 'codex', 'api', 'openai', 'google']);
     assert.equal(ai.list.find((p) => p.id === 'api').ready, false);
   } finally { await s.stop(); }
 });

@@ -74,7 +74,7 @@ esac
     await p.goto(`${srv.url}/#/onboard`);
     assert.ok(await p.waitFor('document.querySelector("[data-act=onboard-connect][data-val=claude]")'));
     assert.match(await p.eval('document.querySelector(".ob-connect").innerText'), /AI subscription: Claude with Claude Code/);
-    assert.ok(!/Gemini/.test(await p.eval('document.querySelector(".onboard").innerText')));
+    assert.ok(!await p.eval('!!document.querySelector("[data-act=onboard-connect][data-val=gemini]")'), 'the Gemini CLI is offered again'); // a Gemini API key is (2026-11-19), the CLI not
     await p.eval('document.querySelector("[data-act=onboard-connect][data-val=claude]").click()');
     assert.ok(await p.waitFor('document.querySelector("[data-act=onboard-cancel]")', 10000), 'no way out of a lost sign-in');
     assert.ok(await p.eval('document.querySelector("[data-act=onboard-connect][data-val=claude]").disabled'));
