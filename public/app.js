@@ -1225,7 +1225,7 @@ function planHtml() {
     <div class="plan-cap"><div class="plan-cap-t"><b>${planMins(free.freeMinutes)}</b> free today ${free.from !== wd.start ? `from ${free.from} ` : ''}· ${hh(wd.start)}–${hh(wd.end)}${wd.from === 'protocols' ? ' (between your AM and PM)' : ''}, minus meetings${free.lunch ? ` and lunch ${free.lunch.start}` : ''}${free.lunchToday ? ` · <button class="linkbtn" data-act="lunch-reset">${free.lunchToday === 'off' ? 'no lunch today — add it back' : 'lunch moved today — as usual'}</button>` : ''}${free.calendarError ? (/not connected|No OAuth client|no access to calendars/.test(free.calendarError) ? ' · no calendar connected (Settings → Your Mac → Calendar)' : ' · <span class="d-over">calendar not reachable</span>') : ''}</div>
       <div class="plan-cap-s">${d.pace ? `Your pace over ${d.pace.days} planned days: ${Math.round(d.pace.rate * 100)}% done → take on <b>${planMins(cap)}</b>` : `Take on up to 85% → <b>${planMins(cap)}</b> (your real pace shows after 3 planned days)`}${d.oneStreak ? ` · #1 streak ${d.oneStreak}` : ''}</div>
       <div class="plan-bar"><span style="width:${pct}%" class="${used > cap ? 'over' : ''}"></span></div>
-      ${d.estimateError ? '<div class="plan-cap-s d-over">The agent couldn’t estimate this time — 50 min each for now. Tap re-estimate to try again.</div>' : ''}
+      ${d.estimateError ? (/needs AI/.test(d.estimateError) ? '<div class="plan-cap-s">No AI for time estimates: 50 min each, or set a task’s time (Takes). With an API key in Settings → This iPhone the agent estimates them.</div>' : '<div class="plan-cap-s d-over">The agent couldn’t estimate this time — 50 min each for now. Tap re-estimate to try again.</div>') : ''}
       <div class="plan-cap-s">${planMins(used)} of ${planMins(cap)} picked below · <button class="linkbtn" data-act="plan-refresh">re-estimate</button> · free: ${free.gaps.map((g) => `${g.start}–${g.end}`).join(' · ') || 'no free window left'}</div></div>
     <div class="section-h">#1 <span class="hint">the one result that makes today a win</span></div>
     <div class="plan-row one-plan"><div class="plan-main"><input id="plan-one" class="one-in" placeholder="Today’s #1" value="${esc(P.one?.text || '')}">
@@ -4423,7 +4423,8 @@ function onboardHtml() {
   const o = S.onboard;
   if (!o) { if (o !== false) { S.onboard = false; api('GET', '/api/onboard').then((x) => { S.onboard = x; if (S.view === 'onboard') renderMain(); }).catch((e) => { S.onboard = { turns: [], error: e.message }; renderMain(); }); } return '<div class="empty">…</div>'; }
   const voice = S.data?.voice !== false;
-  const intro = o.turns.length ? '' : `<div class="ob-intro"><h2>Let’s load your system</h2>
+  // the phone with no key: the talk can't start, so the page opens on the three ways to get AI (phoneKey), not on "press the mic"
+  const intro = o.turns.length || (o.phone && !o.model) ? '' : `<div class="ob-intro"><h2>Let’s load your system</h2>
     <p>Think of me as your new assistant, on day one. Set aside <b>about 10 minutes</b> somewhere you can talk, ${voice ? 'press the mic and tell me' : 'and tell me'} about yourself, in any order, as much as you like. I’ll keep track of what matters. You can change anything later.</p>
     <ul><li>Who you are, who’s in your life, what you look after</li><li>What you can’t let slip, and what you’re hoping for this year</li><li>What’s on your plate right now</li></ul>
     <p class="muted">Your tasks in another app (Todoist, Things, Reminders) don’t need retelling: bring them in after this, from Settings → General → Import tasks.</p></div>`;
@@ -5911,7 +5912,8 @@ function closeChat() {
 document.addEventListener('click', (e) => { if (e.target.closest?.('#chat .md a[href^="#/"]') && matchMedia('(max-width: 800px)').matches) closeChat(); });
 async function maybeBrief() {
   const d = S.data, h = new Date().getHours();
-  if (!d?.me?.brief || S.briefAsked === d.today || S.view === 'onboard' || h < 5 || h >= 14) return;
+  // the brief is made on the Mac: the phone on its own has none (asking toasted "this needs the Mac" on every Today)
+  if (window.gubernosLocal || !d?.me?.brief || S.briefAsked === d.today || S.view === 'onboard' || h < 5 || h >= 14) return;
   S.briefAsked = d.today;
   let st;
   try { st = await api('GET', '/api/brief/status', undefined, 10000); } catch { S.briefAsked = null; return; }

@@ -103,6 +103,15 @@ test('without the Mac: voice → tasks on Claude’s key, then chat and voice on
     const c0 = await post('/api/chat', { message: 'hi' });
     assert.equal(c0.status, 503, 'the chat says it needs AI, not "try again"');
     assert.equal(seen.claude.length, 3, 'nothing was sent without a key');
+    // with no key the talk can't start: the screen opens on the three ways, not on "press the mic and tell me"
+    assert.ok(await page.eval('!document.querySelector(".ob-intro")'), 'the interview intro shows with no AI');
+    // Plan the day: no "try again" for estimates that can't happen (2026-11-19, the no-key video)
+    const p0 = await post('/api/plan/draft', { refresh: true });
+    assert.equal(p0.status, 200, JSON.stringify(p0.body)); assert.match(p0.body.estimateError, /needs AI/);
+    assert.doesNotMatch(JSON.stringify(p0.body), /no estimate this time/, 'a row says "no estimate this time" with no AI');
+    await page.eval(`location.hash = '#/plan'`);
+    assert.ok(await page.waitFor('!!document.querySelector(".plan")', 15000), 'Plan the day without AI');
+    assert.ok(await page.eval('!document.querySelector(".plan").innerText.includes("try again")'), 'Plan the day says "try again" with no AI');
 
     // the phone's key is OpenAI's now
     await page.eval(`localStorage.setItem('gubernos-mock-vendor', 'openai')`);
