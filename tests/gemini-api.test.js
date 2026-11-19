@@ -9,7 +9,7 @@ import http from 'node:http';
 import path from 'node:path';
 import { startServer } from './helpers.js';
 
-const KEY = 'AIzaSyTestKeyForGemini0123456789abcdefg';
+const KEY = 'AIza-test-gemini-key-not-real'; // not key-shaped on purpose: a real-looking AIza… string trips GitHub's secret scanning
 function fakeGemini() {
   const seen = [];
   const usage = (i = 1000, o = 100) => ({ total_input_tokens: i, total_cached_tokens: 0, total_output_tokens: o, total_thought_tokens: 0 });
@@ -41,7 +41,7 @@ test('a Gemini key: answers, chat with tools, an agent run', { timeout: 90000 },
   const api = await fakeGemini();
   const s = await startServer({ GUBERNOS_GEMINI_URL: api.url });
   try {
-    assert.equal((await s.post('/api/ai/key', { key: 'AIzaSyWrongKey0123456789abcdefghijklmn' })).status, 400, 'Google says 400 for a bad key');
+    assert.equal((await s.post('/api/ai/key', { key: 'AIza-wrong-test-key-not-real' })).status, 400, 'Google says 400 for a bad key');
     const k = await s.post('/api/ai/key', { key: KEY });
     assert.equal(k.status, 200, JSON.stringify(k.body));
     assert.equal(k.body.current, 'google', 'an AIza key is Google’s, and the app runs on it');
