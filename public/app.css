@@ -1724,3 +1724,9 @@ button.dc-ev:hover, .dc-ev.cal-hl { box-shadow: 0 0 0 2px var(--accent); z-index
 .set-key { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .set-key input { border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; background: var(--bg); color: var(--ink); font: inherit; font-size: 13px; width: 220px; max-width: 100%; }
 @media (max-width: 800px) { .set-key input { font-size: 16px; } }
+/* how to get a free Gemini key (app.js keyHowTo) */
+.key-howto { margin: 6px 0; font-size: 13px; }
+.key-howto summary { cursor: pointer; color: var(--accent, inherit); }
+.key-howto ol { margin: 6px 0 4px 18px; padding: 0; }
+.key-howto li { margin: 2px 0; }
+.key-howto code { font-size: 12px; }

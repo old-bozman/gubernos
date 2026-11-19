@@ -14,7 +14,7 @@ const CORE = ['core-routes.js', 'vault.js', 'model.js', 'review.js', 'config.js'
 
 // what needs a model, with Claude through the API sent by the shell (the key in the iPhone's Keychain): chat, ✦ steps, inbox
 // triage. Their ./llm.js is local/llm.js (the import map below).
-const MODEL = ['claude-loop.js', 'openai-loop.js', 'chat.js', 'assist.js', 'triage.js', 'article.js', 'voice-parse.js', 'planner.js'];
+const MODEL = ['claude-loop.js', 'openai-loop.js', 'gemini-loop.js', 'chat.js', 'assist.js', 'triage.js', 'article.js', 'voice-parse.js', 'planner.js'];
 // every lib/ file a bundled file imports must be bundled, or the offline app hangs on "Reading your system folder"
 for (const f of [...CORE, ...MODEL]) for (const [, dep] of fs.readFileSync(path.join(ROOT, 'lib', f), 'utf8').matchAll(/from '\.\/([\w-]+\.js)'/g)) {
   if (![...CORE, ...MODEL, 'llm.js', 'calendar.js'].includes(dep)) { console.error(`build-local: lib/${f} imports ./${dep}, which is not bundled (CORE or MODEL in scripts/build-local.mjs)`); process.exit(1); }
@@ -74,7 +74,7 @@ if (mock) {
 window.gubernosMockBridge = { call: async (m) => {
   if (m.op === 'load') { const b = await (await fetch('/vault.json')).json(); b.data = JSON.parse(localStorage.getItem('gubernos-data') || '{}'); return b; }
   // the shell's Claude API call: the page that serves this bundle answers it (a test stands in for the API there)
-  if (m.op === 'claude' || m.op === 'openai') { const r = await fetch('/' + m.op, { method: 'POST', body: m.body }); const t = await r.text(); if (!r.ok) throw new Error(t || m.op + ' failed'); return t; }
+  if (m.op === 'claude' || m.op === 'openai' || m.op === 'gemini') { const r = await fetch('/' + m.op, { method: 'POST', body: m.body }); const t = await r.text(); if (!r.ok) throw new Error(t || m.op + ' failed'); return t; }
   if (m.op === 'native') { const v = localStorage.getItem('gubernos-mock-vendor') || 'anthropic'; return v === 'none' ? { claudeKey: false, keyVendor: '' } : { claudeKey: true, keyVendor: v }; } // which key a test's phone has
   window.gubernosWrites.push(m);
   if (m.op === 'write' && m.path.startsWith('/data/')) { const d = JSON.parse(localStorage.getItem('gubernos-data') || '{}'); d[m.path.slice(6)] = m.text; localStorage.setItem('gubernos-data', JSON.stringify(d)); }

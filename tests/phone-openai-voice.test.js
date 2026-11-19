@@ -20,7 +20,7 @@ test('without the Mac: voice → tasks on Claude’s key, then chat and voice on
   fs.mkdirSync(path.join(vault, '10_tasks'), { recursive: true });
   fs.writeFileSync(path.join(vault, '10_tasks/20261108-120000-call-the-dentist.md'), '---\ntype: task\nstatus: new\npriority: planned\nassigned: me\ndue: 2026-11-10\n---\n# Call the dentist\n');
   execFileSync(process.execPath, [path.join(ROOT, 'scripts/build-local.mjs'), out, '--mock', vault]);
-  const seen = { claude: [], openai: [] };
+  const seen = { claude: [], openai: [], gemini: [] };
   const ESTIMATE = { tasks: [{ n: 1, task: 'Call the dentist', minutes: 15, must_today: true, why: 'overdue' }] };
   const claude = (b) => ({ id: 'm', type: 'message', role: 'assistant', model: b.model, content: [{ type: 'text', text: JSON.stringify(b.output_config?.format?.schema?.properties?.intent ? VOICE : /onboarding|interview/i.test(JSON.stringify(b.system)) ? { reply: 'Nice to meet you. Who is in your life?', finished: false } : ESTIMATE) }], stop_reason: 'end_turn', usage: { input_tokens: 500, output_tokens: 50 } });
   const openai = (b) => {
@@ -31,14 +31,23 @@ test('without the Mac: voice → tasks on Claude’s key, then chat and voice on
     if (!results.length) return { status: 'completed', output: [{ type: 'function_call', id: 'fc_1', call_id: 'call_1', name: 'find_files', arguments: '{"pattern":"10_tasks/*.md"}' }], usage };
     return msg(JSON.stringify({ reply: `Found: ${results[0].output}`, actions: [] }));
   };
+  // Google's Interactions API: the voice schema answered, a chat turn calls a tool and then answers
+  const gemini = (b) => {
+    const usage = { total_input_tokens: 500, total_cached_tokens: 0, total_output_tokens: 50, total_thought_tokens: 10 };
+    const out = (text) => ({ status: 'completed', steps: [{ type: 'model_output', content: [{ type: 'text', text }] }], usage });
+    if (b.response_format?.schema?.properties?.intent) return out(JSON.stringify(VOICE));
+    const results = b.input.filter((i) => i.type === 'function_result');
+    if (!results.length) return { status: 'requires_action', steps: [{ type: 'thought', signature: 's1' }, { type: 'function_call', id: 'c1', name: 'find_files', arguments: { pattern: '10_tasks/*.md' } }], usage };
+    return out(JSON.stringify({ reply: `Found: ${results[0].result}`, actions: [] }));
+  };
   const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml' };
   const server = http.createServer((req, res) => {
-    if (req.method === 'POST' && (req.url === '/claude' || req.url === '/openai')) {
+    if (req.method === 'POST' && ['/claude', '/openai', '/gemini'].includes(req.url)) {
       let body = '';
       return req.on('data', (d) => { body += d; }).on('end', () => {
         const b = JSON.parse(body), who = req.url.slice(1);
         seen[who].push(b);
-        res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(who === 'claude' ? claude(b) : openai(b)));
+        res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(({ claude, openai, gemini })[who](b)));
       });
     }
     const f = path.join(out, decodeURIComponent(new URL(req.url, 'http://x').pathname));
@@ -107,5 +116,19 @@ test('without the Mac: voice → tasks on Claude’s key, then chat and voice on
     assert.equal(chat.status, 200, JSON.stringify(chat.body));
     assert.match(chat.body.reply, /20261108-120000-call-the-dentist\.md/);
     assert.equal(seen.claude.length, 3, 'nothing went to Anthropic on the OpenAI key (voice, the plan and the interview before)');
+
+    // the free one: a Google Gemini key on the phone (2026-11-19)
+    await page.eval(`localStorage.setItem('gubernos-mock-vendor', 'gemini')`);
+    await page.goto('about:blank'); await page.goto(url);
+    assert.ok(await started(), 'the offline page started on Gemini');
+    const v3 = await post('/api/voice/parse', { text: 'buy milk' });
+    assert.equal(v3.status, 200, JSON.stringify(v3.body));
+    assert.equal(v3.body.tasks[0].due, today);
+    assert.equal(seen.gemini[0].model, 'gemini-3.5-flash-lite'); assert.equal(seen.gemini[0].store, false);
+    const chat3 = await post('/api/chat', { message: 'What is due?' });
+    assert.equal(chat3.status, 200, JSON.stringify(chat3.body));
+    assert.match(chat3.body.reply, /20261108-120000-call-the-dentist\.md/);
+    assert.ok(seen.gemini.at(-1).input.some((i) => i.type === 'thought' && i.signature === 's1'), 'the thought went back');
+    assert.equal(seen.claude.length, 3); assert.equal(seen.openai.length, 3, 'nothing went to the others on the Gemini key');
   } finally { await page.close(); server.close(); fs.rmSync(dir, { recursive: true, force: true }); }
 });

@@ -2778,7 +2778,8 @@ const agentReady = (a) => !(MODEL_CLI[a.run] && S.data.agents?.[a.run] === false
 const agentNames = () => Object.fromEntries(agentList().map((a) => [a.id, a.name]));
 const agentName = (id) => agentOf(id)?.name || (id ? id[0].toUpperCase() + id.slice(1) : 'agent');
 // the model the app uses (Settings → Your Mac → Model, lib/llm.js): a task with no agent runs with it
-const MODEL_CLI = { claude: 'Claude Code', codex: 'Codex', api: 'the Claude API', openai: 'the OpenAI API' };
+const MODEL_CLI = { claude: 'Claude Code', codex: 'Codex', api: 'the Claude API', openai: 'the OpenAI API', gemini: 'the Gemini API' };
+const KEY_CO = { api: 'Anthropic', anthropic: 'Anthropic', openai: 'OpenAI', gemini: 'Google' }; // whose key: lib/anthropic.js vendor ids, the phone's keyVendor
 const appModel = () => S.data.agents?.provider || 'claude';
 // started here (when that model's CLI is on this Mac) or not: then it takes its own queue
 const agentRun = (id) => { const r = agentOf(id)?.run || appModel(); return MODEL_CLI[r] && S.data.agents?.[r] === false ? 'queue' : r; };
@@ -3863,7 +3864,7 @@ document.addEventListener('click', async (e) => {
       const inp = $(act === 'ai-key-save' ? '#ai-key' : '#ob-key'), k = inp?.value.trim();
       if (!k) return inp?.focus();
       S.aiKeyBusy = true; render();
-      try { S.ai = await api('POST', '/api/ai/key', { key: k }); toast(`The key works: the app runs on ${S.ai.current === 'openai' ? 'the OpenAI API' : 'the Claude API'}`); } catch (err) { toast(err.message); } finally { S.aiKeyBusy = false; }
+      try { S.ai = await api('POST', '/api/ai/key', { key: k }); toast(`The key works: the app runs on ${MODEL_CLI[S.ai.current] || 'the Claude API'}`); } catch (err) { toast(err.message); } finally { S.aiKeyBusy = false; }
       if (act === 'onboard-key') S.onboard = await api('GET', '/api/onboard').catch(() => S.onboard);
       return load();
     }
@@ -4317,7 +4318,7 @@ function nativeSettingsHtml() {
   const sw = (key, label, hint) => `<div class="set-row"><div class="set-l">${label}<small>${hint}</small></div><span class="seg">${[['off', 'Off'], ['on', 'On']].map(([v, l]) => `<button data-act="set-native" data-key="${key}" data-val="${v}" class="${(n[key] ? 'on' : 'off') === v ? 'on' : ''}">${l}</button>`).join('')}</span></div>`;
   const where = n.mac ? `${esc(n.mac.replace(/^https?:\/\//, ''))}${n.paired ? ' · paired ✓' : ''}` : 'no Mac yet';
   return `${sheet('Mac', `${where} · without the Mac: ${n.folder ? `the folder ${esc(n.folder)}` : 'a copy of your files'}`)}
-    ${'claudeKey' in n ? sheet('AI API key', n.claudeKey ? `set ✓ (${n.keyVendor === 'openai' ? 'OpenAI' : 'Anthropic'}) · the chat, ✦ steps, inbox triage and voice work when the Mac is away, paid per use on that account` : 'not set · with your own Anthropic or OpenAI key the chat, ✦ steps, inbox triage and voice work when the Mac is away') : ''}
+    ${'claudeKey' in n ? sheet('AI API key', n.claudeKey ? `set ✓ (${KEY_CO[n.keyVendor] || 'Anthropic'}) · the chat, ✦ steps, inbox triage and voice work when the Mac is away${n.keyVendor === 'gemini' ? ', on Google’s free quota' : ', paid per use on that account'}` : 'not set · with a free Google Gemini key, or your own Anthropic or OpenAI key, the chat, ✦ steps, inbox triage and voice work when the Mac is away') : ''}
     ${sw('reminders', 'Reminders', 'ring from the phone itself, even without the Mac or network')}
     ${sw('checkins', 'Morning plan &amp; evening check-in', 'the digest, the evening check-in, the reflection and your protocols, from the phone')}
     ${sw('agents', 'Agent finished or blocked', 'when iOS lets the app look at the Mac in the background: minutes to hours later, not instantly')}
@@ -4434,11 +4435,12 @@ function onboardHtml() {
   // the three ways to run it, said up front (2026-11-19 Alex): a Mac on a subscription, a key on the phone, or no AI, and what's lost then
   const phoneKey = o.phone && !o.model ? `<div class="ob-connect ob-ways"><p><b>How ${esc(APP_NAME)} gets its AI</b>: pick one.</p>
       <p><b>Your Mac as the server.</b> Runs on your Claude or ChatGPT subscription, nothing extra to pay. Adds agents that do tasks for you, your calendar in Plan the day and the morning brief.<br><a class="btn" href="https://gubernos.app/#install" target="_blank" rel="noopener">Set up on your Mac</a></p>
-      <p><b>An API key on this iPhone.</b> Anthropic (Claude) or OpenAI, paid per use: a few dollars a month. Everything but agents, the calendar and the brief.<br><button class="btn primary" data-act="ob-phone-key">Add your API key</button> <span class="ph-text">Settings → This iPhone; get one at console.anthropic.com or platform.openai.com</span></p>
+      <p><b>An API key on this iPhone.</b> Everything but agents, the calendar and the brief. <b>Free:</b> a Google Gemini key, no card, a daily limit that's plenty for one person. Or Anthropic (Claude) or OpenAI, paid per use: a few dollars a month.<br><button class="btn primary" data-act="ob-phone-key">Add your API key</button></p>
+      ${keyHowTo(true)}
       <p><b>No AI for now.</b> Tasks, projects, inbox, habits, wins, Plan the day and the daily reflection all work. Without AI there's no setup talk, no chat, no ✦ steps, no inbox suggestions, no time estimates, and voice gives you the text without turning it into tasks. Add a key any time.<br><a class="btn" href="#/today">Start without AI</a></p></div>` : '';
   const foot = !o.model ? `<div class="ob-connect"><p>First, connect the AI that will listen. It runs on your own AI subscription: Claude with Claude Code (Pro or higher), or any ChatGPT subscription. Or on your own Anthropic or OpenAI API key, paid per use.</p>
       ${(o.models || []).map((m) => `<p><button class="btn" data-act="onboard-connect" data-val="${esc(m.id)}" ${connecting ? 'disabled' : ''}>${m.installed ? `Sign in to ${esc(m.name)}` : `Get ${esc(m.name)} and sign in`}</button> <span class="ph-text">${esc(m.plan)}</span></p>`).join('')}
-      ${S.pair?.local === false || connecting ? '' : `<p class="set-key"><input type="password" id="ob-key" placeholder="API key: sk-ant-… or sk-…" autocomplete="off" spellcheck="false" ${connecting ? 'disabled' : ''}><button class="btn" data-act="onboard-key" ${connecting || S.aiKeyBusy ? 'disabled' : ''}>${S.aiKeyBusy ? 'Checking…' : 'Use this key'}</button> <span class="ph-text">from <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Anthropic</a> or <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">OpenAI</a>; what you say goes to that company under your key</span></p>`}
+      ${S.pair?.local === false || connecting ? '' : `<p class="set-key"><input type="password" id="ob-key" placeholder="API key: AIza…, sk-ant-… or sk-…" autocomplete="off" spellcheck="false" ${connecting ? 'disabled' : ''}><button class="btn" data-act="onboard-key" ${connecting || S.aiKeyBusy ? 'disabled' : ''}>${S.aiKeyBusy ? 'Checking…' : 'Use this key'}</button> <span class="ph-text">free from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google Gemini</a>, or paid per use from <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Anthropic</a> or <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">OpenAI</a>; what you say goes to that company under your key</span></p>${keyHowTo()}`}
       ${connecting ? `<p class="ph-text">${esc(o.connecting.name)}: ${signInHelp(o.connecting.login)}${o.connecting.signingIn ? ' <button class="linkbtn" data-act="onboard-cancel">Can’t find that page? Start again</button>' : ''}</p>` : ''}${!connecting && o.connecting?.error ? `<p class="d-over">${esc(o.connecting.error)}</p>` : ''}</div>`
     : `<div class="ob-input"><span class="rf-in"><textarea id="ob-msg" rows="3" placeholder="${voice ? 'Press the mic and talk, or type' : 'Answer here'}" ${S.onboardBusy ? 'disabled' : ''}>${S.onboardBusy ? '' : esc(S.onboardDraft || '')}</textarea><button type="button" class="rf-mic" data-voice data-dictate="ob-msg" aria-label="Dictate">${MIC_SVG}</button></span><button class="btn primary" data-act="onboard-send" ${S.onboardBusy ? 'disabled' : ''}>Send</button></div>`;
   return `<div class="onboard">${intro}${bubbles}${working}${o.error ? `<p class="d-over">${esc(o.error)}</p>` : ''}${o.finished ? `<p class="ph-text"><b>That’s the setup.</b></p><p><a class="btn primary" href="#/today">Open Today</a>${o.phone ? '' : ' <a class="btn" href="#/phone">Connect your iPhone</a>'}</p><p class="ph-text">Your tasks are in Todoist, Things or Reminders? <button class="linkbtn" data-act="import-open">Bring them in</button> — now or later, from Settings → General → Import tasks.</p>` : phoneKey || foot}</div>`;
@@ -4559,16 +4561,23 @@ function modelSettingsHtml() {
   const help2 = unsigned.length ? `<br>Not signed in: ${unsigned.map((p) => `${esc(p.name)} — ${esc(p.login)}`).join('; ')}` : '';
   return `<div class="set-row"><div class="set-l">Model<small>what reads your inbox and voice, answers in the chat and runs agents: ${esc(cur?.cli || '')} on your ${esc(cur?.plan || '')}${help}${help2}</small></div><span class="seg">${btns}</span></div>${apiKeyHtml()}`;
 }
-// Your own API key, Anthropic's or OpenAI's (lib/anthropic.js; which one by how it starts): added on the computer itself
+// How to get the free key, step by step (2026-11-19 Alex: offer Gemini as the free model, with the instructions)
+const keyHowTo = (phone = false) => `<details class="key-howto"><summary>How to get a free Google Gemini key (2 minutes)</summary><ol>
+  <li>Open <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> and sign in with your Google account.</li>
+  <li>Accept Google’s terms if it asks, then press <b>Create API key</b> (a new project is fine).</li>
+  <li>Copy the key: it starts with <code>AIza</code>.</li>
+  <li>Paste it ${phone ? 'in Settings → This iPhone → AI API key' : 'in the key field here'}. No card needed; the free quota renews every day.</li></ol>
+  <p class="muted">On the free tier, if you live outside the EU, UK or Switzerland, Google may use what’s sent to improve its products and people may read it. Turning on billing in AI Studio stops that (and lifts the limits).</p></details>`;
+// Your own API key, Anthropic's, OpenAI's or Google's (lib/anthropic.js; which one by how it starts): added on the computer itself
 // (server.js /api/ai/key), kept in its Keychain
 function apiKeyHtml() {
-  const keyed = (S.ai?.list || []).filter((p) => ['api', 'openai'].includes(p.id));
+  const keyed = (S.ai?.list || []).filter((p) => ['api', 'openai', 'gemini'].includes(p.id));
   if (!keyed.length) return '';
   const set = keyed.filter((p) => p.installed), here = S.pair?.local !== false;
-  const rows = set.map((p) => `<div class="set-row"><div class="set-l">${p.id === 'api' ? 'Anthropic' : 'OpenAI'} API key<small>set ✓ · paid per use on your ${p.id === 'api' ? 'Anthropic account (console.anthropic.com → Billing)' : 'OpenAI account (platform.openai.com → Billing)'}</small></div><button class="linkbtn" data-act="ai-key-remove" data-val="${p.id}">Remove</button></div>`).join('');
+  const rows = set.map((p) => `<div class="set-row"><div class="set-l">${KEY_CO[p.id]} API key<small>set ✓ · ${{ api: 'paid per use on your Anthropic account (console.anthropic.com → Billing)', openai: 'paid per use on your OpenAI account (platform.openai.com → Billing)', gemini: 'Google’s free quota (aistudio.google.com shows it; turn on billing there for more)' }[p.id]}</small></div><button class="linkbtn" data-act="ai-key-remove" data-val="${p.id}">Remove</button></div>`).join('');
   if (set.length === keyed.length) return rows;
-  return `${rows}<div class="set-row"><div class="set-l">${set.length ? 'Another API key' : 'API key'}<small>no Claude Code or ChatGPT plan? Use your own key: <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Anthropic</a> (Claude) or <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">OpenAI</a>. Paid per use: everyday use is a few dollars a month, agent runs cost more. What the app sends goes to that company under your key; neither trains on API data by default.${here ? '' : '<br>Add it on the computer itself: here it would pass through the phone’s connection.'}</small></div>
-    ${here ? `<span class="set-key"><input type="password" id="ai-key" placeholder="sk-ant-… or sk-…" autocomplete="off" spellcheck="false"><button class="btn" data-act="ai-key-save" ${S.aiKeyBusy ? 'disabled' : ''}>${S.aiKeyBusy ? 'Checking…' : 'Save'}</button></span>` : ''}</div>`;
+  return `${rows}<div class="set-row"><div class="set-l">${set.length ? 'Another API key' : 'API key'}<small>no Claude Code or ChatGPT plan? Use your own key. Free: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google Gemini</a> (no card, a daily limit). Paid per use: <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Anthropic</a> (Claude) or <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">OpenAI</a>, a few dollars a month for everyday use, agent runs cost more. What the app sends goes to that company under your key. Anthropic and OpenAI don’t train on API data by default; on Google’s free tier, outside the EU, UK and Switzerland, Google may.${keyHowTo()}${here ? '' : '<br>Add it on the computer itself: here it would pass through the phone’s connection.'}</small></div>
+    ${here ? `<span class="set-key"><input type="password" id="ai-key" placeholder="AIza…, sk-ant-… or sk-…" autocomplete="off" spellcheck="false"><button class="btn" data-act="ai-key-save" ${S.aiKeyBusy ? 'disabled' : ''}>${S.aiKeyBusy ? 'Checking…' : 'Save'}</button></span>` : ''}</div>`;
 }
 function saveAgents(change) {
   const list = agentList().map((a) => ({ id: a.id, name: a.name, run: a.run, on: a.on }));

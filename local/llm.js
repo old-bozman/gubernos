@@ -3,11 +3,12 @@
 // (lib/claude-loop.js). The native shell sends each request and adds the key,
 // which it keeps in the iOS Keychain (gubernos-ios Gubernos/Claude.swift, Settings → This iPhone → Claude API key): the page
 // never sees the key. lib/chat.js, assist.js and triage.js run unchanged on top of this.
-//   bridge {op: 'claude' | 'openai', body: JSON text, timeoutMs} → the API's response as JSON text; fails with the API's
-//   error (or "no key"). {op: 'native'}.keyVendor says which key the phone has: 'anthropic', 'openai' or ''.
+//   bridge {op: 'claude' | 'openai' | 'gemini', body: JSON text, timeoutMs} → the API's response as JSON text; fails with the API's
+//   error (or "no key"). {op: 'native'}.keyVendor says which key the phone has: 'anthropic', 'openai', 'gemini' or ''.
 import fs from 'node:fs';
 import * as L from '/lib/claude-loop.js';
 import * as O from '/lib/openai-loop.js';
+import * as G from '/lib/gemini-loop.js';
 import { httpError } from '/lib/vault.js';
 
 const native = window.webkit?.messageHandlers?.gubernos;
@@ -38,8 +39,9 @@ const via = (op) => async (body, { timeoutMs } = {}) => {
     throw m.includes(NO_KEY) ? httpError(503, 'Offline on the phone — this needs the Mac, or an API key (Settings → This iPhone)') : new Error(m);
   }
 };
-const send = VENDOR === 'openai' ? O.adapt(via('openai')) : via('claude');
-const MODELS = VENDOR === 'openai' ? O.MODELS : L.MODELS;
+// the key's company: Anthropic (the loop's own shape), OpenAI or Google (Gemini, the free one) through their adapters
+const send = VENDOR === 'openai' ? O.adapt(via('openai')) : VENDOR === 'gemini' ? G.adapt(via('gemini')) : via('claude');
+const MODELS = VENDOR === 'openai' ? O.MODELS : VENDOR === 'gemini' ? G.MODELS : L.MODELS;
 
 // the vault in the page's copy (local/shims/fs.js): writes go to the phone's iCloud copy like any other change
 const clean = (p) => {
@@ -71,7 +73,7 @@ function logCost(job, model, cost, ms) {
 const chats = new Map(); // a chat's history, for this session of the app
 const store = { get: (id) => chats.get(id) || null, set: (id, c) => chats.set(id, c) };
 
-export const current = () => (VENDOR === 'openai' ? 'openai' : 'api');
+export const current = () => (['openai', 'gemini'].includes(VENDOR) ? VENDOR : 'api');
 // who asked, off the call stack (/lib/triage.js → triage), as on the Mac
 const caller = () => (new Error().stack.split('\n').slice(2).map((l) => l.match(/\/lib\/([\w-]+)\.js/)?.[1]).find((x) => x && x !== 'llm') || 'app');
 export async function ask({ system, prompt, schema, timeoutMs, deep = false }) {

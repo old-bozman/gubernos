@@ -2,7 +2,7 @@
 
 **Gubernos** (Gubern OS, from Latin *gubernare*, to steer) is a personal operating system: tasks, projects, goals, habits and your day, with agents that take part of the work off your hands. Everything stays yours: plain Markdown files on your Mac (or in your iCloud, if you like), your Mac as the "server", agents on your own Claude subscription. No third-party server, no one else's database.
 
-**Before you install: you need an AI model.** Claude with Claude Code (Pro or higher), any ChatGPT subscription, or your own Anthropic or OpenAI API key (paid per use: [Anthropic](https://console.anthropic.com/settings/keys) · [OpenAI](https://platform.openai.com/api-keys); you paste it in the first interview or in Settings → Your Mac → Model). Gubernos runs on it: the first interview, the chat and the agents all need it. Don't have one? [Claude plans](https://claude.com/pricing) · [ChatGPT plans](https://chatgpt.com/pricing).
+**Before you install: you need an AI model.** Claude with Claude Code (Pro or higher), any ChatGPT subscription, or your own API key: a **free** Google Gemini key ([get one](https://aistudio.google.com/apikey): sign in, Create API key, copy the `AIza…` key; no card, a daily limit), or Anthropic or OpenAI, paid per use ([Anthropic](https://console.anthropic.com/settings/keys) · [OpenAI](https://platform.openai.com/api-keys)). You paste the key in the first interview or in Settings → Your Mac → Model. On Google's free tier, outside the EU, UK and Switzerland, Google may use what's sent to improve its products. Gubernos runs on it: the first interview, the chat and the agents all need it. Don't have one? [Claude plans](https://claude.com/pricing) · [ChatGPT plans](https://chatgpt.com/pricing).
 
 Two steps: the Mac, then the iPhone.
 
@@ -23,6 +23,7 @@ same setup done by your AI agent or by hand, for those who prefer it.
 |---|---|---|---|
 | **Claude** with Claude Code (Pro or higher) | Claude Code | `curl -fsSL https://claude.ai/install.sh \| bash` | `~/.local/bin/claude` |
 | **ChatGPT**, any subscription | Codex | `npm install -g @openai/codex` | `codex login` |
+| A **Google Gemini API key** (free quota) | none needed | — | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) → Create API key; paste it in the first interview or Settings → Your Mac → Model |
 | An **Anthropic or OpenAI API key** (paid per use) | none needed | — | paste the key in the first interview or Settings → Your Mac → Model |
 
 That model reads your inbox and voice notes, answers in the app's chat and runs agents on tasks. You can switch later (Settings → Your Mac → Model), or install a second one as another agent.

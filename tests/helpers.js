@@ -26,9 +26,10 @@ export async function startServer(extraEnv = {}) {
     // and never the owner's calendar (the Mac's helper would read it, and could write to it), real AI model or plan: no triage, and every model CLI points at nothing unless a test sets a stand-in
     GUBERNOS_MACCAL_BIN: '/nonexistent', GUBERNOS_BIN_DIR: path.join(dir, 'bin'), GUBERNOS_TRIAGE: '0', GUBERNOS_CLAUDE_BIN: '/nonexistent', GUBERNOS_CODEX_BIN: '/nonexistent',
     GUBERNOS_KEY_ITEM: 'gubernos-test-no-key', GUBERNOS_KEY_STORE: 'file', GUBERNOS_SETUP: '/nonexistent', GUBERNOS_NO_UPDATE: '1', GUBERNOS_BRIEF: '0', // the morning brief would call the model on whatever page opens before 14:00
-     GUBERNOS_UPDATE_URL: 'http://127.0.0.1:9/none', GUBERNOS_API_URL: 'http://127.0.0.1:9', GUBERNOS_OPENAI_URL: 'http://127.0.0.1:9', ...extraEnv }; // never the owner's Anthropic API key (lib/anthropic.js)
+     GUBERNOS_UPDATE_URL: 'http://127.0.0.1:9/none', GUBERNOS_API_URL: 'http://127.0.0.1:9', GUBERNOS_OPENAI_URL: 'http://127.0.0.1:9', GUBERNOS_GEMINI_URL: 'http://127.0.0.1:9', ...extraEnv }; // never the owner's Anthropic API key (lib/anthropic.js)
   if (!('GUBERNOS_API_KEY' in extraEnv)) delete env.GUBERNOS_API_KEY;
   if (!('GUBERNOS_OPENAI_KEY' in extraEnv)) delete env.GUBERNOS_OPENAI_KEY;
+  if (!('GUBERNOS_GEMINI_KEY' in extraEnv)) delete env.GUBERNOS_GEMINI_KEY;
   const child = spawn(process.execPath, [path.join(ROOT, 'server.js')], { env, stdio: ['ignore', 'pipe', 'pipe'] });
   let log = '';
   child.stdout.on('data', (d) => { log += d; }); child.stderr.on('data', (d) => { log += d; });
