@@ -86,6 +86,14 @@ test('without the Mac: voice → tasks on Claude’s key, then chat and voice on
     await page.goto('about:blank'); await page.goto(url.replace('#/today', '#/onboard'));
     assert.ok(await started(), 'the offline page started without a key');
     assert.ok(await page.waitFor('!!document.querySelector("[data-act=ob-phone-key]")', 15000), 'no way to add a key from the interview');
+    // …and says up front what each way gives, and what doesn't work with no AI (2026-11-19)
+    const ways = await page.eval('document.querySelector(".ob-ways").innerText');
+    assert.match(ways, /subscription/); assert.match(ways, /Start without AI/); assert.match(ways, /no chat/);
+    const v0 = await post('/api/voice/parse', { text: 'buy milk' });
+    assert.equal(v0.status, 503); assert.match(v0.body.error, /needs AI: add an API key/);
+    const c0 = await post('/api/chat', { message: 'hi' });
+    assert.equal(c0.status, 503, 'the chat says it needs AI, not "try again"');
+    assert.equal(seen.claude.length, 3, 'nothing was sent without a key');
 
     // the phone's key is OpenAI's now
     await page.eval(`localStorage.setItem('gubernos-mock-vendor', 'openai')`);

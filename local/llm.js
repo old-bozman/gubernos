@@ -26,6 +26,9 @@ const NATIVE = (await Promise.resolve(call({ op: 'native' })).catch(() => ({})))
 const VENDOR = NATIVE.keyVendor || 'anthropic';
 window.gubernosKeyAtStart = `${!!NATIVE.claudeKey}/${NATIVE.keyVendor || ''}`; // app.js reloads when Settings changed it
 export const hasKey = () => !!NATIVE.claudeKey; // a key on this iPhone (read once, at start: adding one in Settings reloads the page)
+// no key, no Mac: what needs AI says so plainly, before anything is sent (2026-11-19 Alex: say up front what won't work)
+export const NO_AI = 'This needs AI: add an API key in Settings → This iPhone, or connect your Mac';
+const needKey = () => { if (!hasKey()) throw httpError(503, NO_AI); };
 const via = (op) => async (body, { timeoutMs } = {}) => {
   const t0 = Date.now();
   trace('send', op, body.model, `msgs=${(body.messages || body.input || []).length}`);
@@ -72,6 +75,7 @@ export const current = () => (VENDOR === 'openai' ? 'openai' : 'api');
 // who asked, off the call stack (/lib/triage.js → triage), as on the Mac
 const caller = () => (new Error().stack.split('\n').slice(2).map((l) => l.match(/\/lib\/([\w-]+)\.js/)?.[1]).find((x) => x && x !== 'llm') || 'app');
 export async function ask({ system, prompt, schema, timeoutMs, deep = false }) {
+  needKey();
   const t0 = Date.now(), job = caller();
   try {
     const r = await L.ask({ send, models: MODELS, system, prompt, schema: L.apiSchema(schema), deep, timeoutMs });
@@ -80,6 +84,7 @@ export async function ask({ system, prompt, schema, timeoutMs, deep = false }) {
   } catch (e) { if (e.status) throw e; console.error('[llm]', e.message); throw httpError(502, `The agent couldn’t answer: ${e.message}`); }
 }
 export async function chatTurn({ system, prompt, schema, session = null, deep = false, write = false }) {
+  needKey();
   const t0 = Date.now();
   trace('chat turn', session ? 'follow-up' : 'new');
   const r = await L.turn({ send, models: MODELS, ops, store, system, prompt, schema: L.apiSchema(schema), session, deep, write, timeoutMs: 120000 });
