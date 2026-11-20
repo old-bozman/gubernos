@@ -7,8 +7,8 @@ import { adapt, MODELS } from '../lib/gemini-loop.js';
 const ok = { status: 'completed', steps: [{ type: 'model_output', content: [{ type: 'text', text: 'hi' }] }], usage: {} };
 const ask = (model) => ({ model, max_tokens: 100, messages: [{ role: 'user', content: 'hello' }] });
 
-test('the deep model busy → the quick one answers', async () => {
-  for (const err of [{ status: 503, message: 'high demand' }, { status: 0, message: 'The operation was aborted due to timeout' }, { message: 'Gemini API 503: busy' }]) {
+test('the deep model busy or out of its daily quota → the quick one answers', async () => {
+  for (const err of [{ status: 503, message: 'high demand' }, { status: 429, message: 'quota per day' }, { message: 'the free Gemini quota is used up for now' }, { status: 0, message: 'The operation was aborted due to timeout' }, { message: 'Gemini API 503: busy' }]) {
     const seen = [];
     const send = adapt(async (b) => { seen.push(b.model); if (b.model === MODELS.sonnet) throw Object.assign(new Error(err.message), err); return ok; });
     const r = await send(ask(MODELS.sonnet));
@@ -17,10 +17,10 @@ test('the deep model busy → the quick one answers', async () => {
   }
 });
 
-test('a bad key, a used-up quota or the quick model busy: the error stays', async () => {
+test('a bad key, or the quick model busy or out of quota: the error stays', async () => {
   const fail = (status, message) => adapt(async () => { throw Object.assign(new Error(message), { status }); });
   await assert.rejects(fail(400, 'API key not valid')(ask(MODELS.sonnet)), /not valid/);
-  await assert.rejects(fail(429, 'quota per day')(ask(MODELS.sonnet)), /quota/);
+  await assert.rejects(fail(429, 'quota per day')(ask(MODELS.haiku)), /quota/);
   await assert.rejects(fail(503, 'high demand')(ask(MODELS.haiku)), /high demand/);
 });
 
