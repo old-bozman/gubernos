@@ -31,3 +31,8 @@ test('an AQ. key is Google’s', async () => {
   assert.equal(vendorOf('AIza-test-gemini-key-not-real'), 'google');
   assert.equal(vendorOf('sk-proj-test'), 'openai');
 });
+
+test('a key copied across a line break is still the same key', async () => {
+  const { vendorOf } = await import('../lib/anthropic.js');
+  assert.equal(vendorOf(' AQ.test-not-a-real\n key-000000 '), 'google');
+});

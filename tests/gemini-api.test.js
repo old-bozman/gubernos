@@ -42,7 +42,7 @@ test('a Gemini key: answers, chat with tools, an agent run', { timeout: 90000 },
   const s = await startServer({ GUBERNOS_GEMINI_URL: api.url });
   try {
     assert.equal((await s.post('/api/ai/key', { key: 'AIza-wrong-test-key-not-real' })).status, 400, 'Google says 400 for a bad key');
-    const k = await s.post('/api/ai/key', { key: KEY });
+    const k = await s.post('/api/ai/key', { key: ` ${KEY.slice(0, 12)}\n ${KEY.slice(12)}\n` }); // copied across a line break
     assert.equal(k.status, 200, JSON.stringify(k.body));
     assert.equal(k.body.current, 'google', 'an AIza key is Google’s, and the app runs on it');
     assert.equal(fs.statSync(path.join(s.dir, 'config/gemini-key')).mode & 0o777, 0o600);
