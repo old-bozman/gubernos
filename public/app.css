@@ -394,6 +394,12 @@ button.caret:hover { color: var(--ink); }
 .qa.voice-mode #qa-in, .qa.voice-mode #qa-notes, .qa.voice-mode #qa-chips, .qa.voice-mode #qa-sugg, .qa.voice-mode .foot .sp { display: none; }
 .qa.voice-mode .foot { justify-content: flex-end; }
 .qa.voice-mode #qa-voice { margin-top: 0; }
+/* dictating into the chat or a field: only the recorder (app.js quickAdd, S.voiceTarget) */
+.qa.dictate #qa-in, .qa.dictate #qa-notes, .qa.dictate #qa-tools, .qa.dictate #qa-pop, .qa.dictate #qa-chips, .qa.dictate #qa-sugg,
+.qa.dictate .foot .sp, .qa.dictate .foot .mic, .qa.dictate #qa-runwrap, .qa.dictate [data-act=qa-note], .qa.dictate #qa-savebtn { display: none !important; }
+.qa.dictate .foot { justify-content: flex-end; }
+.qa.dictate #qa-voice { margin-top: 0; }
+.qa-dict-h { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
 .draft .meta button.pill { cursor: pointer; }
 @media (max-width: 800px) {
   .app { grid-template-columns: 1fr; }

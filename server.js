@@ -413,5 +413,8 @@ server.listen(PORT, HOST, () => {
   console.log(`${APP_NAME} → http://${HOST}:${PORT}  (vault: ${V.VAULT})`);
 });
 // the same app on PROXY_PORT, loopback only, for Tailscale serve / funnel: nothing that arrives here counts as the Mac itself
-http.createServer(server.listeners('request')[0]).listen(PROXY_PORT, '127.0.0.1')
-  .on('error', (e) => console.error(`[proxy port ${PROXY_PORT}]`, e.message));
+const proxy = http.createServer(server.listeners('request')[0]);
+proxy.listen(PROXY_PORT, '127.0.0.1').on('error', (e) => console.error(`[proxy port ${PROXY_PORT}]`, e.message));
+// Tailscale serve keeps its connections open far longer than Node's 5 s: a request sent just as Node closed one can come back
+// as an empty 502 (2026-11-21, the phone's chat). Keep them longer than the proxy does.
+for (const s of [server, proxy]) { s.keepAliveTimeout = 75000; s.headersTimeout = 76000; }

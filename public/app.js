@@ -3181,6 +3181,13 @@ function quickAdd(defaults = {}, prefill = {}, opts = {}) {
       <button class="btn" data-act="qa-close">Cancel</button><button class="btn" data-act="qa-note" title="Keep it in the Inbox as a note and decide later">Save as note</button><button class="btn primary" data-act="qa-save" id="qa-savebtn">Add task</button></div>
   </div></div>`;
   const input = $('#qa-in'), notes = $('#qa-notes');
+  // the mic in the chat or a text field: what's said goes there, so the sheet is a plain recorder, not the Add task form
+  // (2026-11-21 Alex: in the chat it looked like adding a task)
+  if (opts.voice && S.voiceTarget) {
+    const t = S.voiceTarget;
+    $('.qa').classList.add('dictate');
+    $('.qa').insertAdjacentHTML('afterbegin', `<div class="qa-dict-h">${t === 'chat' || t === 'tchat' ? `✦ Speak to ${esc(APP_NAME)}: it goes into the chat` : 'Speak: it goes into the text field'}</div>`);
+  }
   if (matchMedia('(max-width: 800px)').matches) input.placeholder = 'Task name';
   input.value = prefill.title || '';
   notes.value = prefill.notes || '';
@@ -5983,6 +5990,24 @@ function renderChat() {
   if (atBottom) sc.scrollTop = sc.scrollHeight;
   const ta = $('#chat-in'); autosize(ta);
 }
+// The chat's POST, read safely. An answer that isn't JSON came from between the phone and the Mac: Tailscale's proxy answers a
+// dropped connection with an empty 502, and Safari's res.json() then says "The string did not match the expected pattern"
+// (2026-11-21, in the chat). Failed fast (the model can't have run, so nothing was saved twice) → asked once more; else a plain error.
+// AICODE-NOTE: a request cut mid-way (server restart, Tailscale hiccup) may never settle — capped, so the chat can't get stuck.
+async function postChat(body) {
+  for (let attempt = 0; ; attempt++) {
+    const t0 = Date.now(), ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 100000);
+    const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctl.signal, body: JSON.stringify(body) })
+      .finally(() => clearTimeout(timer));
+    const text = await res.text();
+    let r = null;
+    try { r = JSON.parse(text); } catch { /* not JSON */ }
+    if (r) { if (!res.ok) throw new Error(r.error || `error ${res.status}`); return r; }
+    clog(`chat: not JSON: HTTP ${res.status} ${res.headers.get('content-type') || '-'} ${Date.now() - t0}ms "${text.slice(0, 120)}"`);
+    if (attempt === 0 && Date.now() - t0 < 5000) { await new Promise((ok) => setTimeout(ok, 800)); continue; }
+    throw new Error(`the connection to your Mac dropped (HTTP ${res.status}). Try again`);
+  }
+}
 async function chatSend(text) {
   const C = S.chat;
   if (!C?.open) openChat();
@@ -6001,13 +6026,7 @@ async function chatSend(text) {
       S.chat.msgs.push({ role: 'ai', text: `Attached ${attachments.length} file${attachments.length === 1 ? '' : 's'} to the ${S.chat.context.taskId ? 'task' : 'project'}.` });
       S.chat.busy = false; renderChat(); load(); return;
     }
-    // AICODE-NOTE: a request cut mid-way (server restart, Tailscale hiccup) may never settle — cap it, so the chat can't get stuck.
-    const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), 100000);
-    const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctl.signal,
-      body: JSON.stringify({ message: msg, context: S.chat.context, session: S.chat.session, deep: S.chat.deep, attachments }) }).finally(() => clearTimeout(timer));
-    const r = await res.json();
-    if (!res.ok) throw new Error(r.error || `error ${res.status}`);
+    const r = await postChat({ message: msg, context: S.chat.context, session: S.chat.session, deep: S.chat.deep, attachments });
     if (typeof r.reply !== 'string') throw new Error('no answer came back'); // never a chat left "typing" for ever
     S.chat.session = r.session;
     S.chat.msgs.push({ role: 'ai', text: r.reply, actions: r.actions });
@@ -6195,11 +6214,7 @@ async function taskChatSend(opts = {}) {
   if (box && !opts.message) box.value = '';
   renderDrawer(true);
   try {
-    const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 100000);
-    const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctl.signal,
-      body: JSON.stringify({ message: msg, context: { taskId: id, ...(opts.woop ? { woop: true } : {}) }, session: st.session || null, persist: true, attachments }) }).finally(() => clearTimeout(timer));
-    const r = await res.json();
-    if (!res.ok) throw new Error(r.error || `error ${res.status}`);
+    const r = await postChat({ message: msg, context: { taskId: id, ...(opts.woop ? { woop: true } : {}) }, session: st.session || null, persist: true, attachments });
     if (typeof r.reply !== 'string') throw new Error('no answer came back');
     st.session = r.session; st.actions = r.actions;
   } catch (e) {
